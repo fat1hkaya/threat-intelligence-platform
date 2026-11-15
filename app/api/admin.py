@@ -32,7 +32,7 @@ def sources(db: Db = Depends(get_db)):
         FROM dbo.Source;
         """)
     feeds = {"abuse.ch ThreatFox": "threatfox", "abuse.ch MalwareBazaar": "malwarebazaar", "abuse.ch URLhaus": "urlhaus",
-             "abuse.ch Feodo Tracker": "feodo", "CISA KEV": "kev", "MITRE ATT&CK": "attack", "Malpedia": "malpedia"}
+             "abuse.ch Feodo Tracker": "feodo", "CISA KEV": "kev", "MITRE ATT&CK": "attack", "Malpedia": "malpedia", "iptoasn.com": "ip2asn"}
     needs_key = {"threatfox", "malwarebazaar", "urlhaus"}
     has_key = bool(os.getenv("ABUSECH_AUTH_KEY", "").strip())
     for s in items:
@@ -115,7 +115,7 @@ class FeedRun(BaseModel):
 @router.post("/imports/feed")
 def run_feed(body: FeedRun, user: dict = Depends(require_analyst), db: Db = Depends(get_db)):
     """Bir beslemeyi elle senkronize eder. abuse.ch anahtarı yoksa iş açılmaz, açık bir mesaj döner."""
-    from importers import abusech, cisa_kev, malpedia, mitre_attack
+    from importers import abusech, cisa_kev, ip2asn, malpedia, mitre_attack
 
     if body.feed == "attack":
         if user["Role"] != "admin":
@@ -127,6 +127,10 @@ def run_feed(body: FeedRun, user: dict = Depends(require_analyst), db: Db = Depe
         return cisa_kev.run(db.conn)
     if body.feed == "malpedia":
         return malpedia.run(db.conn)
+    if body.feed == "ip2asn":   # ~500 bin aralığın tamamı değiştirilir
+        if user["Role"] != "admin":
+            raise HTTPException(403, "IP aralığı verisini yüklemek için yönetici yetkisi gerekir.")
+        return ip2asn.run(db.conn)
     if body.feed not in abusech.FEEDS:
         raise HTTPException(400, "Bilinmeyen besleme.")
     try:

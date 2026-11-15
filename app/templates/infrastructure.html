@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Altyapı örtüşmesi</h1><p>Farklı zararlı ailelerinin aynı alt ağda ya da aynı barındırma sağlayıcısında (ASN) toplanması, ortak bir altyapı kullanıldığına işaret edebilir. IP IOC'leri sayısal adrese çevrilip IP aralıklarıyla tek indeks aramasında eşlenir.</p></div>
+</div>
+<p class="notice warn" id="noRanges" hidden><i data-lucide="info"></i><span>ASN ve ülke bilgisi için IP aralığı verisi henüz yüklenmedi. Yönetici, Veri Kaynakları sayfasında iptoasn.com satırından senkronize edebilir. Alt ağ kümeleri bu veri olmadan da hesaplanır.</span></p>
+<section class="grid g-4" id="kpis" aria-label="Özet" style="margin-top:18px"></section>
+<div class="grid g-main-side" style="margin-top:18px">
+  <article class="card flush"><div class="card-head"><div><h2>Paylaşılan /24 alt ağlar</h2><p>En az iki IOC barındıran alt ağlar, önce en çok farklı aile içerenler</p></div></div><div id="subnets"></div></article>
+  <article class="card"><h2>Ülke dağılımı</h2><p class="muted" style="font-size:12.5px;margin-top:2px">IP aralığının kayıtlı olduğu ülke (barındırma yeri, saldırganın kökeni değil)</p><div class="bars" id="countries" style="margin-top:12px"></div></article>
+</div>
+<article class="card flush" style="margin-top:18px"><div class="card-head"><div><h2>Birden çok aileyi barındıran ASN'ler</h2><p>Ayrıca en az 5 IOC barındıran sağlayıcılar</p></div></div><div id="asns"></div></article>
+{% endblock %}
+{% block scripts %}<script src="/static/js/infrastructure.js?v={{ v }}"></script>{% endblock %}

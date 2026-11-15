@@ -6,13 +6,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import config
-from .api import admin, attack, auth, cases, coverage, dashboard, entities, exports, graph, hunt, iocs, search
+from .api import admin, attack, auth, cases, coverage, dashboard, entities, exports, graph, hunt, infrastructure, iocs, search
 from .security import page_user
 
 app = FastAPI(title="ThreatLens API", version="1.0.0", docs_url="/api/docs", openapi_url="/api/openapi.json",
               description="ThreatLens Tehdit İstihbaratı Platformu - MSSQL Graph + FastAPI (ORM yok, parametreli T-SQL)")
 
-for module in (auth, dashboard, search, iocs, hunt, cases, graph, entities, attack, coverage, exports, admin):
+for module in (auth, dashboard, search, iocs, hunt, cases, graph, infrastructure, entities, attack, coverage, exports, admin):
     app.include_router(module.router)
 
 app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
@@ -27,6 +27,7 @@ NAV = [
     ("/hunt", "hunt", "Log Avı", "radar"),
     ("/cases", "cases", "Vakalar", "briefcase"),
     ("/graph", "graph", "İlişki Grafı", "share-2"),
+    ("/infrastructure", "infrastructure", "Altyapı", "network"),
     ("/actors", "actors", "Tehdit Aktörleri", "users"),
     ("/campaigns", "campaigns", "Kampanyalar", "target"),
     ("/malware", "malware", "Zararlı Yazılımlar", "bug"),
@@ -95,6 +96,11 @@ def cases_page(request: Request):
 @app.get("/graph", include_in_schema=False)
 def graph_page(request: Request):
     return render(request, "graph", "graph.html")
+
+
+@app.get("/infrastructure", include_in_schema=False)
+def infrastructure_page(request: Request):
+    return render(request, "infrastructure", "infrastructure.html")
 
 
 @app.get("/actors", include_in_schema=False)

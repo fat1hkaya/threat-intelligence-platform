@@ -98,12 +98,14 @@
             <h3 style="margin-top:14px">Sürümler</h3><ol class="timeline" id="versions" style="margin-top:8px"></ol></article>
           <article class="card"><h2 style="margin-bottom:10px">Kurum içi görülmeler (${d.sightings.length})</h2>
             ${list(d.sightings.slice(0, 8), (s) => `<li><div><span>${esc(s.Location || 'Konum yok')}<br><small>${fmtDT(s.SightedAt)} · ${esc(s.ReportedBy || '—')}</small></span><b>${s.Quantity}×</b></div></li>`, 'Bu IOC kurum içinde görülmedi.')}</article>
+          <article class="card" id="netCard" hidden></article>
           <article class="card"><h2 style="margin-bottom:10px">Aynı zararlıya bağlı diğer IOC'ler</h2>
             ${list(d.related, (r) => `<li><a href="/iocs/${r.IndicatorID}"><span class="mono value" style="max-width:220px">${esc(r.Value)}</span>${sev(r.SeverityCode)}</a></li>`, 'İlişkili IOC yok.')}</article>
         </div>
       </div>`;
     icons();
     timeTravel();
+    if (i.TypeCode === 'ipv4') network(id);
     TL.caseChips('indicator', id).then((h) => { const el = document.getElementById('caseChips'); if (el && h) { el.innerHTML = h; icons(); } });
     if (!writer) return;
     document.getElementById('editBtn').onclick = () => TL.iocForm(i, load);
@@ -158,5 +160,22 @@
       catch (err) { e.target.querySelector('.err').textContent = err.message; }
     };
   }
+  // IPv4 IOC: ASN, ülke, /24 komşuları (sp_IndicatorNetwork; aralık araması)
+  async function network(id) {
+    const el = document.getElementById('netCard'); if (!el) return;
+    let d; try { d = await api(`/api/infrastructure/indicator/${id}`); } catch { return; }
+    const n = d.network;
+    let cname = n.CountryCode || '—';
+    try { if (n.CountryCode) cname = new Intl.DisplayNames(['tr'], { type: 'region' }).of(n.CountryCode) + ` (${n.CountryCode})`; } catch { /* eski tarayıcı */ }
+    el.hidden = false;
+    el.innerHTML = `<h2 style="margin-bottom:10px">Ağ bilgisi</h2>
+      <dl class="kv"><dt>ASN</dt><dd>${n.ASN ? `<span class="mono">AS${n.ASN}</span> ${esc(n.ASName || '')}` : '<span class="faint">IP aralığı verisi yüklenmemiş</span>'}</dd>
+        <dt>Ülke</dt><dd>${esc(cname)}</dd><dt>Alt ağ</dt><dd class="mono">${esc(n.Subnet24)}</dd>
+        <dt>Aynı ASN'de</dt><dd>${n.ASN ? `${n.SameASN - 1} başka IOC` : '—'}</dd><dt>Aynı /24'te</dt><dd>${n.SameSubnet - 1} başka IOC</dd></dl>
+      ${d.subnetNeighbours.length ? `<h3 style="margin-top:12px;font-size:13px">Aynı alt ağdaki IOC'ler</h3>${TL.list(d.subnetNeighbours, (o) => `<li><a href="/iocs/${o.IndicatorID}"><span class="mono">${esc(o.Value)}</span><small>${esc(o.MalwareName || '')}</small></a></li>`)}
+        <p style="margin-top:8px"><a class="btn sm" href="/infrastructure"><i data-lucide="network"></i>Altyapı örtüşmesi</a></p>` : ''}`;
+    icons();
+  }
+
   document.addEventListener('DOMContentLoaded', load);
 })();

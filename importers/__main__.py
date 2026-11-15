@@ -3,11 +3,12 @@
     python -m importers attack                       # MITRE ATT&CK (yerel anlık görüntü)
     python -m importers threatfox malwarebazaar      # abuse.ch (ABUSECH_AUTH_KEY gerekir)
     python -m importers urlhaus feodo kev
+    python -m importers ip2asn                       # IP -> ASN/ülke aralıkları (iptoasn.com, PDDL)
     python -m importers all                          # hepsi; biri başarısız olsa da diğerleri denenir
 """
 import sys
 
-from . import abusech, cisa_kev, malpedia, mitre_attack
+from . import abusech, cisa_kev, ip2asn, malpedia, mitre_attack
 from ._db import connect, source_id
 from app.services.importer import run_import
 
@@ -26,6 +27,9 @@ def main(args: list[str]) -> None:
                 print("MITRE ATT&CK:", mitre_attack.run(conn))
             elif name == "malpedia":
                 print("Malpedia:", malpedia.run(conn))
+            elif name == "ip2asn":
+                print("iptoasn.com:", ip2asn.run(conn))
+                continue
             elif name == "kev":
                 print("CISA KEV:", cisa_kev.run(conn))
             elif name in abusech.FEEDS:
@@ -34,7 +38,7 @@ def main(args: list[str]) -> None:
                 print(f"{source}: {res.status}, okunan {res.read}, eklenen {res.inserted}, güncellenen {res.updated}, "
                       f"atlanan {res.skipped}, hatalı {res.failed}")
             else:
-                print(f"Bilinmeyen kaynak: {name}. Seçenekler: attack, {', '.join(abusech.FEEDS)}, kev, malpedia, all")
+                print(f"Bilinmeyen kaynak: {name}. Seçenekler: attack, {', '.join(abusech.FEEDS)}, kev, malpedia, ip2asn, all")
                 continue
             if name != "kev":
                 conn.cursor().execute("EXEC dbo.sp_RefreshActorSimilarity;")
