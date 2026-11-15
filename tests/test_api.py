@@ -439,3 +439,25 @@ def test_relational_division_matches_python(conn):
     for a, t in cur.execute("SELECT ActorID, TechniqueID FROM dbo.ActorTechnique;").fetchall():
         by_actor.setdefault(a, set()).add(t)
     assert sql_actors == {a for a, ts in by_actor.items() if ts <= covered}
+
+
+# ------------------------------------------------------------------ zaman yolculuğu (temporal)
+def test_temporal_versions_and_as_of(analyst, unique):
+    import time
+    from datetime import datetime, timezone
+    iid = analyst.post("/api/iocs", json={"value": f"temporal-{unique}.test", "sourceId": 7, "confidence": 40}).json()["IndicatorID"]
+    try:
+        time.sleep(1.1)
+        mid = datetime.now(timezone.utc).isoformat()
+        time.sleep(1.1)
+        ind = analyst.get(f"/api/iocs/{iid}").json()["indicator"]
+        body = {"type": "domain", "value": ind["OriginalValue"], "sourceId": 7, "confidence": 90, "rowVer": ind["RowVer"]}
+        assert analyst.put(f"/api/iocs/{iid}", json=body).status_code == 200
+        versions = analyst.get(f"/api/iocs/{iid}/versions").json()
+        assert len(versions) == 2 and versions[0]["IsCurrent"] and versions[0]["Confidence"] == 90 and versions[1]["Confidence"] == 40
+        past = analyst.get(f"/api/iocs/{iid}/asof", params={"at": mid}).json()
+        assert past["state"]["Confidence"] == 40                                   # o andaki hâl
+        before = analyst.get(f"/api/iocs/{iid}/asof", params={"at": "2020-01-01T00:00:00Z"}).json()
+        assert before["state"] is None                                              # henüz yoktu
+    finally:
+        analyst.delete(f"/api/iocs/{iid}")

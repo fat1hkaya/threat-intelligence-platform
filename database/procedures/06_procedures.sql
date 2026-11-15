@@ -239,7 +239,12 @@ BEGIN
         FROM dbo.Indicator AS i
         JOIN @stage AS s ON s.TypeID = i.TypeID AND s.NormalizedValue = i.NormalizedValue
         CROSS APPLY dbo.fn_LifetimeDays(i.SourceID, i.TypeID) AS lp
-        WHERE s.Error IS NULL AND s.IsDuplicate = 0;
+        WHERE s.Error IS NULL AND s.IsDuplicate = 0
+          -- Yalnızca gerçekten bir değer değişiyorsa güncelle: aynı veriyi tekrar bildiren beslemeler
+          -- gereksiz satır sürümü (IndicatorHistory) ve denetim yükü oluşturmasın
+          AND (s.LastSeen > i.LastSeen OR s.Confidence > i.Confidence
+               OR i.ExpiresAt IS NULL OR DATEADD(DAY, lp.LifetimeDays, s.LastSeen) > i.ExpiresAt
+               OR (i.Status = 'expired' AND DATEADD(DAY, lp.LifetimeDays, s.LastSeen) > @now));
         SET @updated = @@ROWCOUNT;
 
         -- 2) Yenileri ekle

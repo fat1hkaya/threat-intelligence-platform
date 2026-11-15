@@ -22,6 +22,28 @@
         <dt>= Skor</dt><dd><b>${r.Score}</b> <span class="faint">(${n(r.BasePoints)} × ${n(r.ReliabilityFactor, 2)} × ${n(r.FreshnessFactor, 2)} × ${n(r.StatusFactor, 1)}, yuvarlanmış)</span></dd></dl></article>`;
   }
 
+  // Zaman yolculuğu: tarayıcıdaki yerel saat UTC'ye çevrilip gönderilir
+  async function timeTravel() {
+    const at = document.getElementById('asofAt');
+    const local = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    at.value = local; at.max = local;
+    const vs = await api(`/api/iocs/${id}/versions`);
+    const SEVN = TL.SEV;
+    document.getElementById('versions').innerHTML = vs.map((v) => `<li><span class="dot ${v.IsCurrent ? 'done' : ''}"></span><div>
+        <b>${fmtDT(v.ValidFrom)}</b>${v.ValidTo ? ` → ${fmtDT(v.ValidTo)}` : ' → şimdi'}<br>
+        <small class="muted">${esc(v.Status)} · güven ${v.Confidence} · ${esc(SEVN[v.SeverityCode] || v.SeverityCode)} · son görülme ${fmtDT(v.LastSeen)} · bitiş ${fmtDT(v.ExpiresAt)}</small></div></li>`).join('');
+    document.getElementById('asofForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const out = document.getElementById('asofOut');
+      const r = await api(`/api/iocs/${id}/asof`, { params: { at: new Date(at.value).toISOString() } });
+      out.innerHTML = r.state
+        ? `<p class="notice"><i data-lucide="history"></i><span>O anda: <b>${esc(r.state.Status)}</b>, güven ${r.state.Confidence}, ${esc(SEVN[r.state.SeverityCode] || '')}, son görülme ${fmtDT(r.state.LastSeen)}, bitiş ${fmtDT(r.state.ExpiresAt)}.
+           Zararlı ilişkileri: ${r.malware.length ? r.malware.map((m) => esc(m.MalwareName)).join(', ') : 'yok'}. <span class="faint">(Bu sürüm ${fmtDT(r.state.ValidFrom)} itibarıyla geçerli.)</span></span></p>`
+        : '<p class="notice warn"><i data-lucide="history"></i><span>Bu tarihte kayıt yok: IOC henüz eklenmemişti ya da sürüm takibi o tarihten sonra başladı.</span></p>';
+      icons();
+    };
+  }
+
   async function load() {
     let d, rel;
     try { [d, rel] = await Promise.all([api(`/api/iocs/${id}`), api(`/api/iocs/${id}/relationships`)]); }
@@ -66,6 +88,12 @@
             <dt>Etiketler</dt><dd>${i.Tags.length ? `<div class="chips">${i.Tags.map((t) => `<a class="chip" href="/iocs?tag=${encodeURIComponent(t)}">${esc(t)}</a>`).join('')}</div>` : '—'}</dd>
             <dt>Açıklama</dt><dd>${esc(i.Description || '—')}</dd></dl></article>
           ${riskCard(d.risk, i)}
+          <article class="card" id="timeCard"><div class="card-head"><div><h2>Zaman yolculuğu</h2><p>Sistem sürümlü tablo: FOR SYSTEM_TIME AS OF / ALL</p></div></div>
+            <form id="asofForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+              <div class="field" style="flex:1;min-width:180px"><label for="asofAt">Bu tarihteki hâli</label><input class="input" id="asofAt" type="datetime-local" required></div>
+              <button class="btn">Göster</button></form>
+            <div id="asofOut" style="margin-top:10px"></div>
+            <h3 style="margin-top:14px">Sürümler</h3><ol class="timeline" id="versions" style="margin-top:8px"></ol></article>
           <article class="card"><h2 style="margin-bottom:10px">Kurum içi görülmeler (${d.sightings.length})</h2>
             ${list(d.sightings.slice(0, 8), (s) => `<li><div><span>${esc(s.Location || 'Konum yok')}<br><small>${fmtDT(s.SightedAt)} · ${esc(s.ReportedBy || '—')}</small></span><b>${s.Quantity}×</b></div></li>`, 'Bu IOC kurum içinde görülmedi.')}</article>
           <article class="card"><h2 style="margin-bottom:10px">Aynı zararlıya bağlı diğer IOC'ler</h2>
@@ -73,6 +101,7 @@
         </div>
       </div>`;
     icons();
+    timeTravel();
     if (!writer) return;
     document.getElementById('editBtn').onclick = () => TL.iocForm(i, load);
     document.getElementById('delBtn').onclick = () => {

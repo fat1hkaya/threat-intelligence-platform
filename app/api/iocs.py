@@ -1,6 +1,6 @@
 """IOC (gösterge) uçları: listeleme/filtreleme, ekleme, güncelleme, detay, ilişkiler (SQL Graph), görülme kaydı."""
 import json
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -208,6 +208,24 @@ def ioc_relationships(indicator_id: int, db: Db = Depends(get_db)):
         ORDER BY t.ExternalID;
         """, (indicator_id,))
     return {"attribution": attribution, "killchain": killchain, "malwareTechniques": malware_techniques}
+
+
+@router.get("/{indicator_id}/versions")
+def ioc_versions(indicator_id: int, db: Db = Depends(get_db)):
+    """Sistem sürümlü tablodan tüm sürümler (FOR SYSTEM_TIME ALL)."""
+    rows = db.query("EXEC dbo.sp_IndicatorVersions @IndicatorID = ?;", (indicator_id,))
+    if not rows:
+        raise HTTPException(404, "Gösterge bulunamadı.")
+    return rows
+
+
+@router.get("/{indicator_id}/asof")
+def ioc_as_of(indicator_id: int, at: datetime, db: Db = Depends(get_db)):
+    """IOC'nin belirli bir andaki hâli ve o andaki zararlı ilişkileri (FOR SYSTEM_TIME AS OF). 'at' UTC olarak yorumlanır."""
+    if at.tzinfo is not None:
+        at = at.astimezone(timezone.utc).replace(tzinfo=None)
+    state, links = (db.query_sets("EXEC dbo.sp_IndicatorAsOf @IndicatorID = ?, @AsOf = ?;", (indicator_id, at)) + [[], []])[:2]
+    return {"at": at, "state": state[0] if state else None, "malware": links}
 
 
 class IndicatorIn(BaseModel):
