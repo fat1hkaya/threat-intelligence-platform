@@ -365,3 +365,36 @@ def test_risk_breakdown_matches_score(admin, linked_ioc):
     from decimal import ROUND_HALF_UP, Decimal                                         # SQL ROUND: yarımı yukarı
     assert r["Score"] == d["indicator"]["RiskScore"] == max(0, min(100, int(Decimal(str(raw)).quantize(Decimal("1"), ROUND_HALF_UP))))
     assert abs(float(r["BasePoints"]) - (float(r["ConfidencePart"]) + float(r["SeverityPart"]) + float(r["SightingPart"]))) < 0.01
+
+
+# ------------------------------------------------------------------ log avı
+def test_hunt_matches_records_sightings_and_respects_roles(analyst, viewer, linked_ioc, unique):
+    log = (f"2026-11-15T09:00:01 edr01 file_written C:/tmp/a.exe sha256={linked_ioc['Value'].upper()}\n"
+           f"2026-11-15T09:00:02 proxy GET http://temiz-{unique}.example/ 200\n")
+    # izleyici arayabilir ama kaydedemez
+    assert viewer.post("/api/hunt", data={"text": log, "location": "pytest", "record": "true"}).status_code == 403
+    r = viewer.post("/api/hunt", data={"text": log, "location": "pytest", "record": "false"}).json()
+    assert r["summary"]["Matches"] == 1 and r["matches"][0]["IndicatorID"] == linked_ioc["IndicatorID"]
+    assert r["matches"][0]["MatchKind"] == "exact" and r["matches"][0]["ActorName"]
+    before = analyst.get(f"/api/iocs/{linked_ioc['IndicatorID']}").json()["indicator"]["SightingCount"]
+    r2 = analyst.post("/api/hunt", data={"text": log + log, "location": "pytest", "record": "true"}).json()
+    assert r2["summary"]["Recorded"] and r2["matches"][0]["Hits"] == 2
+    after = analyst.get(f"/api/iocs/{linked_ioc['IndicatorID']}").json()["indicator"]
+    assert after["SightingCount"] == before + 2                                    # Quantity = logdaki geçiş sayısı
+    detail = analyst.get(f"/api/hunt/{r2['summary']['HuntID']}").json()
+    assert detail["summary"]["HuntID"] == r2["summary"]["HuntID"] and len(detail["matches"]) == 1
+
+
+def test_hunt_parent_domain_match(analyst, unique):
+    iid = analyst.post("/api/iocs", json={"value": f"kotu-{unique}.example", "sourceId": 7}).json()["IndicatorID"]
+    try:
+        r = analyst.post("/api/hunt", data={"text": f"dns query A cdn.kotu-{unique}.example\n", "location": "pytest"}).json()
+        assert [m["MatchKind"] for m in r["matches"]] == ["parent"]
+    finally:
+        analyst.delete(f"/api/iocs/{iid}")
+
+
+def test_hunt_rejects_empty_and_lists_history(analyst):
+    assert analyst.post("/api/hunt", data={"text": "  ", "location": "pytest"}).status_code == 400
+    assert analyst.get("/api/hunt").json()
+    assert analyst.get("/api/hunt/sample").json()["text"]

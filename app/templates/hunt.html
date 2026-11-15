@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Log avı</h1><p>Güvenlik duvarı, proxy, DNS veya EDR logunu yapıştırın: içindeki IP, domain, URL ve hash'ler bilinen tehditlerle eşleştirilir. Soru şu: bu tehditlerden hangileri bizim ağımızda görüldü?</p></div>
+</div>
+
+<div class="grid g-main-side">
+  <form class="card grid" id="huntForm" style="gap:12px;align-content:start" aria-label="Log avı">
+    <div class="field">
+      <label for="logText">Log satırları</label>
+      <textarea class="input mono" id="logText" name="text" rows="12" spellcheck="false" placeholder="2026-11-15T09:12:00 proxy01 GET hxxp://kotu-alan[.]example/a.bin 200 user=ws-014&#10;2026-11-15T09:13:40 fw01 ALLOW 10.10.4.12 -> 203.0.113.7:443"></textarea>
+      <small class="faint">Güvenli yazımlar (hxxp, [.]) çözülür. Alt domainler üst domainle de eşleşir: cdn.kotu.example, kayıtlı kotu.example'ı yakalar.</small>
+    </div>
+    <div class="form-grid">
+      <div class="field"><label for="logFile">veya log dosyası (.log, .txt, .csv, en çok 5 MB)</label><input class="input" id="logFile" name="file" type="file" accept=".log,.txt,.csv,.json" style="padding:6px"></div>
+      <div class="field"><label for="location">Logun geldiği yer</label><input class="input" id="location" name="location" maxlength="100" required placeholder="ör. Proxy / FW-01" value="Proxy / FW-01"></div>
+    </div>
+    <label class="check" id="recordWrap"><input type="checkbox" id="record" name="record">Eşleşmeleri kurum içi görülme olarak kaydet (IOC'nin son görülme tarihi ve geçerlilik süresi uzar)</label>
+    <p class="notice warn" id="sampleNote" hidden><i data-lucide="flask-conical"></i><span></span></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn primary" type="submit"><i data-lucide="radar"></i>Avla</button>
+      <button class="btn" type="button" id="sampleBtn"><i data-lucide="file-text"></i>Örnek log yükle</button>
+      <button class="btn ghost" type="reset">Temizle</button>
+    </div>
+  </form>
+  <article class="card">
+    <h2>Önceki avlar</h2>
+    <ul class="list" id="history" style="margin-top:10px"></ul>
+  </article>
+</div>
+
+<section id="result" hidden aria-live="polite">
+  <section class="grid g-4" id="huntKpis" aria-label="Av özeti"></section>
+  <article class="card flush" style="margin-top:18px">
+    <div class="card-head"><div><h2 id="resultTitle">Eşleşmeler</h2><p id="resultNote"></p></div></div>
+    <div id="matches"></div>
+  </article>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/hunt.js?v={{ v }}"></script>{% endblock %}
