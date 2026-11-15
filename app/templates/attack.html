@@ -18,7 +18,8 @@
 </form>
 
 <section id="coverageView" hidden aria-label="Tespit kapsama haritası">
-  <p class="notice"><i data-lucide="shield-half"></i><span>Kurumunuzun her tekniği ne düzeyde tespit edebildiğini teknik detayında işaretleyin. Alt teknik işaretlenmemişse üst tekniğin düzeyini devralır. Kapsama kurumun kendi beyanıdır; başlangıçta hiçbir teknik işaretli değildir.</span></p>
+  <p class="notice"><i data-lucide="shield-half"></i><span>Kurumunuzun her tekniği ne düzeyde tespit edebildiğini teknik detayında işaretleyin. Alt teknik işaretlenmemişse üst tekniğin düzeyini devralır. Kapsama kurumun kendi beyanıdır; başlangıçta hiçbir teknik işaretli değildir.</span>
+    <a class="btn sm" style="margin-left:auto;flex-shrink:0" href="/api/export/navigator/coverage" download title="MITRE ATT&amp;CK Navigator katmanı"><i data-lucide="download"></i>Navigator'a aktar</a></p>
   <section class="grid g-4" id="covKpis" style="margin-top:18px"></section>
   <div class="grid g-main-side" style="margin-top:18px">
     <article class="card flush"><div class="card-head"><div><h2>Öncelikli kör noktalar</h2><p>Tespit edemediğimiz ve en çok aktörün kullandığı teknikler</p></div></div><div id="covGaps"></div></article>

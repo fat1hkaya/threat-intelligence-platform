@@ -63,6 +63,7 @@
     const blind = d.techniques.filter((t) => t.Level === 0);
     out.innerHTML = `<p style="font-size:28px;font-weight:700">%${Number(s.CoveragePct ?? 0).toLocaleString('tr-TR')}</p>
       <p class="muted" style="font-size:13px">${fmtN(s.Techniques)} teknik: ${fmtN(s.FullCount)} tam, ${fmtN(s.PartialCount)} kısmi, <b class="cov-0">${fmtN(s.NoneCount)} kör nokta</b></p>
+      <p style="margin-top:8px"><a class="btn sm" href="/api/export/navigator/actor/${id}?coverage=true" download title="Aktörün teknikleri kapsama renkleriyle (yeşil tam, sarı kısmi, kırmızı kör nokta)"><i data-lucide="download"></i>Navigator katmanı</a></p>
       <h3 style="margin-top:12px">Kör noktalar (en çok aktörün kullandığı önce)</h3>
       ${blind.length ? `<ul class="list" style="max-height:300px;overflow:auto">${blind.slice(0, 40).map((t) => `<li><a href="/attack?id=${t.TechniqueID}"><span><span class="mono">${esc(t.ExternalID)}</span> ${esc(t.Name)}</span><small>${t.ActorCount} aktör</small></a></li>`).join('')}</ul>` : '<p class="cov-2" style="font-size:13px">Kör nokta yok.</p>'}`;
   }

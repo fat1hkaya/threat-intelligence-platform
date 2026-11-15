@@ -62,6 +62,7 @@
         </div></div>
         <div class="page-actions">${copyBtn(i.Value).replace('btn sm icon ghost', 'btn').replace('</i>', '</i>Kopyala')}
           <a class="btn" href="${TL.graphUrl('indicator', id)}"><i data-lucide="share-2"></i>İlişki grafı</a>${TL.caseBtn('indicator', id, i.Value, 'btn')}
+          <a class="btn" href="/api/export/stix/indicator/${id}" download title="STIX 2.1 paketi: IOC, bağlı zararlı yazılımlar ve aktörler"><i data-lucide="download"></i>STIX</a>
           ${writer ? `<button class="btn" id="sightBtn"><i data-lucide="eye"></i>Görülme ekle</button><button class="btn" id="linkBtn"><i data-lucide="link"></i>İlişki ekle</button>
           <button class="btn primary" id="editBtn"><i data-lucide="pencil"></i>Düzenle</button><button class="btn danger" id="delBtn" aria-label="Sil"><i data-lucide="trash-2"></i></button>` : ''}</div>
       </div>

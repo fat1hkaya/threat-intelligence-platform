@@ -73,7 +73,8 @@
           <p class="faint" style="font-size:12.5px;margin-top:6px">${esc(c.CreatedBy || '—')} açtı, ${fmtDT(c.CreatedAt)}${c.ClosedAt ? ` · kapatıldı ${fmtDT(c.ClosedAt)}` : ''}</p>
         </div></div>
         <div class="page-actions">
-          ${d.items.length ? `<a class="btn" href="/graph?case=${c.InvestigationID}"><i data-lucide="share-2"></i>Vaka grafı</a>` : ''}
+          ${d.items.length ? `<a class="btn" href="/graph?case=${c.InvestigationID}"><i data-lucide="share-2"></i>Vaka grafı</a>
+            <a class="btn" href="/api/export/stix/case/${c.InvestigationID}" download title="STIX 2.1 paketi (grouping): vaka öğeleri, aralarındaki ilişkiler ve notlar"><i data-lucide="download"></i>STIX 2.1</a>` : ''}
           ${writer ? `${closed ? '<button class="btn" data-st="open"><i data-lucide="rotate-ccw"></i>Yeniden aç</button>'
             : `${c.Status === 'open' ? '<button class="btn" data-st="investigating"><i data-lucide="play"></i>İncelemeye al</button>' : ''}<button class="btn" data-st="closed"><i data-lucide="check"></i>Vakayı kapat</button>`}
             <button class="btn primary" id="editCase"><i data-lucide="pencil"></i>Düzenle</button><button class="btn danger" id="delCase" aria-label="Vakayı sil"><i data-lucide="trash-2"></i></button>` : ''}

@@ -25,7 +25,9 @@
           ${a.Description ? `<p class="desc">${esc(a.Description)}</p>` : ''}
           <p class="faint" style="font-size:11.5px">Köken ülke, motivasyon ve sektör ATT&amp;CK açıklamasından anahtar sözcükle çıkarılmıştır (sezgisel).</p>
           <div class="chips"><a class="btn sm" href="${graphUrl('actor', a.ActorID)}"><i data-lucide="share-2"></i>İlişki grafı</a>${TL.caseBtn('actor', a.ActorID, a.Name)}
-            <a class="btn sm" href="/attack?actor=${a.ActorID}"><i data-lucide="grid-3x3"></i>ATT&amp;CK matrisinde göster</a></div></section>
+            <a class="btn sm" href="/attack?actor=${a.ActorID}"><i data-lucide="grid-3x3"></i>ATT&amp;CK matrisinde göster</a>
+            <a class="btn sm" href="/api/export/navigator/actor/${a.ActorID}" download title="MITRE ATT&amp;CK Navigator'da açılabilen katman dosyası (JSON)"><i data-lucide="download"></i>Navigator katmanı</a>
+            <a class="btn sm" href="/api/export/stix/actor/${a.ActorID}" download title="STIX 2.1 paketi: aktör, araçları ve teknikleri"><i data-lucide="download"></i>STIX 2.1</a></div></section>
         <section><h3><i data-lucide="target"></i>Kampanyalar (${d.campaigns.length})</h3>${list(d.campaigns.slice(0, 8), (c) => `<li><a href="/campaigns?id=${c.CampaignID}"><span>${esc(c.Name)}</span><small>${c.StartDate ? fmtD(c.StartDate) : ''}</small></a></li>`, 'Atfedilen kampanya yok.')}</section>
         <section><h3><i data-lucide="bug"></i>Kullandığı zararlı/araçlar (${d.malware.length})</h3>${list(d.malware.slice(0, 10), (m) => `<li><a href="/malware?id=${m.MalwareID}"><span>${esc(m.Name)}</span><small>${esc(m.TypeName)}${m.IndicatorCount ? ` · ${m.IndicatorCount} IOC` : ''}</small></a></li>`)}</section>
         <section><h3><i data-lucide="grid-3x3"></i>ATT&amp;CK teknikleri (${new Set(d.techniques.map((t) => t.ExternalID)).size})</h3><p class="faint" style="font-size:12px">fn_ActorTechniques tablo değerli fonksiyonu</p>${TL.techByTactic(d.techniques)}</section>
