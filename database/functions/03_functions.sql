@@ -8,41 +8,56 @@ SET QUOTED_IDENTIFIER ON;
 GO
 
 /* ---------------------------------------------------------------------
-   fn_RiskScore: 0-100 arası risk skoru (türetilmiş nitelik, saklanmaz)
-     güven        x 0.45
-   + önem ağırlığı x 0.35
-   + görülme sayısı x 2 (en çok 20 puan)
-   sonra kaynak güvenilirliği ve tazelik (son görülme) ile çarpılır.
+   Risk skoru: 0-100 (türetilmiş nitelik, saklanmaz, her okumada hesaplanır)
+     taban puan = güven x 0,45 + önem ağırlığı x 0,35 + görülme sayısı x 2 (en çok 20)
+     skor       = taban x kaynak güvenilirliği x tazelik x durum
+   Formül tek yerde, satır içi tablo değerli fn_RiskBreakdown'dadır; bileşenleri ayrı ayrı döndürür
+   (arayüzdeki "skor nasıl hesaplandı" dökümü). Satır içi olduğu için sorgu planına gömülür.
+   "Şimdiki zaman" @AsOf parametresiyle verilir: fonksiyon içinde SYSUTCDATETIME() kullanmak skaler
+   fonksiyonun satır içine alınmasını (scalar UDF inlining) engelliyordu ve sıralamayı yavaşlatıyordu.
    --------------------------------------------------------------------- */
+CREATE OR ALTER FUNCTION dbo.fn_RiskBreakdown (
+    @Confidence     TINYINT,
+    @SeverityWeight TINYINT,
+    @LastSeen       DATETIME2(0),
+    @SightingCount  INT,
+    @Reliability    CHAR(1),
+    @IsActive       BIT,
+    @AsOf           DATETIME2(0)
+)
+RETURNS TABLE
+AS
+RETURN
+    SELECT p.ConfidencePart, p.SeverityPart, p.SightingPart, b.BasePoints,
+           f.ReliabilityFactor, f.AgeDays, t.FreshnessFactor, f.StatusFactor,
+           CAST(CASE WHEN r.Raw > 100 THEN 100 WHEN r.Raw < 0 THEN 0 ELSE ROUND(r.Raw, 0) END AS TINYINT) AS Score
+    FROM (SELECT CAST(@Confidence * 0.45 AS DECIMAL(6,2)) AS ConfidencePart,
+                 CAST(@SeverityWeight * 0.35 AS DECIMAL(6,2)) AS SeverityPart,
+                 CAST(CASE WHEN ISNULL(@SightingCount, 0) > 10 THEN 20 ELSE ISNULL(@SightingCount, 0) * 2 END AS DECIMAL(6,2)) AS SightingPart) AS p
+    CROSS APPLY (SELECT p.ConfidencePart + p.SeverityPart + p.SightingPart AS BasePoints) AS b
+    CROSS APPLY (SELECT CAST(CASE @Reliability WHEN 'A' THEN 1.00 WHEN 'B' THEN 0.95 WHEN 'C' THEN 0.88
+                                               WHEN 'D' THEN 0.78 WHEN 'E' THEN 0.68 ELSE 0.60 END AS DECIMAL(4,2)) AS ReliabilityFactor,
+                        DATEDIFF(DAY, @LastSeen, @AsOf) AS AgeDays,
+                        CAST(CASE WHEN @IsActive = 1 THEN 1.0 ELSE 0.5 END AS DECIMAL(3,1)) AS StatusFactor) AS f
+    CROSS APPLY (SELECT CAST(CASE WHEN f.AgeDays <= 30 THEN 1.00 WHEN f.AgeDays <= 90 THEN 0.85
+                                  WHEN f.AgeDays <= 180 THEN 0.65 ELSE 0.45 END AS DECIMAL(4,2)) AS FreshnessFactor) AS t
+    CROSS APPLY (SELECT CAST(b.BasePoints * f.ReliabilityFactor * t.FreshnessFactor * f.StatusFactor AS DECIMAL(9,3)) AS Raw) AS r;
+GO
+
+/* Skaler sürüm: tek bir değer için (ör. SSMS'te veya başka bir yordamda) skor. Formül fn_RiskBreakdown'dan gelir. */
 CREATE OR ALTER FUNCTION dbo.fn_RiskScore (
     @Confidence     TINYINT,
     @SeverityWeight TINYINT,
     @LastSeen       DATETIME2(0),
     @SightingCount  INT,
     @Reliability    CHAR(1),
-    @IsActive       BIT
+    @IsActive       BIT,
+    @AsOf           DATETIME2(0)
 )
 RETURNS TINYINT
 AS
 BEGIN
-    DECLARE @base DECIMAL(9,3) =
-          @Confidence * 0.45
-        + @SeverityWeight * 0.35
-        + CASE WHEN ISNULL(@SightingCount, 0) > 10 THEN 20 ELSE ISNULL(@SightingCount, 0) * 2 END;
-
-    DECLARE @rel DECIMAL(4,2) = CASE @Reliability
-        WHEN 'A' THEN 1.00 WHEN 'B' THEN 0.95 WHEN 'C' THEN 0.88
-        WHEN 'D' THEN 0.78 WHEN 'E' THEN 0.68 ELSE 0.60 END;
-
-    DECLARE @days INT = DATEDIFF(DAY, @LastSeen, SYSUTCDATETIME());
-    DECLARE @fresh DECIMAL(4,2) = CASE
-        WHEN @days <= 30  THEN 1.00
-        WHEN @days <= 90  THEN 0.85
-        WHEN @days <= 180 THEN 0.65
-        ELSE 0.45 END;
-
-    DECLARE @score DECIMAL(9,3) = @base * @rel * @fresh * CASE WHEN @IsActive = 1 THEN 1.0 ELSE 0.5 END;
-    RETURN CAST(CASE WHEN @score > 100 THEN 100 WHEN @score < 0 THEN 0 ELSE ROUND(@score, 0) END AS TINYINT);
+    RETURN (SELECT Score FROM dbo.fn_RiskBreakdown(@Confidence, @SeverityWeight, @LastSeen, @SightingCount, @Reliability, @IsActive, @AsOf));
 END;
 GO
 

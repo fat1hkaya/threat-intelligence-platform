@@ -26,8 +26,7 @@ SELECT
     CAST(CASE WHEN i.Status = 'active' THEN 1 ELSE 0 END AS BIT) AS IsActive,
     i.CreatedAt, i.UpdatedAt, CONVERT(VARCHAR(18), CAST(i.RowVer AS BINARY(8)), 1) AS RowVer,
     ISNULL(sc.SightingCount, 0) AS SightingCount,
-    dbo.fn_RiskScore(i.Confidence, sv.Weight, i.LastSeen, sc.SightingCount, s.Reliability,
-                     CASE WHEN i.Status = 'active' THEN 1 ELSE 0 END) AS RiskScore
+    rb.Score AS RiskScore             -- satır içi fn_RiskBreakdown: sorgu planına gömülür
 FROM dbo.Indicator AS i
 JOIN dbo.IndicatorType AS it ON it.TypeID = i.TypeID
 JOIN dbo.SeverityLevel AS sv ON sv.SeverityID = i.SeverityID
@@ -37,7 +36,9 @@ LEFT JOIN (
     SELECT IndicatorID, SUM(Quantity) AS SightingCount
     FROM dbo.Sighting
     GROUP BY IndicatorID
-) AS sc ON sc.IndicatorID = i.IndicatorID;
+) AS sc ON sc.IndicatorID = i.IndicatorID
+CROSS APPLY dbo.fn_RiskBreakdown(i.Confidence, sv.Weight, i.LastSeen, sc.SightingCount, s.Reliability,
+                                 CASE WHEN i.Status = 'active' THEN 1 ELSE 0 END, SYSUTCDATETIME()) AS rb;
 GO
 
 /* Aktör özeti: ilişkili kayıt sayıları (korelasyonlu alt sorgular) */

@@ -356,3 +356,12 @@ def test_login_attempts_visible_only_to_admin(admin, analyst):
     assert analyst.get("/api/audit-logs/logins").status_code == 403
     d = admin.get("/api/audit-logs/logins").json()
     assert d["items"] and d["totals"]["Total"] >= len(d["items"])
+
+
+def test_risk_breakdown_matches_score(admin, linked_ioc):
+    d = admin.get(f"/api/iocs/{linked_ioc['IndicatorID']}").json()
+    r = d["risk"]
+    raw = float(r["BasePoints"]) * float(r["ReliabilityFactor"]) * float(r["FreshnessFactor"]) * float(r["StatusFactor"])
+    from decimal import ROUND_HALF_UP, Decimal                                         # SQL ROUND: yarımı yukarı
+    assert r["Score"] == d["indicator"]["RiskScore"] == max(0, min(100, int(Decimal(str(raw)).quantize(Decimal("1"), ROUND_HALF_UP))))
+    assert abs(float(r["BasePoints"]) - (float(r["ConfidencePart"]) + float(r["SeverityPart"]) + float(r["SightingPart"]))) < 0.01

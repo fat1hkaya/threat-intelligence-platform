@@ -5,6 +5,23 @@
   const ACTION = { I: ['Eklendi', 'b-ok'], U: ['Güncellendi', 'b-warn'], D: ['Silindi', 'b-bad'] };
   const ROLE = { c2: 'Komuta-kontrol (C2)', payload: 'Yük (payload)', dropper: 'Bırakıcı (dropper)', exfil: 'Veri sızdırma', phishing: 'Oltalama', other: 'Diğer' };
 
+  // Açıklanabilir risk skoru: fn_RiskBreakdown bileşenleri
+  const n = (x, k = 1) => Number(x).toLocaleString('tr-TR', { minimumFractionDigits: k, maximumFractionDigits: k });
+  function riskCard(r, i) {
+    if (!r) return '';
+    const parts = [['Güven', r.ConfidencePart, `${i.Confidence} × 0,45`, 'var(--cyan)'], ['Önem', r.SeverityPart, `${r.SeverityWeight} × 0,35`, 'var(--purple)'],
+      ['Görülme', r.SightingPart, `${i.SightingCount} × 2 (en çok 20)`, 'var(--medium)']];
+    const factors = [['Kaynak güvenilirliği', r.ReliabilityFactor, `${i.Reliability} sınıfı`], ['Tazelik', r.FreshnessFactor, `${r.AgeDays} gün önce görüldü`],
+      ['Durum', r.StatusFactor, i.Status === 'active' ? 'aktif' : 'aktif değil (yarıya iner)']];
+    return `<article class="card"><div class="card-head"><div><h2>Risk skoru: ${r.Score} / 100</h2><p>Nasıl hesaplandı? (fn_RiskBreakdown)</p></div></div>
+      <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--elev-2)" role="img" aria-label="Taban puanın bileşenleri">
+        ${parts.map(([, v, , c]) => `<i style="width:${v}%;background:${c}"></i>`).join('')}</div>
+      <dl class="kv" style="margin-top:12px">${parts.map(([l, v, how, c]) => `<dt><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${c};margin-right:6px"></span>${l}</dt><dd><b>${n(v)}</b> <span class="faint">(${how})</span></dd>`).join('')}
+        <dt>Taban puan</dt><dd><b>${n(r.BasePoints)}</b></dd>
+        ${factors.map(([l, v, how]) => `<dt>× ${l}</dt><dd><b>${n(v, 2)}</b> <span class="faint">(${esc(how)})</span></dd>`).join('')}
+        <dt>= Skor</dt><dd><b>${r.Score}</b> <span class="faint">(${n(r.BasePoints)} × ${n(r.ReliabilityFactor, 2)} × ${n(r.FreshnessFactor, 2)} × ${n(r.StatusFactor, 1)}, yuvarlanmış)</span></dd></dl></article>`;
+  }
+
   async function load() {
     let d, rel;
     try { [d, rel] = await Promise.all([api(`/api/iocs/${id}`), api(`/api/iocs/${id}/relationships`)]); }
@@ -48,6 +65,7 @@
             <dt>Sürüm (RowVer)</dt><dd class="mono">${esc(i.RowVer)}</dd>
             <dt>Etiketler</dt><dd>${i.Tags.length ? `<div class="chips">${i.Tags.map((t) => `<a class="chip" href="/iocs?tag=${encodeURIComponent(t)}">${esc(t)}</a>`).join('')}</div>` : '—'}</dd>
             <dt>Açıklama</dt><dd>${esc(i.Description || '—')}</dd></dl></article>
+          ${riskCard(d.risk, i)}
           <article class="card"><h2 style="margin-bottom:10px">Kurum içi görülmeler (${d.sightings.length})</h2>
             ${list(d.sightings.slice(0, 8), (s) => `<li><div><span>${esc(s.Location || 'Konum yok')}<br><small>${fmtDT(s.SightedAt)} · ${esc(s.ReportedBy || '—')}</small></span><b>${s.Quantity}×</b></div></li>`, 'Bu IOC kurum içinde görülmedi.')}</article>
           <article class="card"><h2 style="margin-bottom:10px">Aynı zararlıya bağlı diğer IOC'ler</h2>

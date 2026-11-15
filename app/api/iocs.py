@@ -162,7 +162,20 @@ def get_ioc(indicator_id: int, db: Db = Depends(get_db)):
     for h in history:
         h["OldValues"] = json.loads(h["OldValues"]) if h["OldValues"] else None
         h["NewValues"] = json.loads(h["NewValues"]) if h["NewValues"] else None
-    return {"indicator": ind, "sightings": sightings, "related": related, "history": history}
+    risk = db.one(
+        """
+        -- Skorun bileşenleri: görünümle aynı formül (satır içi fn_RiskBreakdown)
+        SELECT rb.ConfidencePart, rb.SeverityPart, rb.SightingPart, rb.BasePoints, rb.ReliabilityFactor,
+               rb.AgeDays, rb.FreshnessFactor, rb.StatusFactor, rb.Score, sv.Weight AS SeverityWeight
+        FROM dbo.Indicator AS i
+        JOIN dbo.SeverityLevel AS sv ON sv.SeverityID = i.SeverityID
+        JOIN dbo.Source AS s ON s.SourceID = i.SourceID
+        OUTER APPLY (SELECT SUM(Quantity) AS N FROM dbo.Sighting AS g WHERE g.IndicatorID = i.IndicatorID) AS sc
+        CROSS APPLY dbo.fn_RiskBreakdown(i.Confidence, sv.Weight, i.LastSeen, sc.N, s.Reliability,
+                                         CASE WHEN i.Status = 'active' THEN 1 ELSE 0 END, SYSUTCDATETIME()) AS rb
+        WHERE i.IndicatorID = ?;
+        """, (indicator_id,))
+    return {"indicator": ind, "sightings": sightings, "related": related, "history": history, "risk": risk}
 
 
 @router.get("/{indicator_id}/relationships")
