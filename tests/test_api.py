@@ -286,7 +286,7 @@ def test_stale_import_is_stored_as_expired(analyst, unique):
 
 
 # ------------------------------------------------------------------ varlık ekleme uçları (tetikleyicili tablolar)
-def test_create_entities_on_tables_with_triggers(analyst, admin, unique):
+def test_create_entities_on_tables_with_triggers(analyst, admin, unique, conn):
     """ThreatActor, Malware, Campaign, Vulnerability ve AppUser tablolarında tetikleyici var: INSERT ... OUTPUT INTO ile çalışmalı."""
     actor = analyst.post("/api/actors", json={"name": f"Pytest Actor {unique}", "aliases": [f"pta-{unique}"]})
     assert actor.status_code == 200, actor.text
@@ -305,10 +305,20 @@ def test_create_entities_on_tables_with_triggers(analyst, admin, unique):
     analyst.delete(f"/api/actors/{actor.json()['ActorID']}")
     analyst.delete(f"/api/malware/{mal.json()['MalwareID']}")
     analyst.delete(f"/api/vulnerabilities/{vuln.json()['VulnerabilityID']}")
-    admin.patch(f"/api/users/{user.json()['UserID']}", json={"isActive": False})
+    _drop_test_user(conn, user.json()["UserID"])
 
 
 # ------------------------------------------------------------------ kimlik doğrulama güvenliği
+def _drop_test_user(conn, user_id: int) -> None:
+    """Testin oluşturduğu kullanıcıyı siler (Ayarlar listesinde test artığı kalmasın). Denetim kaydı varsa
+    (AuditLog korumalıdır, satır silinemez) kullanıcı yalnızca devre dışı kalır."""
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM dbo.AppUser WHERE UserID = ?;", user_id)
+    except Exception:
+        cur.execute("UPDATE dbo.AppUser SET IsActive = 0 WHERE UserID = ?;", user_id)
+
+
 def _fresh_client():
     from fastapi.testclient import TestClient
     from app.main import app
@@ -333,7 +343,7 @@ def test_login_lockout_after_five_failures(unique):
     assert codes[:5] == [401] * 5 and codes[5] == 429
 
 
-def test_password_change_and_admin_reset(admin, unique):
+def test_password_change_and_admin_reset(admin, unique, conn):
     uname = f"pw{unique}"
     uid = admin.post("/api/users", json={"username": uname, "fullName": "Parola Testi", "role": "viewer", "password": "Ilk-Parola-123"}).json()["UserID"]
     try:
@@ -349,7 +359,7 @@ def test_password_change_and_admin_reset(admin, unique):
         assert c2.get("/api/auth/me").status_code == 401                       # sıfırlama tüm oturumları kapatır
         assert _fresh_client().post("/api/auth/login", json={"username": uname, "password": "Sifirlanan-789"}).status_code == 200
     finally:
-        admin.patch(f"/api/users/{uid}", json={"isActive": False})
+        _drop_test_user(conn, uid)
 
 
 def test_login_attempts_visible_only_to_admin(admin, analyst):

@@ -6,8 +6,8 @@
   const page = TL.listPage({
     endpoint: '/api/actors', title: 'Aktör detayı', unit: 'aktör', rowId: (r) => r.ActorID,
     columns: [
-      { label: 'Aktör', primary: true, render: (r) => `<b>${esc(r.Name)}</b> <span class="faint mono" style="font-size:11.5px">${esc(r.ExternalID || '')}</span>` },
-      { label: 'Takma adlar', render: (r) => `<span class="muted" style="font-size:12.5px">${esc((r.Aliases || '').slice(0, 60) || '—')}</span>` },
+      { label: 'Aktör', primary: true, render: (r) => `<b>${esc(r.Name)}</b> <span class="faint mono" style="font-size: 12px">${esc(r.ExternalID || '')}</span>` },
+      { label: 'Takma adlar', render: (r) => `<span class="muted" style="font-size: 13px">${esc((r.Aliases || '').slice(0, 60) || '—')}</span>` },
       { label: 'Köken', render: (r) => r.CountryCode ? `<span class="badge b-muted">${esc(r.CountryCode)}</span>` : '<span class="faint">—</span>' },
       { label: 'Motivasyon', render: (r) => esc(r.Motivation || '—') },
       { label: 'Kampanya', num: true, render: (r) => fmtN(r.CampaignCount) },
@@ -23,7 +23,7 @@
           <dl class="kv"><dt>Köken</dt><dd>${flagless(a.CountryCode, a.CountryName)}</dd><dt>Motivasyon</dt><dd>${esc(a.Motivation || 'Bilinmiyor')}</dd>
             <dt>Hedef sektör</dt><dd>${d.sectors.length ? d.sectors.map((s) => esc(s.Name)).join(', ') : '—'}</dd></dl>
           ${a.Description ? `<p class="desc">${esc(a.Description)}</p>` : ''}
-          <p class="faint" style="font-size:11.5px">Köken ülke, motivasyon ve sektör ATT&amp;CK açıklamasından anahtar sözcükle çıkarılmıştır (sezgisel).</p>
+          <p class="faint" style="font-size: 12px">Köken ülke, motivasyon ve sektör ATT&amp;CK açıklamasından anahtar sözcükle çıkarılmıştır (sezgisel).</p>
           <div class="chips"><a class="btn sm" href="${graphUrl('actor', a.ActorID)}"><i data-lucide="share-2"></i>İlişki grafı</a>${TL.caseBtn('actor', a.ActorID, a.Name)}
             <a class="btn sm" href="/attack?actor=${a.ActorID}"><i data-lucide="grid-3x3"></i>ATT&amp;CK matrisinde göster</a>
             <a class="btn sm" href="/api/export/navigator/actor/${a.ActorID}" download title="MITRE ATT&amp;CK Navigator'da açılabilen katman dosyası (JSON)"><i data-lucide="download"></i>Navigator katmanı</a>

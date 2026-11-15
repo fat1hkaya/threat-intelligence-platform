@@ -21,7 +21,7 @@
       { label: 'IOC', num: true, render: (s) => fmtN(s.IndicatorCount) },
       { label: 'Kanıt', num: true, render: (s) => fmtN(s.EvidenceCount) },
       { label: 'Son iş', render: (s) => s.LastRunAt ? `${job(s.LastRunStatus)} <span class="muted" style="font-size:12px">${fmtDT(s.LastRunAt)}</span>` : '<span class="faint">Henüz yok</span>' },
-      { label: 'Son işte', render: (s) => s.LastRunAt ? `<span style="font-size:12.5px">+${fmtN(s.LastRowsInserted)} / ~${fmtN(s.LastRowsUpdated)} / <span class="${s.LastRowsFailed ? 'delta-down' : ''}">✕${fmtN(s.LastRowsFailed)}</span></span>` : '—' },
+      { label: 'Son işte', render: (s) => s.LastRunAt ? `<span style="font-size: 13px">+${fmtN(s.LastRowsInserted)} / ~${fmtN(s.LastRowsUpdated)} / <span class="${s.LastRowsFailed ? 'delta-down' : ''}">✕${fmtN(s.LastRowsFailed)}</span></span>` : '—' },
       { label: 'İşlemler', render: (s) => {
         if (!s.Feed) return '<span class="faint" style="font-size:12px">Elle / dosya</span>';
         const allowed = s.Feed === 'attack' ? admin : writer;

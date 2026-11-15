@@ -12,7 +12,7 @@
     endpoint: '/api/audit-logs', title: 'Olay detayı', unit: 'kayıt', size: 25, rowId: (r) => r.AuditID,
     onData: (d) => { rows = d.items; },   // detay paneli satırı yeniden sorgulamadan gösterir
     columns: [
-      { label: 'Zaman', render: (r) => `<span class="mono" style="font-size:12.5px">${fmtDT(r.ChangedAt)}</span>` },
+      { label: 'Zaman', render: (r) => `<span class="mono" style="font-size: 13px">${fmtDT(r.ChangedAt)}</span>` },
       { label: 'Kullanıcı', primary: true, render: (r) => r.ChangedBy ? `${esc(r.ChangedBy)}<br><small class="muted">${esc(r.RoleName || '')}</small>` : '<span class="faint">Sistem (SSMS / betik)</span>' },
       { label: 'İşlem', render: (r) => badge(r.Action) },
       { label: 'Tablo', render: (r) => `<span class="badge b-muted">${esc(TABLE[r.TableName] || r.TableName)}</span>` },
@@ -58,7 +58,7 @@
       document.getElementById('loginCard').hidden = false;
       document.getElementById('loginNote').textContent = `Son 24 saatte ${fmtN(t.Failed24h || 0)} hatalı deneme · toplam ${fmtN(t.Total || 0)} deneme · kilit nedeniyle reddedilen ${fmtN(t.LockedAttempts || 0)} · 15 dakikada 5 hatalı deneme hesabı geçici olarak kilitler`;
       document.getElementById('loginTbl').innerHTML = L.items.length ? TL.table([
-        { label: 'Zaman', render: (a) => `<span class="mono" style="font-size:12.5px">${fmtDT(a.AttemptedAt)}</span>` },
+        { label: 'Zaman', render: (a) => `<span class="mono" style="font-size: 13px">${fmtDT(a.AttemptedAt)}</span>` },
         { label: 'Kullanıcı adı', primary: true, render: (a) => `${esc(a.Username)}${a.FullName ? ` <span class="faint">(${esc(a.FullName)})</span>` : ''}` },
         { label: 'Sonuç', render: (a) => a.Success ? '<span class="badge b-ok">Başarılı</span>' : `<span class="badge b-bad">${esc(REASON[a.Reason] || 'Başarısız')}</span>` },
         { label: 'IP', render: (a) => `<span class="mono">${esc(a.ClientIP || '—')}</span>` },

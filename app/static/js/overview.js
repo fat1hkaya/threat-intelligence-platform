@@ -5,7 +5,7 @@
   let sevChart, trendChart;
 
   const delta = (now, prev) => {
-    if (!prev) return now ? `<span class="delta-up">+${fmtN(now)}</span> önceki dönemde kayıt yok` : 'değişim yok';
+    if (!prev) return now ? 'Karşılaştırma yok: önceki dönemde kayıt bulunmuyor' : 'Bu dönemde yeni kayıt yok';
     const d = Math.round(((now - prev) / prev) * 1000) / 10;
     return `<span class="${d >= 0 ? 'delta-up' : 'delta-down'}">${d >= 0 ? '▲' : '▼'} %${Math.abs(d).toLocaleString('tr-TR')}</span> önceki döneme göre`;
   };

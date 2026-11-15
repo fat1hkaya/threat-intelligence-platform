@@ -7,12 +7,13 @@
 <div class="grid g-main-side">
   <article class="card flush">
     <div class="card-head"><div><h2>Kullanıcılar ve roller</h2><p>AppUser tablosu · değişiklikler trg_AppUser_Audit ile denetlenir</p></div>
-      <button class="btn primary sm" id="newUser" hidden><i data-lucide="user-plus"></i>Kullanıcı ekle</button></div>
+      <div class="head-actions"><label class="check" id="inactiveWrap" hidden><input type="checkbox" id="showInactive">Devre dışı olanları göster</label>
+      <button class="btn primary sm" id="newUser" hidden><i data-lucide="user-plus"></i>Kullanıcı ekle</button></div></div>
     <div id="users"></div>
   </article>
   <article class="card">
     <h2>Rol yetki matrisi</h2>
-    <p class="muted" style="font-size:12.5px;margin:4px 0 12px">Uygulamada (FastAPI bağımlılıkları) ve veritabanında (tip_reader ⊂ tip_analyst ⊂ tip_admin rolleri, GRANT/DENY) aynı sınırlar uygulanır.</p>
+    <p class="muted" style="font-size: 13px;margin:4px 0 12px">Uygulamada (FastAPI bağımlılıkları) ve veritabanında (tip_reader ⊂ tip_analyst ⊂ tip_admin rolleri, GRANT/DENY) aynı sınırlar uygulanır.</p>
     <div class="table-wrap"><table class="data"><caption class="sr-only">Rol yetkileri</caption>
       <thead><tr><th scope="col">Yetki</th><th scope="col">Yönetici</th><th scope="col">Analist</th><th scope="col">İzleyici</th></tr></thead>
       <tbody id="perm"></tbody></table></div>
@@ -22,7 +23,7 @@
 <div class="grid g-2">
   <article class="card">
     <h2>Risk skoru nasıl hesaplanıyor?</h2>
-    <p class="muted" style="font-size:12.5px;margin:4px 0 12px">dbo.fn_RiskScore skaler fonksiyonu (türetilmiş nitelik: saklanmaz, vw_Indicator içinde her okumada hesaplanır)</p>
+    <p class="muted" style="font-size: 13px;margin:4px 0 12px">dbo.fn_RiskScore skaler fonksiyonu (türetilmiş nitelik: saklanmaz, vw_Indicator içinde her okumada hesaplanır)</p>
     <ol class="timeline">
       <li><span class="dot done"></span><div><b>Taban puan</b><br><small class="muted">güven × 0,45 + önem ağırlığı × 0,35 + görülme sayısı × 2 (en çok 20)</small></div></li>
       <li><span class="dot done"></span><div><b>Kaynak güvenilirliği çarpanı</b><br><small class="muted">Admiralty ölçeği: A 1,00 · B 0,95 · C 0,88 · D 0,78 · E 0,68 · F 0,60</small></div></li>
@@ -44,9 +45,9 @@
   </article>
   <article class="card">
     <h2>Zamanlanmış bakım işleri</h2>
-    <p class="muted" style="font-size:12.5px;margin:4px 0 10px">SQL Server Agent: her gece 02:00 süresi dolan IOC'ler, her pazar 03:00 graf bakımı. Beslemeler Windows Görev Zamanlayıcı ile 6 saatte bir çekilir.</p>
+    <p class="muted" style="font-size: 13px;margin:4px 0 10px">SQL Server Agent: her gece 02:00 süresi dolan IOC'ler, her pazar 03:00 graf bakımı. Beslemeler Windows Görev Zamanlayıcı ile 6 saatte bir çekilir.</p>
     <ul class="list" id="runs"></ul>
-    <p class="muted" style="font-size:12.5px;margin-top:10px" id="upcoming"></p>
+    <p class="muted" style="font-size: 13px;margin-top:10px" id="upcoming"></p>
   </article>
 </div>
 

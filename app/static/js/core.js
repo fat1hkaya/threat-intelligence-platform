@@ -172,6 +172,12 @@
 
   // ---------- global arama ----------
   function initOmni() {
+    const inp = document.getElementById('omniInput');
+    if (inp) {
+      const mq = window.matchMedia('(min-width: 720px)');
+      const setPh = () => { inp.placeholder = mq.matches ? inp.dataset.longPlaceholder : 'IOC, aktör, teknik ara'; };
+      setPh(); mq.addEventListener('change', setPh);
+    }
     const input = document.getElementById('omniInput'), box = document.getElementById('omniResults');
     if (!input) return;
     let items = [], idx = -1;
@@ -236,8 +242,67 @@
       try { await navigator.clipboard.writeText(b.dataset.copy); toast('Panoya kopyalandı.'); }
       catch { const t = document.createElement('textarea'); t.value = b.dataset.copy; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); toast('Panoya kopyalandı.'); }
     }, true);
-    initOmni(); icons();
+    initOmni(); initFilterToggles(); icons();
   }
+
+
+  // ---------- dar ekran yardımcıları ----------
+  const NARROW = window.matchMedia('(max-width: 900px)');
+  const PHONE = window.matchMedia('(max-width: 560px)');
+
+  /** Filtre formu: dar ekranda yalnızca ana arama alanı ve düğmeler görünür; "Filtreler (n)" diğerlerini açar. */
+  function initFilterToggles() {
+    document.querySelectorAll('form#filters').forEach((form) => {
+      const actions = [...form.querySelectorAll('.field')].find((f) => f.querySelector('button[type=submit]'));
+      if (!actions || form.querySelector('.filter-toggle')) return;
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'btn filter-toggle'; btn.setAttribute('aria-expanded', 'false'); btn.setAttribute('aria-controls', form.id);
+      actions.prepend(btn);
+      form.classList.add('collapsible');
+      const active = () => [...form.elements].filter((el) => el.name && el.name !== 'sort' && el.type !== 'submit' && !el.closest('.field.wide')
+        && (el.type === 'checkbox' ? el.checked : el.value !== '')).length;
+      const update = () => { const n = active(); btn.innerHTML = `<i data-lucide="sliders-horizontal"></i>Filtreler${n ? ` <span class="count">${n}</span>` : ''}`; icons(); };
+      btn.addEventListener('click', () => { const open = form.classList.toggle('open'); btn.setAttribute('aria-expanded', String(open)); });
+      form.addEventListener('change', update);
+      form.addEventListener('reset', () => setTimeout(update));
+      form.addEventListener('submit', () => { if (NARROW.matches) { form.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); } setTimeout(update); });
+      update(); setTimeout(update, 600);              // sayfa adres çubuğundaki filtreleri yükledikten sonra
+    });
+  }
+
+  /** Eylem çubuğu: telefonda birincil düğme ve ilk `keep` eylem görünür kalır, gerisi "Diğer" menüsüne taşınır.
+      Öğeler kopyalanmaz, taşınır: bağlı olay dinleyicileri korunur; geniş ekrana dönünce yerlerine geri konur. */
+  function overflowActions(container, keep = 2) {
+    if (!container || container.dataset.overflow) return;
+    container.dataset.overflow = '1';
+    const items = [...container.children];
+    const more = document.createElement('details'); more.className = 'more-menu';
+    more.innerHTML = '<summary class="btn" aria-label="Diğer eylemler"><i data-lucide="ellipsis"></i>Diğer</summary><div class="menu-pop" role="menu"></div>';
+    const pop = more.querySelector('.menu-pop');
+    const slots = items.map((el) => { const c = document.createComment('slot'); el.before(c); return c; });
+    const apply = () => {
+      if (PHONE.matches) {
+        let shown = 0;
+        items.forEach((el) => {
+          const stay = el.classList.contains('primary') || (shown < keep && !el.classList.contains('danger'));
+          if (stay) { if (!el.classList.contains('primary')) shown += 1; return; }
+          if (!el.textContent.trim() && el.getAttribute('aria-label') && !el.querySelector('.menu-label')) {
+            el.insertAdjacentHTML('beforeend', `<span class="menu-label">${esc(el.getAttribute('aria-label'))}</span>`);
+          }
+          pop.appendChild(el);
+        });
+        if (pop.children.length) container.appendChild(more);
+      } else {
+        items.forEach((el, i) => slots[i].after(el));
+        more.remove(); more.open = false;
+      }
+      icons();
+    };
+    apply(); PHONE.addEventListener('change', apply);
+  }
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('details.more-menu[open]').forEach((d) => { if (!d.contains(e.target) || e.target.closest('.menu-pop > *')) d.open = false; });
+  });
 
   // ---------- Chart.js ortak ayarları ----------
   function chartDefaults() {
@@ -251,6 +316,6 @@
 
   Object.assign(TL, { esc, fmtDT, fmtD, fmtN, ago, pct, SEV, NODE, TYPE_LABEL, sev, typeBadge, status, job, conf, sourceBadge, copyBtn, nodeIcon,
     entityUrl, graphUrl, api, icons, toast, loading, empty, debounce, can, qs, table, bindTable, markRow, pager, panel, panelHead, list, dialog,
-    formData, chartDefaults, meta });
+    formData, chartDefaults, meta, overflowActions, NARROW, PHONE });
   document.addEventListener('DOMContentLoaded', () => { initShell(); chartDefaults(); });
 })();

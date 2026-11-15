@@ -36,7 +36,7 @@
       <div class="omni" role="search">
         <i data-lucide="search" aria-hidden="true"></i>
         <label for="omniInput" class="sr-only">Genel arama</label>
-        <input id="omniInput" type="search" autocomplete="off" placeholder="IOC, aktör, zararlı, kampanya veya teknik ara (ör. 185.220.101.4, APT29, T1059)"
+        <input id="omniInput" type="search" autocomplete="off" placeholder="Ara" data-long-placeholder="IOC, aktör, zararlı, kampanya veya teknik ara (ör. 185.220.101.4, APT29, T1059)"
                role="combobox" aria-expanded="false" aria-controls="omniResults" aria-autocomplete="list">
         <kbd>Ctrl K</kbd>
         <div class="omni-results" id="omniResults" role="listbox" hidden></div>
@@ -68,7 +68,7 @@
 
 <aside class="drawer" id="sqlDrawer" aria-label="Bu sayfanın SQL sorguları" aria-hidden="true">
   <header>
-    <div><h2>Bu sayfanın SQL'i</h2><p class="muted" style="font-size:12.5px">ORM yok: ekranın veritabanına gönderdiği parametreli T-SQL ifadeleri</p></div>
+    <div><h2>Bu sayfanın SQL'i</h2><p class="muted" style="font-size: 13px">ORM yok: ekranın veritabanına gönderdiği parametreli T-SQL ifadeleri</p></div>
     <button class="btn icon ghost" id="sqlClose" aria-label="Kapat"><i data-lucide="x"></i></button>
   </header>
   <div class="body" id="sqlBody"></div>

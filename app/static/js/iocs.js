@@ -78,7 +78,7 @@
         d.querySelector('#lkOut').innerHTML = `<p class="notice"><i data-lucide="info"></i>${r.asked} değerden ${r.matches.length} tanesi kayıtlı, ${r.unknown.length} tanesi bilinmiyor.</p>
           ${r.matches.length ? table([{ label: 'Değer', primary: true, render: (m) => `<a class="mono" href="/iocs/${m.IndicatorID}">${esc(m.Value)}</a>` }, { label: 'Tip', render: (m) => typeBadge(m.TypeCode) },
             { label: 'Önem', render: (m) => sev(m.SeverityCode) }, { label: 'Risk', num: true, render: (m) => m.RiskScore }, { label: 'Kaynak', render: (m) => sourceBadge(m.SourceName) }], r.matches) : ''}
-          ${r.unknown.length ? `<p class="faint" style="font-size:12.5px">Bilinmeyenler: <span class="mono">${r.unknown.map(esc).join(', ')}</span></p>` : ''}`;
+          ${r.unknown.length ? `<p class="faint" style="font-size: 13px">Bilinmeyenler: <span class="mono">${r.unknown.map(esc).join(', ')}</span></p>` : ''}`;
         icons();
       } catch (err) { toast(err.message, 'err'); }
     });

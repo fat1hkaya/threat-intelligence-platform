@@ -58,7 +58,7 @@
           <h1 class="mono" style="font-size:18px;overflow-wrap:anywhere">${esc(i.Value)}</h1>
           <div class="chips" style="margin-top:8px">${typeBadge(i.TypeCode)}${sev(i.SeverityCode)}${status(i.Status)}<span class="badge b-muted">${esc(i.TLPCode)}</span>${sourceBadge(i.SourceName)}</div>
           <div class="chips" id="caseChips" style="margin-top:6px"></div>
-          ${i.OriginalValue !== i.Value ? `<p class="faint" style="font-size:12.5px;margin-top:6px">Kaynaktaki yazımı: <span class="mono">${esc(i.OriginalValue)}</span></p>` : ''}
+          ${i.OriginalValue !== i.Value ? `<p class="faint" style="font-size: 13px;margin-top:6px">Kaynaktaki yazımı: <span class="mono">${esc(i.OriginalValue)}</span></p>` : ''}
         </div></div>
         <div class="page-actions">${copyBtn(i.Value).replace('btn sm icon ghost', 'btn').replace('</i>', '</i>Kopyala')}
           <a class="btn" href="${TL.graphUrl('indicator', id)}"><i data-lucide="share-2"></i>İlişki grafı</a>${TL.caseBtn('indicator', id, i.Value, 'btn')}
@@ -72,7 +72,7 @@
           <article class="card flush"><div class="card-head"><div><h2>Çok adımlı MATCH: IOC → zararlı ← aktör → teknik</h2><p>sp_IndicatorKillChain sonucu (${rel.killchain.length} satır)</p></div></div>
             ${rel.killchain.length ? table([{ label: 'Zararlı', render: (r) => esc(r.Malware) }, { label: 'Aktör', render: (r) => esc(r.Actor) },
               { label: 'Teknik', primary: true, render: (r) => `<span class="mono">${esc(r.ExternalID)}</span> ${esc(r.Technique)}` }], rel.killchain.slice(0, 30), { caption: 'Kill chain' })
-              + (rel.killchain.length > 30 ? `<p class="faint" style="padding:10px 16px;font-size:12.5px">İlk 30 satır gösteriliyor.</p>` : '') : empty('Zararlı yazılımı kullanan bilinen bir aktör yok.', 'git-branch')}</article>
+              + (rel.killchain.length > 30 ? `<p class="faint" style="padding:10px 16px;font-size: 13px">İlk 30 satır gösteriliyor.</p>` : '') : empty('Zararlı yazılımı kullanan bilinen bir aktör yok.', 'git-branch')}</article>
           <article class="card flush"><div class="card-head"><h2>Değişiklik geçmişi</h2><p>AuditLog (tetikleyiciyle yazılır)</p></div>
             ${d.history.length ? table([{ label: 'Zaman', render: (h) => fmtDT(h.ChangedAt) }, { label: 'İşlem', render: (h) => `<span class="badge ${ACTION[h.Action][1]}">${ACTION[h.Action][0]}</span>` },
               { label: 'Kullanıcı', render: (h) => esc(h.ChangedBy || 'Sistem / toplu içe aktarma') },
@@ -104,6 +104,7 @@
         </div>
       </div>`;
     icons();
+    TL.overflowActions(root.querySelector('.page-actions'), 2);
     timeTravel();
     if (i.TypeCode === 'ipv4') network(id);
     TL.caseChips('indicator', id).then((h) => { const el = document.getElementById('caseChips'); if (el && h) { el.innerHTML = h; icons(); } });
@@ -119,7 +120,7 @@
         <div class="form-grid"><div class="field"><label for="sq">Adet</label><input class="input" id="sq" name="quantity" type="number" min="1" value="1"></div>
         <div class="field"><label for="sl">Nerede görüldü</label><input class="input" id="sl" name="location" maxlength="100" placeholder="EDR / WS-0142"></div>
         <div class="field full"><label for="sn">Not</label><textarea class="input" id="sn" name="note" maxlength="400"></textarea></div></div>
-        <p class="faint" style="font-size:12.5px">trg_Sighting_AfterInsert tetikleyicisi IOC'nin son görülme zamanını ileri alır.</p>
+        <p class="faint" style="font-size: 13px">trg_Sighting_AfterInsert tetikleyicisi IOC'nin son görülme zamanını ileri alır.</p>
         <p class="err" role="alert"></p><div class="dlg-foot"><button type="button" class="btn" data-dismiss>Vazgeç</button><button class="btn primary">Görülme ekle</button></div></form>`);
       dl.querySelector('form').onsubmit = async (e) => { e.preventDefault(); const f = formData(e.target);
         try { await api(`/api/iocs/${id}/sightings`, { method: 'POST', body: { quantity: +f.quantity || 1, location: f.location || null, note: f.note || null } }); dl.close(); toast('Görülme eklendi.'); load(); }

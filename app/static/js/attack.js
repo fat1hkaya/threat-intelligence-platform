@@ -91,7 +91,7 @@
     columns: [
       { label: 'Teknik', render: (r) => `<span class="badge b-purple mono">${esc(r.ExternalID)}</span>` },
       { label: 'Ad', primary: true, render: (r) => `<b>${esc(r.Name)}</b>${r.SubCount ? ` <span class="faint" style="font-size:12px">+${r.SubCount} alt teknik</span>` : ''}` },
-      { label: 'Taktik', render: (r) => `<span class="muted" style="font-size:12.5px">${esc(r.Tactics || '—')}</span>` },
+      { label: 'Taktik', render: (r) => `<span class="muted" style="font-size: 13px">${esc(r.Tactics || '—')}</span>` },
       { label: 'Aktör', num: true, render: (r) => fmtN(r.ActorCount) },
       { label: 'Kampanya', num: true, render: (r) => fmtN(r.CampaignCount) },
       { label: 'Zararlı', num: true, render: (r) => fmtN(r.MalwareCount) },

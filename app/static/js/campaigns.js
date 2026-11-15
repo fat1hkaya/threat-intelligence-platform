@@ -7,7 +7,7 @@
     endpoint: '/api/campaigns', title: 'Kampanya detayı', unit: 'kampanya', rowId: (r) => r.CampaignID,
     extra: () => ({ actor: qs.get('actor') }),
     columns: [
-      { label: 'Kampanya', primary: true, render: (r) => `<b>${esc(r.Name)}</b> <span class="faint mono" style="font-size:11.5px">${esc(r.ExternalID || '')}</span>` },
+      { label: 'Kampanya', primary: true, render: (r) => `<b>${esc(r.Name)}</b> <span class="faint mono" style="font-size: 12px">${esc(r.ExternalID || '')}</span>` },
       { label: 'Durum', render: ongoing },
       { label: 'Başlangıç', render: (r) => r.StartDate ? fmtD(r.StartDate) : '—' },
       { label: 'Bitiş', render: (r) => r.EndDate ? fmtD(r.EndDate) : '—' },
