@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hata · ThreatLens</title>
+  <link rel="stylesheet" href="/static/css/app.css?v={{ v }}">
+</head>
+<body>
+<main class="login-form" style="min-height:100vh">
+  <div class="card" style="max-width:560px;display:grid;gap:12px">
+    <h1>{% if code == 404 %}Sayfa bulunamadı{% else %}Veritabanına bağlanılamadı{% endif %}</h1>
+    <p class="muted">{{ message }}</p>
+    {% if code != 404 %}
+    <p class="muted">SQL Server hizmetinin çalıştığını (services.msc → SQL Server (MSSQLSERVER)) ve <code>.env</code> dosyasındaki sunucu adını kontrol edin, sonra sayfayı yenileyin.</p>
+    {% endif %}
+    <p><a class="btn primary" href="/">Genel bakışa dön</a></p>
+  </div>
+</main>
+</body>
+</html>

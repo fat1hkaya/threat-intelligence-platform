@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Tehdit aktörleri</h1><p>MITRE ATT&amp;CK gruplarının profilleri, kullandıkları araçlar, teknikler ve atfedilen IOC'ler.</p></div>
+</div>
+<form class="card filters" id="filters" role="search" aria-label="Aktör filtreleri">
+  <div class="field wide"><label for="q">Aktör</label><input class="input" id="q" name="q" type="search" placeholder="Ad, takma ad veya G kodu (ör. Cozy Bear, G0016)"></div>
+  <div class="field"><label for="country">Köken ülke</label><select class="input" id="country" name="country"><option value="">Tümü</option></select></div>
+  <div class="field"><label for="motivation">Motivasyon</label><select class="input" id="motivation" name="motivation"><option value="">Tümü</option></select></div>
+  <div class="field"><label for="sector">Hedef sektör</label><select class="input" id="sector" name="sector"><option value="">Tümü</option></select></div>
+  <div class="field"><label for="sort">Sırala</label><select class="input" id="sort" name="sort"><option value="techniques">Teknik sayısı</option><option value="iocs">IOC sayısı</option><option value="malware">Araç sayısı</option><option value="campaigns">Kampanya sayısı</option><option value="name">Ad</option></select></div>
+  <div class="field" style="display:flex;flex-direction:row;gap:8px"><button class="btn primary" type="submit"><i data-lucide="search"></i>Ara</button><button class="btn" type="reset">Temizle</button></div>
+</form>
+<div class="split no-panel" id="split">
+  <section class="card flush" aria-label="Aktör listesi"><div id="tbl"></div><div class="pager" id="pager"></div></section>
+  <aside class="card panel" tabindex="-1" aria-label="Aktör detayı" hidden></aside>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/entities.js?v={{ v }}"></script><script src="/static/js/actors.js?v={{ v }}"></script>{% endblock %}

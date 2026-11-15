@@ -1,0 +1,6 @@
+type,value,confidence,severity,malware,tags
+ipv4,203.0.113.199,75,high,Emotet,ornek
+ipv4,300.1.2.3,70,high,Emotet,hatali-ip
+sha256,bu-bir-hash-degil,80,critical,Conti,hatali-hash
+domain,valid-row-sample.test,60,medium,,ornek
+md5,0123456789abcdef0123456789abcde,50,low,,eksik-karakter

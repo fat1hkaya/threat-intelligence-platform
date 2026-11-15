@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div><h1>IOC araştırma</h1><p>IP, domain, URL ve hash göstergelerini arayın, filtreleyin, ilişkilerini inceleyin.</p></div>
+  <div class="page-actions">
+    <button class="btn" id="lookupBtn"><i data-lucide="list-checks"></i>Toplu kontrol</button>
+    <button class="btn primary" id="newBtn" hidden><i data-lucide="plus"></i>Yeni IOC</button>
+  </div>
+</div>
+
+<form class="card filters" id="filters" role="search" aria-label="IOC filtreleri">
+  <div class="field wide"><label for="q">IOC değeri</label><input class="input mono" id="q" name="q" type="search" placeholder="Değerin tamamı veya bir parçası"></div>
+  <div class="field"><label for="type">Tip</label><select class="input" id="type" name="type"><option value="">Tümü</option></select></div>
+  <div class="field"><label for="severity">Önem</label><select class="input" id="severity" name="severity"><option value="">Tümü</option>
+    <option value="critical">Kritik</option><option value="high">Yüksek</option><option value="critical,high">Yüksek ve üstü</option><option value="medium">Orta</option><option value="low">Düşük</option><option value="info">Bilgi</option></select></div>
+  <div class="field"><label for="source">Kaynak</label><select class="input" id="source" name="source"><option value="">Tümü</option></select></div>
+  <div class="field"><label for="status">Durum</label><select class="input" id="status" name="status"><option value="">Tümü</option>
+    <option value="active">Aktif</option><option value="expired">Süresi doldu</option><option value="revoked">İptal edildi</option><option value="false_positive">Yanlış pozitif</option></select></div>
+  <div class="field"><label for="minConfidence">En az güven</label><input class="input" id="minConfidence" name="minConfidence" type="number" min="0" max="100" placeholder="0"></div>
+  <div class="field"><label for="maxConfidence">En çok güven</label><input class="input" id="maxConfidence" name="maxConfidence" type="number" min="0" max="100" placeholder="100"></div>
+  <div class="field"><label for="dateFrom">Son görülme (başlangıç)</label><input class="input" id="dateFrom" name="dateFrom" type="date"></div>
+  <div class="field"><label for="dateTo">Son görülme (bitiş)</label><input class="input" id="dateTo" name="dateTo" type="date"></div>
+  <div class="field" style="display:flex;flex-direction:row;gap:8px"><button class="btn primary" type="submit"><i data-lucide="search"></i>Ara</button><button class="btn" type="reset">Temizle</button></div>
+</form>
+
+<div class="split no-panel" id="split">
+  <section class="card flush" aria-label="IOC listesi">
+    <div id="tbl"></div>
+    <div class="pager" id="pager"></div>
+  </section>
+  <aside class="card panel" tabindex="-1" aria-label="IOC detayı" hidden></aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/ioc-form.js?v={{ v }}"></script>
+<script src="/static/js/iocs.js?v={{ v }}"></script>
+{% endblock %}

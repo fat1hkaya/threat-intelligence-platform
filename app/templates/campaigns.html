@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Kampanyalar</h1><p>Aktörlere atfedilen operasyonlar, kullandıkları zararlılar, teknikler ve gözlenen IOC'ler.</p></div>
+</div>
+<form class="card filters" id="filters" role="search" aria-label="Kampanya filtreleri">
+  <div class="field wide"><label for="q">Kampanya veya aktör</label><input class="input" id="q" name="q" type="search" placeholder="ör. SolarWinds, APT29, C0024"></div>
+  <div class="field"><label for="ongoing">Durum</label><select class="input" id="ongoing" name="ongoing"><option value="">Tümü</option><option value="true">Devam ediyor (bitiş tarihi yok)</option><option value="false">Tamamlandı</option></select></div>
+  <div class="field" style="display:flex;flex-direction:row;gap:8px"><button class="btn primary" type="submit"><i data-lucide="search"></i>Ara</button><button class="btn" type="reset">Temizle</button></div>
+</form>
+<div class="split no-panel" id="split">
+  <section class="card flush" aria-label="Kampanya listesi"><div id="tbl"></div><div class="pager" id="pager"></div></section>
+  <aside class="card panel" tabindex="-1" aria-label="Kampanya detayı" hidden></aside>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/entities.js?v={{ v }}"></script><script src="/static/js/campaigns.js?v={{ v }}"></script>{% endblock %}

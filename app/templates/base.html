@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} · ThreatLens</title>
+  <link rel="icon" href="/static/img/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/app.css?v={{ v }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+<a class="skip-link" href="#content">İçeriğe geç</a>
+<div class="shell">
+  <aside class="sidebar" id="sidebar" aria-label="Ana menü">
+    <a class="brand" href="/">
+      <img src="/static/img/logo.svg" alt="">
+      <span><b>ThreatLens</b><small>Tehdit istihbaratı platformu</small></span>
+    </a>
+    <nav aria-label="Sayfalar">
+      <ul class="nav">
+        {% for path, key, label, icon in nav %}
+        <li><a href="{{ path }}" {% if key == page %}aria-current="page"{% endif %}><i data-lucide="{{ icon }}" aria-hidden="true"></i>{{ label }}</a></li>
+        {% endfor %}
+      </ul>
+    </nav>
+    <div class="sidebar-foot">
+      <span><span class="db-dot" aria-hidden="true"></span>SQL Server · ThreatLens</span>
+      <span class="faint">VTYS projesi · MSSQL Graph + FastAPI</span>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn icon ghost menu-btn" id="menuBtn" aria-label="Menüyü aç" aria-controls="sidebar" aria-expanded="false"><i data-lucide="menu"></i></button>
+      <div class="omni" role="search">
+        <i data-lucide="search" aria-hidden="true"></i>
+        <label for="omniInput" class="sr-only">Genel arama</label>
+        <input id="omniInput" type="search" autocomplete="off" placeholder="IOC, aktör, zararlı, kampanya veya teknik ara (ör. 185.220.101.4, APT29, T1059)"
+               role="combobox" aria-expanded="false" aria-controls="omniResults" aria-autocomplete="list">
+        <kbd>Ctrl K</kbd>
+        <div class="omni-results" id="omniResults" role="listbox" hidden></div>
+      </div>
+      <div class="top-actions">
+        <button class="btn sm" id="sqlBtn" title="Bu sayfanın çalıştırdığı SQL sorguları" aria-controls="sqlDrawer"><i data-lucide="database-zap"></i><span>SQL</span></button>
+        <div style="position:relative">
+          <button class="user-chip" id="userBtn" aria-haspopup="menu" aria-expanded="false">
+            <span class="avatar" aria-hidden="true">{{ user.FullName.split()|map('first')|join('')|upper }}</span>
+            <span class="who">{{ user.FullName }}<small>{{ user.RoleName }}</small></span>
+            <i data-lucide="chevron-down" aria-hidden="true"></i>
+          </button>
+          <div class="menu" id="userMenu" role="menu" hidden>
+            <div class="muted" style="padding:6px 10px;font-size:12px">@{{ user.Username }} · {{ user.RoleName }}</div>
+            <a href="/settings" role="menuitem"><i data-lucide="settings"></i>Ayarlar</a>
+            <a href="/api/docs" role="menuitem" target="_blank" rel="noopener"><i data-lucide="file-code-2"></i>API belgeleri</a>
+            <button role="menuitem" id="logoutBtn"><i data-lucide="log-out"></i>Çıkış yap</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="content" id="content" tabindex="-1">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<aside class="drawer" id="sqlDrawer" aria-label="Bu sayfanın SQL sorguları" aria-hidden="true">
+  <header>
+    <div><h2>Bu sayfanın SQL'i</h2><p class="muted" style="font-size:12.5px">ORM yok: ekranın veritabanına gönderdiği parametreli T-SQL ifadeleri</p></div>
+    <button class="btn icon ghost" id="sqlClose" aria-label="Kapat"><i data-lucide="x"></i></button>
+  </header>
+  <div class="body" id="sqlBody"></div>
+</aside>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+<script>window.TL = { user: {{ user|tojson }}, page: {{ page|tojson }} };</script>
+<script src="/static/vendor/lucide.min.js"></script>
+<script src="/static/js/core.js?v={{ v }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

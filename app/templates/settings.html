@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Ayarlar</h1><p>Kullanıcılar ve roller, yetki matrisi, risk puanlaması, veritabanı ve entegrasyon durumu.</p></div>
+</div>
+
+<div class="grid g-main-side">
+  <article class="card flush">
+    <div class="card-head"><div><h2>Kullanıcılar ve roller</h2><p>AppUser tablosu · değişiklikler trg_AppUser_Audit ile denetlenir</p></div>
+      <button class="btn primary sm" id="newUser" hidden><i data-lucide="user-plus"></i>Kullanıcı ekle</button></div>
+    <div id="users"></div>
+  </article>
+  <article class="card">
+    <h2>Rol yetki matrisi</h2>
+    <p class="muted" style="font-size:12.5px;margin:4px 0 12px">Uygulamada (FastAPI bağımlılıkları) ve veritabanında (tip_reader ⊂ tip_analyst ⊂ tip_admin rolleri, GRANT/DENY) aynı sınırlar uygulanır.</p>
+    <div class="table-wrap"><table class="data"><caption class="sr-only">Rol yetkileri</caption>
+      <thead><tr><th scope="col">Yetki</th><th scope="col">Yönetici</th><th scope="col">Analist</th><th scope="col">İzleyici</th></tr></thead>
+      <tbody id="perm"></tbody></table></div>
+  </article>
+</div>
+
+<div class="grid g-2">
+  <article class="card">
+    <h2>Risk skoru nasıl hesaplanıyor?</h2>
+    <p class="muted" style="font-size:12.5px;margin:4px 0 12px">dbo.fn_RiskScore skaler fonksiyonu (türetilmiş nitelik: saklanmaz, vw_Indicator içinde her okumada hesaplanır)</p>
+    <ol class="timeline">
+      <li><span class="dot done"></span><div><b>Taban puan</b><br><small class="muted">güven × 0,45 + önem ağırlığı × 0,35 + görülme sayısı × 2 (en çok 20)</small></div></li>
+      <li><span class="dot done"></span><div><b>Kaynak güvenilirliği çarpanı</b><br><small class="muted">Admiralty ölçeği: A 1,00 · B 0,95 · C 0,88 · D 0,78 · E 0,68 · F 0,60</small></div></li>
+      <li><span class="dot done"></span><div><b>Tazelik çarpanı</b><br><small class="muted">son görülme ≤30 gün 1,00 · ≤90 gün 0,85 · ≤180 gün 0,65 · daha eski 0,45</small></div></li>
+      <li><span class="dot"></span><div><b>Durum</b><br><small class="muted">aktif değilse puan yarıya iner; sonuç 0–100 arasına sınırlanır</small></div></li>
+    </ol>
+    <p class="faint" style="font-size:12px">Önem ağırlıkları SeverityLevel tablosunda: Bilgi 10, Düşük 30, Orta 55, Yüksek 80, Kritik 100.</p>
+  </article>
+  <article class="card">
+    <h2>Entegrasyonlar</h2>
+    <ul class="list" id="integrations" style="margin-top:10px"></ul>
+  </article>
+</div>
+
+<div class="grid g-2">
+  <article class="card">
+    <h2>Veritabanı</h2>
+    <dl class="kv" id="server" style="margin-top:12px"></dl>
+    <h3 style="margin:16px 0 8px">Veritabanı nesneleri</h3>
+    <div class="chips" id="objects"></div>
+    <h3 style="margin:16px 0 8px">Veritabanı rolleri</h3>
+    <div id="dbroles"></div>
+  </article>
+  <article class="card flush">
+    <div class="card-head"><div><h2>Graf tutarlılığı</h2><p>sp_CheckGraphConsistency: ilişkisel satır sayısı = graf satır sayısı</p></div></div>
+    <div id="graph"></div>
+  </article>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/settings.js?v={{ v }}"></script>{% endblock %}

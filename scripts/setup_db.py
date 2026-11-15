@@ -1,0 +1,128 @@
+"""ThreatLens veritabanını kurar.
+
+    python scripts/setup_db.py            # kur; veritabanı varsa tablolara dokunmaz, nesneleri (görünüm, yordam,
+                                          # tetikleyici, yetki) günceller, eksik veriyi yükler
+    python scripts/setup_db.py --reset    # VERİTABANINI SİLİP baştan kurar (yalnızca bilerek kullanın)
+    python scripts/setup_db.py --no-demo  # sentetik DEMO DATA göstergelerini yükleme
+
+Sıra: database/<klasör>/NN_*.sql dosyaları numaraya göre (01 tablolar ... 09 sözlük verisi)
+-> kullanıcılar -> MITRE ATT&CK anlık görüntüsü -> DEMO DATA -> graf tutarlılık denetimi.
+"""
+import re
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import pyodbc  # noqa: E402
+
+from app import config  # noqa: E402
+from app.security import hash_password  # noqa: E402
+from importers._db import GO, ROOT, connect  # noqa: E402
+
+DEMO_PASSWORD = "ThreatLens2026!"
+USERS = [  # (kullanıcı adı, ad soyad, e-posta, rol)
+    ("fatih", "Fatih Kaya", None, 3),
+    ("analist", "SOC Analisti", None, 2),
+    ("izleyici", "Salt Okunur Kullanıcı", None, 1),
+]
+# Var olan veritabanında yeniden çalıştırılmaması gereken yığınlar (tablo ve indeks oluşturma)
+SCHEMA_BATCH = re.compile(r"^\s*CREATE\s+(TABLE|(UNIQUE\s+)?(NONCLUSTERED\s+|CLUSTERED\s+)?INDEX)\b", re.I)
+COMMENTS = re.compile(r"/\*.*?\*/|--[^\n]*", re.S)
+
+
+def sql_files() -> list[Path]:
+    files = [p for p in (ROOT / "database").glob("*/[0-9][0-9]_*.sql")]
+    return sorted(files, key=lambda p: p.name)
+
+
+def run_file(conn: pyodbc.Connection, path: Path, skip_schema: bool) -> tuple[int, int]:
+    batches = [b.strip() for b in GO.split(path.read_text(encoding="utf-8")) if b.strip()]
+    cur = conn.cursor()
+    ran = skipped = 0
+    for number, batch in enumerate(batches, start=1):
+        if skip_schema and SCHEMA_BATCH.match(COMMENTS.sub("", batch)):
+            skipped += 1
+            continue
+        try:
+            cur.execute(batch)
+            while cur.nextset():
+                pass
+        except pyodbc.Error as exc:
+            first = next((l for l in batch.splitlines() if l.strip() and not l.strip().startswith(("--", "/*", "*"))), "")
+            raise SystemExit(f"\n{path.relative_to(ROOT)} dosyasının {number}. yığını hata verdi:\n  {first.strip()[:140]}\n  {exc}") from exc
+        ran += 1
+    return ran, skipped
+
+
+def main() -> None:
+    reset, demo = "--reset" in sys.argv, "--no-demo" not in sys.argv
+    print(f"Sunucu: {config.DB_SERVER} | Veritabanı: {config.DB_NAME} | Sürücü: {config.pick_driver()}")
+    try:
+        master = connect("master")
+    except pyodbc.Error as exc:
+        raise SystemExit(
+            f"SQL Server'a bağlanılamadı ({config.DB_SERVER}).\n"
+            "  - SQL Server hizmetinin çalıştığını kontrol edin (services.msc -> SQL Server (MSSQLSERVER)).\n"
+            "  - Express kullanıyorsanız .env dosyasına TL_DB_SERVER=localhost\\SQLEXPRESS yazın.\n"
+            f"  Ayrıntı: {exc}") from exc
+
+    version = master.cursor().execute("SELECT CAST(SERVERPROPERTY('ProductMajorVersion') AS INT), @@VERSION;").fetchone()
+    print("SQL Server:", version[1].splitlines()[0])
+    if version[0] < 15:
+        raise SystemExit("SQL Server 2019 veya üzeri gerekir (kenar kısıtı ve SHORTEST_PATH).")
+
+    exists = master.cursor().execute("SELECT DB_ID(?);", config.DB_NAME).fetchone()[0] is not None
+    if exists and reset:
+        print(f"{config.DB_NAME} siliniyor (--reset)...")
+        master.cursor().execute(f"ALTER DATABASE [{config.DB_NAME}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;")
+        master.cursor().execute(f"DROP DATABASE [{config.DB_NAME}];")
+        exists = False
+    has_tables = exists and master.cursor().execute(
+        f"SELECT OBJECT_ID(N'[{config.DB_NAME}].dbo.Indicator');").fetchone()[0] is not None
+    if has_tables:
+        print("Tablolar zaten var: tablo/indeks yığınları atlanacak, diğer nesneler güncellenecek.")
+
+    for path in sql_files():
+        started = time.perf_counter()
+        ran, skipped = run_file(master, path, has_tables)
+        note = f" ({skipped} şema yığını atlandı)" if skipped else ""
+        print(f"  {str(path.relative_to(ROOT / 'database')):<34} {ran:>3} yığın  {time.perf_counter() - started:5.1f} sn{note}")
+    master.close()
+
+    conn = connect()
+    cur = conn.cursor()
+    for username, full_name, email, role_id in USERS:
+        if not cur.execute("SELECT 1 FROM dbo.AppUser WHERE Username = ?;", username).fetchone():
+            cur.execute("INSERT INTO dbo.AppUser (Username, FullName, Email, PasswordHash, RoleID) VALUES (?, ?, ?, ?, ?);",
+                        username, full_name, email, hash_password(DEMO_PASSWORD), role_id)
+            print(f"  Kullanıcı eklendi: {username} ({full_name})")
+
+    from importers import demo_data, mitre_attack
+
+    if not cur.execute("SELECT COUNT(*) FROM dbo.Technique;").fetchone()[0]:
+        res = mitre_attack.run(conn)
+        print(f"  MITRE ATT&CK: {res['tactics']} taktik, {res['techniques']} teknik, {res['actors']} aktör, "
+              f"{res['malware']} yazılım, {res['campaigns']} kampanya, {res['evidence']} kanıt ({res['seconds']} sn)")
+    else:
+        print("  MITRE ATT&CK zaten yüklü (güncellemek için: python -m importers attack)")
+
+    if demo:
+        demo_data.run(conn)
+
+    print("\nGraf tutarlılık denetimi (sp_CheckGraphConsistency):")
+    bad = 0
+    for row in cur.execute("EXEC dbo.sp_CheckGraphConsistency;").fetchall():
+        bad += 0 if row.IsConsistent else 1
+        print(f"  {row.ObjectName:<30} {row.Kind:<5} ilişkisel={row.Relational:<7} graf={row.Graph:<7} {'OK' if row.IsConsistent else 'TUTARSIZ'}")
+    conn.close()
+    if bad:
+        raise SystemExit(f"{bad} graf nesnesi tutarsız. 'EXEC dbo.sp_SyncGraph;' ile onarın.")
+
+    print("\nKurulum tamam. Başlatmak için:  python run.py   ->  http://127.0.0.1:8000")
+    print(f"Kullanıcılar: fatih (yönetici) / analist / izleyici   Parola: {DEMO_PASSWORD}  (yalnızca yerel demo içindir)")
+
+
+if __name__ == "__main__":
+    main()

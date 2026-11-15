@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Giriş · ThreatLens</title>
+  <link rel="icon" href="/static/img/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/app.css?v={{ v }}">
+</head>
+<body>
+<main class="login">
+  <section class="login-art" aria-hidden="true">
+    <svg class="web" viewBox="0 0 600 700" preserveAspectRatio="xMidYMid slice">
+      <g stroke="#2E3F61" stroke-width="1.2">
+        <line x1="120" y1="420" x2="260" y2="330"/><line x1="260" y1="330" x2="420" y2="380"/><line x1="260" y1="330" x2="300" y2="200"/>
+        <line x1="420" y1="380" x2="500" y2="260"/><line x1="300" y1="200" x2="500" y2="260"/><line x1="420" y1="380" x2="470" y2="520"/>
+        <line x1="120" y1="420" x2="190" y2="560"/><line x1="300" y1="200" x2="180" y2="150"/>
+      </g>
+      <circle cx="260" cy="330" r="16" fill="#22D3EE"/><circle cx="420" cy="380" r="13" fill="#A78BFA"/>
+      <circle cx="300" cy="200" r="12" fill="#FBBF24"/><circle cx="500" cy="260" r="15" fill="#F87171"/>
+      <circle cx="120" cy="420" r="9" fill="#22D3EE" opacity=".6"/><circle cx="470" cy="520" r="10" fill="#34D399"/>
+      <circle cx="190" cy="560" r="7" fill="#22D3EE" opacity=".5"/><circle cx="180" cy="150" r="7" fill="#34D399" opacity=".7"/>
+    </svg>
+    <div class="copy" style="display:flex;align-items:center;gap:12px">
+      <img src="/static/img/logo.svg" alt="" width="44" height="44"><b style="font-size:20px">ThreatLens</b>
+    </div>
+    <div class="copy">
+      <h1>Bir hash'ten tehdit aktörüne kadar izi sürün.</h1>
+      <p>IOC, zararlı yazılım, kampanya, aktör ve ATT&amp;CK teknikleri tek bir SQL Server Graph veritabanında, kanıtlarıyla birlikte.</p>
+    </div>
+  </section>
+  <section class="login-form">
+    <form id="loginForm" novalidate>
+      <div style="display:flex;align-items:center;gap:10px"><img src="/static/img/logo.svg" alt="" width="36" height="36"><h2 style="font-size:20px">Oturum aç</h2></div>
+      <div class="field"><label for="u">Kullanıcı adı</label><input class="input" id="u" name="username" autocomplete="username" required value="fatih"></div>
+      <div class="field"><label for="p">Parola</label><input class="input" id="p" name="password" type="password" autocomplete="current-password" required></div>
+      <p class="err" id="err" role="alert"></p>
+      <button class="btn primary" type="submit" style="height:40px">Giriş yap</button>
+      <p class="hint">Yerel demo kullanıcıları: <b>fatih</b> (yönetici), <b>analist</b>, <b>izleyici</b>. Parolalar kurulum çıktısında ve README'de yazar.</p>
+    </form>
+  </section>
+</main>
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = document.getElementById('err'); err.textContent = '';
+  const body = { username: document.getElementById('u').value.trim(), password: document.getElementById('p').value };
+  if (!body.username || !body.password) { err.textContent = 'Kullanıcı adı ve parolayı girin.'; return; }
+  try {
+    const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { err.textContent = (await r.json().catch(() => ({}))).detail || 'Giriş yapılamadı.'; return; }
+    const next = new URLSearchParams(location.search).get('next');
+    location.href = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+  } catch { err.textContent = 'Sunucuya ulaşılamadı.'; }
+});
+</script>
+</body>
+</html>

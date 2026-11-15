@@ -1,0 +1,5 @@
+type,value,confidence,severity,tlp,malware,role,tags,description
+ipv4,198.51.100.77,80,high,TLP:GREEN,Cobalt Strike,c2,"c2,ornek",Ornek dosya - RFC 5737 belgeleme adresi
+domain,login-portal-sample.example,70,medium,TLP:CLEAR,Agent Tesla,phishing,ornek,Ornek dosya - ayrilmis .example alan adi
+url,hxxp://cdn-sample[.]example/dl/setup.msi,65,medium,TLP:CLEAR,IcedID,dropper,ornek,Defang yazim normallestirilir
+sha256,3b7f0c1e9a4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7,90,critical,TLP:AMBER,LockBit 3.0,payload,"ornek,ransomware",Rastgele ornek ozet

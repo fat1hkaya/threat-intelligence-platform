@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div><h1>İlişki grafı</h1><p>IOC, zararlı yazılım, kampanya, aktör ve ATT&amp;CK ilişkileri. Tüm kenarlar SQL Server Graph tablolarından MATCH ile okunur.</p></div>
+</div>
+
+<form class="card filters" id="gform" role="search" aria-label="Graf araması">
+  <div class="field wide"><label for="gq">Başlangıç düğümü</label><input class="input mono" id="gq" name="q" placeholder="Hash, IP, domain, aktör, zararlı veya kampanya adı" autocomplete="off"></div>
+  <div class="field"><span id="depthLbl">Derinlik</span>
+    <div class="seg" role="group" aria-labelledby="depthLbl" id="depth"><button type="button" data-v="1">1</button><button type="button" data-v="2" aria-pressed="true">2</button><button type="button" data-v="3">3</button></div></div>
+  <div class="field"><label for="limit">Düğüm sınırı</label><select class="input" id="limit"><option>40</option><option selected>80</option><option>150</option><option>250</option></select></div>
+  <div class="field"><span>Kapsam</span><label class="check"><input type="checkbox" id="incIoc">Diğer IOC'leri göster</label><label class="check"><input type="checkbox" id="incTech" checked>ATT&amp;CK tekniklerini göster</label></div>
+  <div class="field" style="display:flex;flex-direction:row;gap:8px"><button class="btn primary" type="submit"><i data-lucide="share-2"></i>Grafı oluştur</button></div>
+  <div class="field" id="cands" style="grid-column:1/-1" hidden></div>
+</form>
+
+<div class="graph-layout">
+  <div class="grid" style="align-content:start;gap:18px">
+    <div class="graph-stage" aria-label="Etkileşimli ilişki grafı. Aynı bilgi aşağıdaki ilişki tablosunda da var.">
+      <div class="graph-legend" id="legend" role="group" aria-label="Düğüm türü filtresi"></div>
+      <div id="network"></div>
+      <div class="graph-empty" id="gEmpty">
+        <div><i data-lucide="share-2" style="width:34px;height:34px;color:var(--text-3)"></i>
+          <p style="margin-top:8px">Bir IOC veya varlık arayın ya da bir örnekle başlayın.</p>
+          <div class="examples" id="examples"></div></div>
+      </div>
+      <div class="graph-tools">
+        <button class="btn sm icon" id="zIn" aria-label="Yakınlaştır" title="Yakınlaştır"><i data-lucide="zoom-in"></i></button>
+        <button class="btn sm icon" id="zOut" aria-label="Uzaklaştır" title="Uzaklaştır"><i data-lucide="zoom-out"></i></button>
+        <button class="btn sm icon" id="zFit" aria-label="Ekrana sığdır" title="Ekrana sığdır"><i data-lucide="maximize"></i></button>
+        <button class="btn sm icon" id="zReset" aria-label="Görünümü sıfırla" title="Görünümü sıfırla"><i data-lucide="rotate-ccw"></i></button>
+      </div>
+      <div class="graph-status" id="gStatus" aria-live="polite"></div>
+    </div>
+    <article class="card flush">
+      <div class="card-head"><div><h2>İlişki tablosu</h2><p>Grafın metin karşılığı (ekran okuyucular ve klavye için)</p></div></div>
+      <div id="edgeTable"></div>
+    </article>
+  </div>
+  <div class="grid" style="align-content:start;gap:18px">
+    <aside class="card" id="side" aria-live="polite">
+      <h2>Seçili öğe</h2>
+      <p class="muted" style="margin-top:8px;font-size:13px">Bir düğüme tıklayın: ayrıntıları burada görünür. Kenara tıklarsanız ilişkinin kanıtı ve kaynağı gösterilir. Düğüme çift tıklamak komşularını grafa ekler.</p>
+    </aside>
+    <article class="card">
+      <div class="card-head"><div><h2>Aktörler arası en kısa yol</h2><p>SHORTEST_PATH · en az 3 ortak araç kullanan aktörler bağlıdır</p></div></div>
+      <form id="pathForm" class="grid" style="gap:10px">
+        <div class="field"><label for="pa">Başlangıç aktörü</label><input class="input" id="pa" list="actorList" placeholder="ör. APT29" autocomplete="off"></div>
+        <div class="field"><label for="pb">Hedef aktör</label><input class="input" id="pb" list="actorList" placeholder="ör. FIN7" autocomplete="off"></div>
+        <datalist id="actorList"></datalist>
+        <button class="btn" type="submit"><i data-lucide="route"></i>Yolu bul</button>
+      </form>
+      <div id="pathOut" style="margin-top:12px"></div>
+      <p class="faint" style="font-size:12px;margin-top:10px">Ağırlıksız en kısa yol: adım sayısı en az olan yol bulunur. Güven puanı yol ağırlığı olarak kullanılmaz; birden çok en kısa yol varsa SQL Server bunlardan birini döndürür.</p>
+    </article>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/vendor/vis-network.min.js"></script>
+<script src="/static/js/graph.js?v={{ v }}"></script>
+{% endblock %}

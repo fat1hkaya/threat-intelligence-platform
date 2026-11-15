@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Genel bakış</h1>
+    <p>Hoş geldin {{ user.FullName.split()[0] }}. Tüm sayılar SQL Server'daki canlı sorgulardan geliyor.</p>
+  </div>
+  <div class="page-actions">
+    <label class="sr-only" for="days">Dönem</label>
+    <select class="input" id="days" style="width:auto">
+      <option value="7">Son 7 gün</option><option value="30" selected>Son 30 gün</option><option value="90">Son 90 gün</option>
+    </select>
+  </div>
+</div>
+
+<section class="grid g-4" id="kpis" aria-label="Özet göstergeler"></section>
+
+<section class="grid g-3">
+  <article class="card">
+    <div class="card-head"><h2>Önem düzeyine göre aktif IOC'ler</h2></div>
+    <div class="donut-wrap"><div class="chart-box"><canvas id="sevChart" role="img" aria-describedby="sevSummary"></canvas></div><ul class="legend" id="sevLegend"></ul></div>
+    <p class="sr-only" id="sevSummary"></p>
+  </article>
+  <article class="card">
+    <div class="card-head"><h2>IOC tipine göre dağılım</h2></div>
+    <div class="bars" id="typeBars"></div>
+  </article>
+  <article class="card">
+    <div class="card-head"><h2 id="trendTitle">Eklenen IOC'ler</h2><p id="trendNote"></p></div>
+    <div class="chart-box"><canvas id="trendChart" role="img" aria-describedby="trendSummary"></canvas></div>
+    <p class="sr-only" id="trendSummary"></p>
+  </article>
+</section>
+
+<section class="grid g-main-side">
+  <article class="card flush">
+    <div class="card-head"><div><h2>Son istihbarat</h2><p>En son görülen göstergeler ve atıf zincirleri</p></div><a class="btn sm" href="/iocs">Tümünü gör</a></div>
+    <div id="latest"></div>
+  </article>
+  <article class="card">
+    <div class="card-head"><h2>Veri kaynakları</h2><a class="btn sm" href="/sources">Kaynaklar</a></div>
+    <ul class="list" id="sources"></ul>
+  </article>
+</section>
+
+<section class="grid g-2">
+  <article class="card">
+    <div class="card-head"><div><h2>En çok kullanılan ATT&amp;CK teknikleri</h2><p>Tekniği kullanan aktör sayısı (alt teknikler dahil)</p></div><a class="btn sm" href="/attack">ATT&amp;CK</a></div>
+    <div class="bars" id="topTech"></div>
+  </article>
+  <article class="card">
+    <div class="card-head"><div><h2>En çok IOC'ye bağlı zararlı aileleri</h2><p>MalwareIndicator ilişkisi üzerinden</p></div><a class="btn sm" href="/malware">Zararlılar</a></div>
+    <div class="bars" id="topMal"></div>
+  </article>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="/static/vendor/chart.umd.min.js"></script>
+<script src="/static/js/overview.js?v={{ v }}"></script>
+{% endblock %}

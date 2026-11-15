@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<nav aria-label="Sayfa yolu" class="muted" style="font-size:13px"><a href="/iocs">IOC araştırma</a> / <span id="crumb">#{{ indicator_id }}</span></nav>
+<div id="root" data-id="{{ indicator_id }}"><div class="loading"><span class="spinner"></span>Yükleniyor…</div></div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/ioc-form.js?v={{ v }}"></script>
+<script src="/static/js/ioc_detail.js?v={{ v }}"></script>
+{% endblock %}

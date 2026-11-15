@@ -1,0 +1,196 @@
+"""API ve veritabanı davranış testleri (gerçek SQL Server üzerinde).
+Oluşturulan test IOC'leri test sonunda silinir; AuditLog ve ImportJob satırları tasarım gereği kalır (yalnızca eklenebilir)."""
+import pytest
+
+from conftest import needs_db
+
+pytestmark = needs_db
+
+
+def _ioc(client, value, **kw):
+    body = {"value": value, "sourceId": 7, "severity": "medium", "confidence": 60, **kw}
+    return client.post("/api/iocs", json=body)
+
+
+# ------------------------------------------------------------------ kimlik ve yetki
+def test_login_wrong_password_is_401():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    r = TestClient(app).post("/api/auth/login", json={"username": "fatih", "password": "yanlis-parola"})
+    assert r.status_code == 401
+
+
+def test_me_returns_fatih_kaya(admin):
+    me = admin.get("/api/auth/me").json()
+    assert me["FullName"] == "Fatih Kaya" and me["Role"] == "admin"
+
+
+def test_unauthenticated_api_401_and_page_redirects():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    c = TestClient(app)
+    assert c.get("/api/iocs").status_code == 401
+    r = c.get("/iocs", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"].startswith("/login")
+
+
+def test_viewer_cannot_write_or_manage_users(viewer):
+    assert _ioc(viewer, "viewer-test.example").status_code == 403
+    assert viewer.get("/api/users").status_code == 403
+    assert viewer.get("/api/iocs?size=5").status_code == 200       # okuma serbest
+
+
+def test_analyst_cannot_manage_users(analyst):
+    assert analyst.get("/api/users").status_code == 403
+
+
+# ------------------------------------------------------------------ IOC yaşam döngüsü
+def test_ioc_create_normalizes_audits_and_deletes(analyst, admin, unique):
+    r = _ioc(analyst, f"hxxps://Pytest-{unique}[.]example:443/A?b=1", tags=["pytest"])
+    assert r.status_code == 201, r.text
+    new = r.json()
+    assert new["type"] == "url" and new["normalized"] == f"https://pytest-{unique}.example/A?b=1"
+    iid = new["IndicatorID"]
+    try:
+        # Denetim kaydı tetikleyiciyle yazıldı ve kullanıcıyı (SESSION_CONTEXT) taşıyor
+        logs = admin.get("/api/audit-logs", params={"table": "Indicator", "record": iid}).json()["items"]
+        assert [l["Action"] for l in logs] == ["I"] and logs[0]["Username"] == "analist"
+        # Graf düğümü aynı transaction'da oluştu
+        assert analyst.get(f"/api/graph/node?type=indicator&id={iid}").status_code == 200
+        # Aynı değerin farklı yazımı tekrar sayılır (UNIQUE TypeID + NormalizedValue)
+        dup = _ioc(analyst, f"https://PYTEST-{unique}.example/A?b=1")
+        assert dup.status_code == 400 and "zaten kayıtlı" in dup.json()["detail"]
+    finally:
+        assert analyst.delete(f"/api/iocs/{iid}").status_code == 200
+    assert analyst.get(f"/api/iocs/{iid}").status_code == 404
+    assert analyst.get(f"/api/graph/node?type=indicator&id={iid}").status_code == 404   # düğüm de silindi
+    assert [l["Action"] for l in admin.get("/api/audit-logs", params={"table": "Indicator", "record": iid}).json()["items"]] == ["D", "I"]
+
+
+@pytest.mark.parametrize("type_,value", [("sha256", "abc123"), ("md5", "z" * 32), ("ipv4", "300.1.2.3"), ("domain", "no_tld")])
+def test_invalid_values_rejected(analyst, type_, value):
+    r = _ioc(analyst, value, type=type_)
+    assert r.status_code == 400
+
+
+def test_confidence_out_of_range_is_422(analyst):
+    assert _ioc(analyst, "conf-test.example", confidence=150).status_code == 422
+
+
+def test_optimistic_concurrency_rowversion(analyst, unique):
+    iid = _ioc(analyst, f"rowver-{unique}.test").json()["IndicatorID"]
+    try:
+        ind = analyst.get(f"/api/iocs/{iid}").json()["indicator"]
+        body = {"type": "domain", "value": ind["OriginalValue"], "sourceId": 7, "severity": "high", "confidence": 70, "rowVer": ind["RowVer"]}
+        assert analyst.put(f"/api/iocs/{iid}", json=body).status_code == 200          # 1. oturum kaydeder
+        stale = analyst.put(f"/api/iocs/{iid}", json={**body, "confidence": 90})       # 2. oturum eski RowVer ile
+        assert stale.status_code == 400 and "başka bir kullanıcı" in stale.json()["detail"]
+        assert analyst.get(f"/api/iocs/{iid}").json()["indicator"]["Confidence"] == 70
+    finally:
+        analyst.delete(f"/api/iocs/{iid}")
+
+
+def test_sql_injection_attempt_is_harmless(analyst):
+    r = analyst.get("/api/iocs", params={"q": "' OR 1=1; DROP TABLE dbo.Indicator; --", "sort": "value; DROP TABLE x"})
+    assert r.status_code == 200 and r.json()["total"] == 0
+    assert analyst.get("/api/iocs?size=5").json()["total"] > 0
+
+
+def test_sighting_moves_last_seen(analyst, unique):
+    iid = _ioc(analyst, f"sighting-{unique}.test").json()["IndicatorID"]
+    try:
+        before = analyst.get(f"/api/iocs/{iid}").json()["indicator"]["SightingCount"]
+        assert analyst.post(f"/api/iocs/{iid}/sightings", json={"quantity": 3, "location": "pytest"}).status_code == 201
+        assert analyst.get(f"/api/iocs/{iid}").json()["indicator"]["SightingCount"] == before + 3
+    finally:
+        analyst.delete(f"/api/iocs/{iid}")
+
+
+# ------------------------------------------------------------------ içe aktarma
+def test_strict_import_rolls_back_everything(analyst, unique):
+    total = analyst.get("/api/iocs?size=5").json()["total"]
+    csv = f"type,value\ndomain,strict-{unique}.example\nsha256,not-a-hash\nipv4,192.0.2.254\n".encode()
+    r = analyst.post("/api/imports", files={"file": ("bad.csv", csv, "text/csv")}, data={"strict": "true"}).json()
+    assert r["status"] == "failed" and r["inserted"] == 0 and r["failed"] == 1
+    assert analyst.get("/api/iocs?size=5").json()["total"] == total                     # ROLLBACK: sayı değişmedi
+    job = analyst.get(f"/api/imports/{r['job_id']}").json()
+    assert job["job"]["IsStrict"] and [e["RowNo"] for e in job["errors"]] == [2]
+
+
+def test_lenient_import_keeps_valid_rows(analyst, conn, unique):
+    csv = f"type,value,malware\ndomain,lenient-{unique}.example,Emotet\nsha256,not-a-hash,\n".encode()
+    r = analyst.post("/api/imports", files={"file": ("mix.csv", csv, "text/csv")}, data={"strict": "false"}).json()
+    assert r["status"] == "partial" and r["inserted"] == 1 and r["failed"] == 1
+    hit = analyst.get("/api/iocs", params={"q": f"lenient-{unique}.example"}).json()["items"]
+    assert hit and hit[0]["MalwareName"] == "Emotet"                                    # kanıtlı zararlı bağlantısı da yazıldı
+    analyst.delete(f"/api/iocs/{hit[0]['IndicatorID']}")
+
+
+# ------------------------------------------------------------------ graf
+def test_graph_consistency_all_true(admin):
+    rows = admin.get("/api/graph/stats").json()
+    assert rows and all(r["IsConsistent"] for r in rows)
+
+
+def test_neighborhood_edges_only_between_returned_nodes(admin):
+    hit = admin.get("/api/iocs", params={"type": "sha256", "size": 5}).json()["items"][0]
+    d = admin.get("/api/graph/neighborhood", params={"type": "indicator", "id": hit["IndicatorID"], "depth": 2}).json()
+    keys = {(n["NodeType"], n["NodeID"]) for n in d["nodes"]}
+    assert d["edges"] and all((e["SourceType"], e["SourceID"]) in keys and (e["TargetType"], e["TargetID"]) in keys for e in d["edges"])
+
+
+def test_relationships_use_match_attribution(admin):
+    hit = admin.get("/api/iocs", params={"type": "sha256", "size": 5}).json()["items"][0]
+    rel = admin.get(f"/api/iocs/{hit['IndicatorID']}/relationships").json()
+    assert any(a["ViaType"] == "malware" and a["ViaName"] == hit["MalwareName"] for a in rel["attribution"])
+    assert all(a["Evidence"] for a in rel["attribution"] if a["ViaType"] == "malware")    # her bağlantının kanıtı var
+
+
+def test_edge_detail_has_evidence_source(admin):
+    hit = admin.get("/api/iocs", params={"type": "sha256", "size": 5}).json()["items"][0]
+    d = admin.get("/api/graph/neighborhood", params={"type": "indicator", "id": hit["IndicatorID"], "depth": 1}).json()
+    e = d["edges"][0]
+    r = admin.get("/api/graph/edge", params={"sourceType": e["SourceType"], "sourceId": e["SourceID"], "targetType": e["TargetType"],
+                                             "targetId": e["TargetID"], "relation": e["Relation"]}).json()
+    assert r["EdgeTable"] == "dbo.IndicatesMalware" and r["EvidenceSource"] and r["Evidence"]
+
+
+def test_shortest_path_apt29_fin7(admin):
+    ids = {a["Name"]: a["ActorID"] for a in admin.get("/api/actors", params={"size": 200}).json()["items"]}
+    r = admin.get("/api/graph/path", params={"fromActor": ids["APT29"], "toActor": ids["FIN7"]}).json()
+    assert r["found"] and r["hops"] == 1 and r["steps"][0]["shared"]
+    none = admin.get("/api/graph/path", params={"fromActor": ids["APT28"], "toActor": ids["Lazarus Group"]}).json()
+    assert none["found"] is False
+
+
+def test_link_requires_evidence_and_creates_edge(analyst, unique):
+    iid = _ioc(analyst, f"link-{unique}.test").json()["IndicatorID"]
+    try:
+        mal = analyst.get("/api/malware", params={"q": "Cobalt Strike"}).json()["items"][0]["MalwareID"]
+        assert analyst.post("/api/links", json={"kind": "malware-indicator", "a": mal, "b": iid}).status_code == 422   # kanıt zorunlu
+        ok = analyst.post("/api/links", json={"kind": "malware-indicator", "a": mal, "b": iid, "role": "c2", "confidence": 55,
+                                              "evidence": "pytest: test amaçlı kanıt metni"})
+        assert ok.status_code == 201
+        rel = analyst.get(f"/api/iocs/{iid}/relationships").json()["attribution"]
+        assert any(a["ViaID"] == mal and a["Evidence"].startswith("pytest") for a in rel)
+    finally:
+        analyst.delete(f"/api/iocs/{iid}")
+
+
+# ------------------------------------------------------------------ ekranlar ve özet
+def test_dashboard_counts_match_database(admin, conn):
+    k = admin.get("/api/dashboard/summary").json()["kpi"]
+    assert k["TotalIOCs"] == conn.cursor().execute("SELECT COUNT(*) FROM dbo.Indicator;").fetchone()[0]
+    assert k["Actors"] == conn.cursor().execute("SELECT COUNT(*) FROM dbo.ThreatActor;").fetchone()[0]
+
+
+@pytest.mark.parametrize("path", ["/", "/iocs", "/graph", "/actors", "/campaigns", "/malware", "/attack", "/sources", "/audit", "/settings"])
+def test_pages_render(admin, path):
+    r = admin.get(path)
+    assert r.status_code == 200 and "Fatih Kaya" in r.text
+
+
+def test_sql_trace_records_parameterized_queries(admin):
+    r = admin.get("/api/iocs", params={"q": "example", "size": 5})
+    trace = admin.get(f"/api/trace/{r.headers['X-Trace-Id']}").json()
+    assert any("LIKE ?" in s["sql"] for s in trace["statements"])

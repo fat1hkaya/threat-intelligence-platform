@@ -1,0 +1,80 @@
+// ThreatLens - Chen gösterimiyle kavramsal ER diyagramı (çekirdek varlıklar)
+// Görüntülemek için: https://dreampuf.github.io/GraphvizOnline  (içeriği yapıştırın)
+//   veya Graphviz kuruluysa:  dot -Tsvg chen_er.dot -o chen_er.svg
+// Gösterim: dikdörtgen = varlık, çift dikdörtgen = zayıf varlık, eşkenar dörtgen = ilişki,
+// elips = nitelik (anahtar altı çizili), çift elips = çok değerli, kesikli elips = türetilmiş.
+// Kenar etiketleri kardinalite (1, N, M); kalın çizgi = tam katılım.
+graph ThreatLens_Chen {
+  graph [layout=neato, overlap=false, splines=true, sep="+12", fontname="Helvetica", bgcolor="white"];
+  node  [fontname="Helvetica", fontsize=11];
+  edge  [fontname="Helvetica", fontsize=10];
+
+  // ---------- Varlıklar ----------
+  node [shape=box, style=filled, fillcolor="#E9E3FF"];
+  Indicator; Malware; ThreatActor; Campaign; Technique; Tactic; Vulnerability; Source; Evidence; AppUser; ImportJob;
+  Sighting [shape=box, peripheries=2];
+
+  // ---------- İlişkiler ----------
+  node [shape=diamond, style=filled, fillcolor="#FFF4CC"];
+  r_ind_mal [label="İLİŞKİLİ\n(rol)"]; r_act_mal [label="KULLANIR"]; r_act_tech [label="KULLANIR"]; r_mal_tech [label="UYGULAR"];
+  r_mal_vuln [label="İSTİSMAR\nEDER"]; r_camp_act [label="ATFEDİLİR"]; r_camp_mal [label="KULLANIR"]; r_camp_tech [label="KULLANIR"];
+  r_camp_ind [label="İÇERİR"]; r_tech_tac [label="AİTTİR"]; r_tech_parent [label="ALT\nTEKNİĞİ"]; r_ind_src [label="BİLDİRİR"];
+  r_ev_src [label="DAYANIR"]; r_sight [label="GÖRÜLDÜ"]; r_job_src [label="ÇEKER"]; r_user_job [label="BAŞLATIR"];
+
+  // ---------- Nitelikler ----------
+  node [shape=ellipse, style=filled, fillcolor="#E6F7FB"];
+  i_id [label=<<u>IndicatorID</u>>]; i_val [label="Value"]; i_norm [label="NormalizedValue", style="dashed,filled"]; i_conf [label="Confidence\n(0-100)"];
+  i_type [label="Type"]; i_sev [label="Severity"]; i_stat [label="Status"]; i_seen [label="First/LastSeen"]; i_risk [label="RiskScore", style="dashed,filled"];
+  i_tag [label="Tag", peripheries=2];
+  m_id [label=<<u>MalwareID</u>>]; m_name [label="Name"]; m_type [label="MalwareType"]; m_alias [label="Alias", peripheries=2];
+  a_id [label=<<u>ActorID</u>>]; a_name [label="Name"]; a_country [label="Country"]; a_mot [label="Motivation"]; a_alias [label="Alias", peripheries=2]; a_sector [label="TargetSector", peripheries=2];
+  c_id [label=<<u>CampaignID</u>>]; c_name [label="Name"]; c_dates [label="Start/EndDate"];
+  t_id [label=<<u>TechniqueID</u>>]; t_ext [label="ExternalID\n(T1059)"]; t_name [label="Name"];
+  ta_id [label=<<u>TacticID</u>>]; ta_name [label="Name"];
+  v_id [label=<<u>VulnerabilityID</u>>]; v_cve [label="CveID"]; v_cvss [label="CvssScore"];
+  s_id [label=<<u>SourceID</u>>]; s_name [label="Name"]; s_rel [label="Reliability\n(A-F)"];
+  e_id [label=<<u>EvidenceID</u>>]; e_sum [label="Summary"]; e_url [label="Url"];
+  sg_at [label=<<u>SightedAt</u>>]; sg_qty [label="Quantity"];
+  u_id [label=<<u>UserID</u>>]; u_name [label="Username"]; u_role [label="Role"];
+  j_id [label=<<u>JobID</u>>]; j_rows [label="RowsInserted/\nUpdated/Skipped/Failed"]; j_stat [label="Status"];
+  rel_conf [label="Confidence"]; rel_role [label="Role"];
+
+  // ---------- Nitelik bağları ----------
+  edge [color="#94A3B8"];
+  Indicator -- {i_id i_val i_norm i_conf i_type i_sev i_stat i_seen i_risk i_tag};
+  Malware -- {m_id m_name m_type m_alias};
+  ThreatActor -- {a_id a_name a_country a_mot a_alias a_sector};
+  Campaign -- {c_id c_name c_dates};
+  Technique -- {t_id t_ext t_name};
+  Tactic -- {ta_id ta_name};
+  Vulnerability -- {v_id v_cve v_cvss};
+  Source -- {s_id s_name s_rel};
+  Evidence -- {e_id e_sum e_url};
+  Sighting -- {sg_at sg_qty};
+  AppUser -- {u_id u_name u_role};
+  ImportJob -- {j_id j_rows j_stat};
+  r_ind_mal -- {rel_role rel_conf};
+
+  // ---------- İlişki bağları (kardinalite) ----------
+  edge [color="#334155"];
+  Indicator -- r_ind_mal [label="M"];   r_ind_mal -- Malware [label="N"];
+  ThreatActor -- r_act_mal [label="M"]; r_act_mal -- Malware [label="N"];
+  ThreatActor -- r_act_tech [label="M"]; r_act_tech -- Technique [label="N"];
+  Malware -- r_mal_tech [label="M"];    r_mal_tech -- Technique [label="N"];
+  Malware -- r_mal_vuln [label="M"];    r_mal_vuln -- Vulnerability [label="N"];
+  Campaign -- r_camp_act [label="N"];   r_camp_act -- ThreatActor [label="1"];
+  Campaign -- r_camp_mal [label="M"];   r_camp_mal -- Malware [label="N"];
+  Campaign -- r_camp_tech [label="M"];  r_camp_tech -- Technique [label="N"];
+  Campaign -- r_camp_ind [label="M"];   r_camp_ind -- Indicator [label="N"];
+  Technique -- r_tech_tac [label="M"];  r_tech_tac -- Tactic [label="N"];
+  Technique -- r_tech_parent [label="N"]; r_tech_parent -- Technique [label="1"];
+  Indicator -- r_ind_src [label="N", penwidth=2.5]; r_ind_src -- Source [label="1"];
+  Evidence -- r_ev_src [label="N", penwidth=2.5]; r_ev_src -- Source [label="1"];
+  Sighting -- r_sight [label="N", penwidth=2.5]; r_sight -- Indicator [label="1"];
+  ImportJob -- r_job_src [label="N", penwidth=2.5]; r_job_src -- Source [label="1"];
+  AppUser -- r_user_job [label="1"];    r_user_job -- ImportJob [label="N"];
+
+  // Her M:N ilişki ve kampanya atfı bir Evidence'a (kanıt) bağlanır: ilişki -> Evidence (N:1)
+  edge [style=dashed, color="#7C5CFC", label="kanıt"];
+  r_act_mal -- Evidence; r_ind_mal -- Evidence; r_camp_act -- Evidence;
+}

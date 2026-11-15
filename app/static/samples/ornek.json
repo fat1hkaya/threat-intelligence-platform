@@ -1,0 +1,5 @@
+{"indicators": [
+  {"type": "ipv4", "value": "192.0.2.201", "confidence": 85, "severity": "high", "malware": "QakBot", "role": "c2", "tags": ["ornek", "json"]},
+  {"value": "update-json-sample.invalid", "confidence": 60, "severity": "medium", "tags": ["tip-otomatik"]},
+  {"type": "md5", "value": "d41d8cd98f00b204e9800998ecf8427e", "confidence": 40, "severity": "low", "description": "Bos dosyanin MD5 ozeti (ornek)"}
+]}
