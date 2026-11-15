@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ title }} · ThreatLens</title>
   <link rel="icon" href="/static/img/logo.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#0B1020" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F4F6FB" media="(prefers-color-scheme: light)">
+  <script>/* tema ve yoğunluk ilk çizimden önce uygulanır (yanıp sönme olmasın) */
+    try { const t = localStorage.getItem('tl-theme'); if (t) document.documentElement.dataset.theme = t;
+          if (localStorage.getItem('tl-dense')) document.documentElement.classList.add('dense'); } catch (e) {}</script>
   <link rel="stylesheet" href="/static/css/app.css?v={{ v }}">
   {% block head %}{% endblock %}
 </head>
@@ -52,6 +57,8 @@
           <div class="menu" id="userMenu" role="menu" hidden>
             <div class="muted" style="padding:6px 10px;font-size:12px">@{{ user.Username }} · {{ user.RoleName }}</div>
             <a href="/settings" role="menuitem"><i data-lucide="settings"></i>Ayarlar</a>
+            <button role="menuitem" id="themeBtn"><i data-lucide="monitor"></i>Sistem teması</button>
+            <button role="menuitem" id="denseBtn"><i data-lucide="rows-3"></i>Sıkı tablo görünümü</button>
             <button role="menuitem" id="pwBtn"><i data-lucide="key-round"></i>Parolamı değiştir</button>
             <a href="/api/docs" role="menuitem" target="_blank" rel="noopener"><i data-lucide="file-code-2"></i>API belgeleri</a>
             <button role="menuitem" id="logoutBtn"><i data-lucide="log-out"></i>Çıkış yap</button>

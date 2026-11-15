@@ -27,7 +27,7 @@
       { label: 'Kaynak', render: (m) => sourceBadge(m.SourceName) },
       { label: '', render: (m) => `<a class="btn sm icon ghost" href="${TL.graphUrl('indicator', m.IndicatorID)}" aria-label="İlişki grafında aç" title="İlişki grafında aç"><i data-lucide="share-2"></i></a>` },
     ], d.matches, { caption: 'Av eşleşmeleri' }) + `<details style="padding:12px 16px"><summary class="muted" style="cursor:pointer">Eşleşen log satırları</summary>
-      <pre class="mono" style="white-space:pre-wrap;font-size:12px;color:#CBD5E1;margin-top:8px">${d.matches.map((m) => `${String(m.FirstLine).padStart(5)}  ${esc(m.SampleLine || '')}`).join('\n')}</pre></details>`
+      <pre class="mono" style="white-space:pre-wrap;font-size:12px;color:var(--text-desc);margin-top:8px">${d.matches.map((m) => `${String(m.FirstLine).padStart(5)}  ${esc(m.SampleLine || '')}`).join('\n')}</pre></details>`
       : empty('Bu logda veritabanındaki IOC\'lerden hiçbiri geçmiyor. İyi haber.', 'shield-check');
     icons();
     document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });

@@ -75,7 +75,9 @@
     t.innerHTML = `<i data-lucide="${kind === 'ok' ? 'circle-check' : 'circle-alert'}"></i><div>${esc(msg)}</div>`;
     box.appendChild(t); icons(); setTimeout(() => t.remove(), kind === 'ok' ? 3500 : 7000);
   }
-  const loading = (t = 'Yükleniyor') => `<div class="loading"><span class="spinner"></span>${esc(t)}…</div>`;
+  // İçerik yerini tutan iskelet; ekran okuyucuya metin olarak duyurulur
+  const loading = (t = 'Yükleniyor') => `<div class="skeleton" role="status"><span class="sr-only">${esc(t)}…</span><i></i><i></i><i></i><i></i><i></i></div>`;
+  const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   const empty = (t, icon = 'search-x') => `<div class="empty"><i data-lucide="${icon}"></i><p>${esc(t)}</p></div>`;
   const debounce = (fn, ms = 300) => { let h; return (...a) => { clearTimeout(h); h = setTimeout(() => fn(...a), ms); }; };
   const can = (role) => { const r = TL.user && TL.user.Role; return role === 'admin' ? r === 'admin' : role === 'analyst' ? r === 'admin' || r === 'analyst' : true; };
@@ -232,6 +234,34 @@
         catch (x) { err.textContent = x.message; }
       };
     });
+    // Tema: Sistem -> Koyu -> Açık; tercih tarayıcıda saklanır (yalnızca bu cihaz için)
+    const THEMES = [['system', 'Sistem teması', 'monitor'], ['dark', 'Koyu tema', 'moon'], ['light', 'Açık tema', 'sun']];
+    const themeBtn = document.getElementById('themeBtn');
+    const showTheme = () => {
+      let cur = 'system'; try { cur = localStorage.getItem('tl-theme') || 'system'; } catch { /* depolama kapalı */ }
+      const [, label, icon] = THEMES.find((t) => t[0] === cur) || THEMES[0];
+      if (themeBtn) { themeBtn.innerHTML = `<i data-lucide="${icon}"></i>${label}`; icons(); }
+      return cur;
+    };
+    showTheme();
+    themeBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const next = THEMES[(THEMES.findIndex((t) => t[0] === showTheme()) + 1) % THEMES.length][0];
+      try { next === 'system' ? localStorage.removeItem('tl-theme') : localStorage.setItem('tl-theme', next); } catch { /* yok say */ }
+      if (next === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = next;
+      showTheme();
+      if (window.Chart && Object.keys(Chart.instances || {}).length) location.reload();   // grafikler renkleri oluşturulurken alır
+    });
+    const denseBtn = document.getElementById('denseBtn');
+    const showDense = () => { const on = document.documentElement.classList.contains('dense');
+      if (denseBtn) { denseBtn.innerHTML = `<i data-lucide="${on ? 'rows-4' : 'rows-3'}"></i>${on ? 'Rahat tablo görünümü' : 'Sıkı tablo görünümü'}`; icons(); } };
+    showDense();
+    denseBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const on = document.documentElement.classList.toggle('dense');
+      try { on ? localStorage.setItem('tl-dense', '1') : localStorage.removeItem('tl-dense'); } catch { /* yok say */ }
+      showDense();
+    });
     document.getElementById('logoutBtn')?.addEventListener('click', async () => { await api('/api/auth/logout', { method: 'POST' }).catch(() => {}); location.href = '/login'; });
     document.getElementById('sqlBtn')?.addEventListener('click', openSql);
     document.getElementById('sqlClose')?.addEventListener('click', closeSql);
@@ -307,15 +337,16 @@
   // ---------- Chart.js ortak ayarları ----------
   function chartDefaults() {
     if (!window.Chart) return;
-    Chart.defaults.color = '#94A3B8'; Chart.defaults.borderColor = 'rgba(148,163,184,.12)';
+    Chart.defaults.color = cssVar('--text-2'); Chart.defaults.borderColor = cssVar('--line');
     Chart.defaults.font.family = 'Inter, system-ui, sans-serif'; Chart.defaults.font.size = 12;
     Chart.defaults.plugins.legend.display = false;
-    Chart.defaults.plugins.tooltip.backgroundColor = '#1F2D48'; Chart.defaults.plugins.tooltip.borderColor = '#2E3F61'; Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.backgroundColor = cssVar('--elev-2'); Chart.defaults.plugins.tooltip.borderColor = cssVar('--line-strong'); Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.titleColor = cssVar('--text'); Chart.defaults.plugins.tooltip.bodyColor = cssVar('--text');
     Chart.defaults.animation.duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 500;
   }
 
   Object.assign(TL, { esc, fmtDT, fmtD, fmtN, ago, pct, SEV, NODE, TYPE_LABEL, sev, typeBadge, status, job, conf, sourceBadge, copyBtn, nodeIcon,
     entityUrl, graphUrl, api, icons, toast, loading, empty, debounce, can, qs, table, bindTable, markRow, pager, panel, panelHead, list, dialog,
-    formData, chartDefaults, meta, overflowActions, NARROW, PHONE });
+    formData, chartDefaults, meta, overflowActions, NARROW, PHONE, cssVar });
   document.addEventListener('DOMContentLoaded', () => { initShell(); chartDefaults(); });
 })();

@@ -164,7 +164,7 @@
       status();
       network.once('stabilizationIterationsDone', () => network.fit({ animation: { duration: 400 } }));
       const box = document.getElementById('side');
-      box.innerHTML = `<div class="entity-title"><span class="ic" style="background:var(--purple-soft);color:#B9A8FF"><i data-lucide="briefcase"></i></span><div style="min-width:0">
+      box.innerHTML = `<div class="entity-title"><span class="ic" style="background:var(--purple-soft);color:var(--badge-purple-fg)"><i data-lucide="briefcase"></i></span><div style="min-width:0">
           <span class="muted" style="font-size:12px">Vaka grafı</span><h2 style="font-size: 18px">#${c.case.InvestigationID} ${esc(c.case.Title)}</h2></div></div>
         <dl class="kv" style="margin-top:14px"><dt>Vaka öğesi</dt><dd>${c.items.length}</dd><dt>Ortak bağlantı</dt><dd>${d.common.length}</dd><dt>Kenar</dt><dd>${d.edges.length}</dd></dl>
         <p class="faint" style="font-size: 13px;margin-top:10px">Kalın çerçeveli düğümler vakada. Kesikli çerçeveliler vakada değil ama vakadaki en az iki varlığa bağlı: incelemeye değer adaylar.</p>

@@ -28,16 +28,10 @@ def _search_term(q: str) -> str:
     return term.lower()
 
 
-@router.get("")
-def list_iocs(
-    q: str = Query("", max_length=400), type: str = "", severity: str = "", source: int | None = None,
-    status: str = "", malware: int | None = None, tag: str = "",
-    minConfidence: int = Query(0, ge=0, le=100), maxConfidence: int = Query(100, ge=0, le=100),
-    dateFrom: date | None = None, dateTo: date | None = None,
-    sort: str = "lastSeen", dir: str = "desc", page: int = Query(1, ge=1), size: int = Query(25, ge=5, le=200),
-    db: Db = Depends(get_db),
-):
-    # WHERE koşulları sabit parçalardan kurulur; kullanıcı girdisi yalnızca parametre (?) olarak geçer
+def _ioc_filter(q: str, type: str, severity: str, source: int | None, status: str, malware: int | None, tag: str,
+                minConfidence: int, maxConfidence: int, dateFrom: date | None, dateTo: date | None) -> tuple[str, list]:
+    """IOC listesi ve dışa aktarma için ortak WHERE koşulu.
+    Koşullar sabit parçalardan kurulur; kullanıcı girdisi yalnızca parametre (?) olarak geçer."""
     where, params = ["1 = 1"], []
     if q.strip():
         where.append("v.Value LIKE ? ESCAPE '\\'")
@@ -65,7 +59,19 @@ def list_iocs(
         where.append("""EXISTS (SELECT 1 FROM dbo.IndicatorTag AS it JOIN dbo.Tag AS tg ON tg.TagID = it.TagID
                     WHERE it.IndicatorID = v.IndicatorID AND tg.Name = ?)""")
         params.append(tag)
-    clause = "\n          AND ".join(where)
+    return "\n          AND ".join(where), params
+
+
+@router.get("")
+def list_iocs(
+    q: str = Query("", max_length=400), type: str = "", severity: str = "", source: int | None = None,
+    status: str = "", malware: int | None = None, tag: str = "",
+    minConfidence: int = Query(0, ge=0, le=100), maxConfidence: int = Query(100, ge=0, le=100),
+    dateFrom: date | None = None, dateTo: date | None = None,
+    sort: str = "lastSeen", dir: str = "desc", page: int = Query(1, ge=1), size: int = Query(25, ge=5, le=200),
+    db: Db = Depends(get_db),
+):
+    clause, params = _ioc_filter(q, type, severity, source, status, malware, tag, minConfidence, maxConfidence, dateFrom, dateTo)
     order = f"{SORTS.get(sort, 'v.LastSeen')} {'ASC' if dir == 'asc' else 'DESC'}, v.IndicatorID DESC"
 
     total = db.scalar(f"SELECT COUNT(*) AS Total FROM dbo.vw_Indicator AS v\n        WHERE {clause};", tuple(params))
@@ -81,6 +87,59 @@ def list_iocs(
         OFFSET ? ROWS FETCH NEXT ? ROWS ONLY;      -- sayfalama
         """, tuple(params) + ((page - 1) * size, size))
     return {"items": items, "total": total, "page": page, "size": size}
+
+
+EXPORT_LIMIT = 50000
+
+
+def _csv_cell(v) -> str:
+    """CSV/formül enjeksiyonuna karşı: =, +, -, @ ile başlayan hücreler tek tırnakla etkisizleştirilir."""
+    text = "" if v is None else str(v)
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+
+
+@router.get("/export")
+def export_iocs(
+    format: str = Query("csv", pattern="^(csv|txt)$"),
+    q: str = Query("", max_length=400), type: str = "", severity: str = "", source: int | None = None,
+    status: str = "", malware: int | None = None, tag: str = "",
+    minConfidence: int = Query(0, ge=0, le=100), maxConfidence: int = Query(100, ge=0, le=100),
+    dateFrom: date | None = None, dateTo: date | None = None,
+    db: Db = Depends(get_db),
+):
+    """Ekrandaki filtrelerle eşleşen IOC'ler (en çok 50.000). csv: tüm sütunlar; txt: satır başına bir değer
+    (güvenlik duvarı / proxy engelleme listesi için)."""
+    import csv
+    import io
+
+    from fastapi.responses import Response
+
+    clause, params = _ioc_filter(q, type, severity, source, status, malware, tag, minConfidence, maxConfidence, dateFrom, dateTo)
+    rows = db.query(
+        f"""
+        SELECT TOP ({EXPORT_LIMIT}) v.Value, v.TypeCode, v.SeverityCode, v.Confidence, v.RiskScore, v.Status, v.TLPCode,
+               v.SourceName, v.FirstSeen, v.LastSeen, v.ExpiresAt,
+               (SELECT TOP (1) m.Name FROM dbo.MalwareIndicator AS mi JOIN dbo.Malware AS m ON m.MalwareID = mi.MalwareID
+                 WHERE mi.IndicatorID = v.IndicatorID ORDER BY mi.Confidence DESC, m.Name) AS Malware
+        FROM dbo.vw_Indicator AS v
+        WHERE {clause}
+        ORDER BY v.RiskScore DESC, v.LastSeen DESC;
+        """, tuple(params))
+    stamp = __import__("datetime").datetime.now().strftime("%Y%m%d_%H%M")
+    if format == "txt":
+        body = "\n".join(r["Value"] for r in rows) + ("\n" if rows else "")
+        return Response(body, media_type="text/plain; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="threatlens_ioc_{stamp}.txt"'})
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    cols = ["Value", "TypeCode", "SeverityCode", "Confidence", "RiskScore", "Status", "TLPCode", "SourceName", "Malware",
+            "FirstSeen", "LastSeen", "ExpiresAt"]
+    w.writerow(["deger", "tip", "onem", "guven", "risk", "durum", "tlp", "kaynak", "zararli", "ilk_gorulme", "son_gorulme", "gecerlilik_sonu"])
+    for r in rows:
+        w.writerow([_csv_cell(r[c]) for c in cols])
+    # Excel'in Türkçe karakterleri doğru açması için UTF-8 BOM
+    return Response("\ufeff" + buf.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="threatlens_ioc_{stamp}.csv"'})
 
 
 class BulkLookup(BaseModel):

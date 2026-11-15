@@ -3,6 +3,14 @@
 <div class="page-head">
   <div><h1>IOC araştırma</h1><p>IP, domain, URL ve hash göstergelerini arayın, filtreleyin, ilişkilerini inceleyin.</p></div>
   <div class="page-actions">
+    <details class="more-menu" id="exportMenu">
+      <summary class="btn"><i data-lucide="download"></i>Dışa aktar</summary>
+      <div class="menu-pop" role="menu">
+        <a class="btn" role="menuitem" data-export="csv" href="#"><i data-lucide="file-spreadsheet"></i>CSV (tüm sütunlar)</a>
+        <a class="btn" role="menuitem" data-export="txt" href="#"><i data-lucide="shield-ban"></i>Engelleme listesi (.txt)</a>
+        <p class="faint" style="padding:4px 10px 6px;font-size: 12px">Ekrandaki filtreler uygulanır, en çok 50.000 kayıt.</p>
+      </div>
+    </details>
     <button class="btn" id="lookupBtn"><i data-lucide="list-checks"></i>Toplu kontrol</button>
     <button class="btn primary" id="newBtn" hidden><i data-lucide="plus"></i>Yeni IOC</button>
   </div>

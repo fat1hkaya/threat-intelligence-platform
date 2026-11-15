@@ -42,7 +42,11 @@ Bir IOC'nin (IP, domain, URL, MD5/SHA-1/SHA-256) yalnızca kaydını değil, **z
 | SQL Server Agent işleri: süresi dolan IOC'ler, graf bakımı | `10_lifecycle.sql`, `11_agent_jobs.sql` |
 | Tetikleyicilerle denetim izi, graf senkronu, ağ zenginleştirme | `07_triggers.sql` ve migration'lar |
 
-Arayüz Türkçedir, 1440 / 1024 / 390 px genişliklerde test edilmiştir (mobilde kenar çubuğu çekmeceye, tablolar kart görünümüne geçer).
+Arayüz Türkçedir; 390 / 768 / 1024 / 1440 / 1920 / 2560 px genişliklerde ölçülerek test edilmiştir (yatay taşma yok, JavaScript hatası yok):
+- **Mobil:** kenar çubuğu çekmeceye, tablolar iki sütunlu kartlara geçer; filtreler "Filtreler (n)" düğmesiyle açılır, fazla eylemler "Diğer" menüsüne taşınır; dokunma hedefleri en az 44 px.
+- **Tema:** koyu, açık ve sistem teması (kullanıcı menüsünden); graf tuvali ve SQL kod blokları iki temada da koyu kalır. Metin kontrastı her iki temada WCAG AA (en az 4,5:1).
+- **Tablolar:** sıkı/rahat görünüm, IOC listesinde filtrelerle CSV ve engelleme listesi (.txt) dışa aktarma.
+- **Graf:** teknikler tek kümede toplanır, kenar etiketleri yakınlaştırınca görünür, seçilen düğümün komşuları vurgulanır, türe göre katmanlı yerleşim seçilebilir.
 
 ## Kurulum (Windows)
 

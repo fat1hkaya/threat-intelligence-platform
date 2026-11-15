@@ -72,3 +72,25 @@ def test_stix_actor_bundle(viewer):
     assert validate(b) == []
     ap = [o for o in b["objects"] if o["type"] == "attack-pattern"]
     assert ap and all(o["external_references"][0]["source_name"] == "mitre-attack" for o in ap)
+
+
+def test_csv_cell_neutralizes_formulas():
+    from app.api.iocs import _csv_cell
+    assert _csv_cell("=HYPERLINK(1)") == "'=HYPERLINK(1)" and _csv_cell("+1") == "'+1" and _csv_cell("@x") == "'@x"
+    assert _csv_cell("evil.example") == "evil.example" and _csv_cell(None) == ""
+
+
+@needs_db
+def test_ioc_export_matches_list_filters(viewer, linked_ioc):
+    import csv
+    import io
+    params = {"type": "sha256", "severity": "high"}
+    total = viewer.get("/api/iocs", params={**params, "size": 5}).json()["total"]
+    r = viewer.get("/api/iocs/export", params=params)
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv") and "attachment" in r.headers["content-disposition"]
+    rows = list(csv.reader(io.StringIO(r.text.lstrip("﻿"))))
+    assert rows[0][0] == "deger" and len(rows) - 1 == min(total, 50000)
+    assert any(row[0] == linked_ioc["Value"] for row in rows[1:])
+    txt = viewer.get("/api/iocs/export", params={**params, "format": "txt"})
+    assert txt.headers["content-type"].startswith("text/plain") and linked_ioc["Value"] in txt.text.splitlines()
+    assert viewer.get("/api/iocs/export", params={"format": "xlsx"}).status_code == 422

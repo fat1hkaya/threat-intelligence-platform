@@ -37,11 +37,11 @@
     sevChart?.destroy();
     sevChart = new Chart(document.getElementById('sevChart'), {
       type: 'doughnut',
-      data: { labels: sevRows.map((r) => SEV[r.Code]), datasets: [{ data: sevRows.map((r) => r.Total), backgroundColor: sevRows.map((r) => SEV_COLORS[r.Code]), borderColor: '#111A2E', borderWidth: 3 }] },
+      data: { labels: sevRows.map((r) => SEV[r.Code]), datasets: [{ data: sevRows.map((r) => r.Total), backgroundColor: sevRows.map((r) => SEV_COLORS[r.Code]), borderColor: TL.cssVar('--card'), borderWidth: 3 }] },
       options: { cutout: '68%', maintainAspectRatio: false },
-      plugins: [{ id: 'center', afterDraw(c) { const { ctx, chartArea: a } = c; ctx.save(); ctx.textAlign = 'center'; ctx.fillStyle = '#F1F5F9';
+      plugins: [{ id: 'center', afterDraw(c) { const { ctx, chartArea: a } = c; ctx.save(); ctx.textAlign = 'center'; ctx.fillStyle = TL.cssVar('--text');
         ctx.font = '700 22px Inter'; ctx.fillText(fmtN(total), (a.left + a.right) / 2, (a.top + a.bottom) / 2 + 4);
-        ctx.font = '12px Inter'; ctx.fillStyle = '#94A3B8'; ctx.fillText('aktif IOC', (a.left + a.right) / 2, (a.top + a.bottom) / 2 + 22); ctx.restore(); } }],
+        ctx.font = '12px Inter'; ctx.fillStyle = TL.cssVar('--text-2'); ctx.fillText('aktif IOC', (a.left + a.right) / 2, (a.top + a.bottom) / 2 + 22); ctx.restore(); } }],
     });
 
     bars(document.getElementById('typeBars'), d.byType, (r) => TYPE_LABEL[r.Code] || r.Name, (r) => r.Total, (r) => `/iocs?type=${r.Code}`);

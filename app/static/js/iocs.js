@@ -60,6 +60,15 @@
   }
 
   TL.onPanelClose = () => { st.selected = null; qs.set({ id: null }); markRow(tbl, -1); };
+  // Dışa aktarma: ekrandaki filtrelerle (sayfa/sıralama hariç)
+  document.getElementById('exportMenu')?.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-export]'); if (!a) return;
+    e.preventDefault();
+    const { page, size, sort, dir, ...f } = params();
+    const q = new URLSearchParams({ format: a.dataset.export });
+    Object.entries(f).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') q.set(k, v); });
+    location.href = `/api/iocs/export?${q}`;
+  });
   bindTable(tbl, { onRow: show, onSort: (s) => { st.dir = st.sort === s && st.dir === 'desc' ? 'asc' : 'desc'; st.sort = s; st.page = 1; load(); } });
   form.addEventListener('submit', (e) => { e.preventDefault(); st.page = 1; load(); });
   form.addEventListener('reset', () => setTimeout(() => { st.page = 1; st.malware = null; st.tag = null; load(); }));

@@ -67,7 +67,7 @@
     root.innerHTML = `
       <p style="margin-bottom:10px"><a href="/cases" data-back><i data-lucide="arrow-left" style="width:14px;height:14px;vertical-align:-2px"></i> Vakalar</a></p>
       <div class="page-head" style="margin-bottom:18px">
-        <div class="entity-title"><span class="ic" style="background:var(--purple-soft);color:#B9A8FF"><i data-lucide="briefcase"></i></span><div style="min-width:0">
+        <div class="entity-title"><span class="ic" style="background:var(--purple-soft);color:var(--badge-purple-fg)"><i data-lucide="briefcase"></i></span><div style="min-width:0">
           <h1 style="overflow-wrap:anywhere">#${c.InvestigationID} ${esc(c.Title)}</h1>
           <div class="chips" style="margin-top:8px">${statusBadge(c.Status)}${sev(c.SeverityCode)}<span class="badge b-muted"><i data-lucide="user" style="width:12px;height:12px"></i>${esc(c.AssignedTo || 'Atanmadı')}</span></div>
           <p class="faint" style="font-size: 13px;margin-top:6px">${esc(c.CreatedBy || '—')} açtı, ${fmtDT(c.CreatedAt)}${c.ClosedAt ? ` · kapatıldı ${fmtDT(c.ClosedAt)}` : ''}</p>
