@@ -55,6 +55,23 @@
     icons();
   }
 
+  async function retention() {
+    const d = await api('/api/retention'); const admin = can('admin');
+    document.getElementById('retention').innerHTML = table([
+      { label: 'Kaynak', primary: true, render: (p) => p.SourceName ? esc(p.SourceName) : '<span class="muted">Tüm kaynaklar</span>' },
+      { label: 'IOC tipi', render: (p) => p.TypeCode ? TL.typeBadge(p.TypeCode) : '<span class="muted">Tüm tipler</span>' },
+      { label: 'Süre (gün)', num: true, render: (p) => admin ? `<label class="sr-only" for="rp${p.PolicyID}">Süre</label><input class="input" id="rp${p.PolicyID}" data-policy="${p.PolicyID}" type="number" min="1" max="3650" value="${p.LifetimeDays}" style="width:86px;height:30px;text-align:right">` : p.LifetimeDays },
+      { label: 'Uygulandığı IOC', num: true, render: (p) => fmtN(p.AppliesTo) },
+      { label: 'Not', render: (p) => `<span class="muted" style="font-size:12.5px">${esc(p.Note || '')}</span>` },
+    ], d.policies, { caption: 'Yaşam döngüsü politikaları' });
+    const TASK = { 'expire-indicators': "Süresi dolan IOC'ler", 'graph-maintenance': 'Graf bakımı' };
+    document.getElementById('runs').innerHTML = d.runs.length ? d.runs.map((r) => `<li><div><span><b>${esc(TASK[r.Task] || r.Task)}</b><br><small>${fmtDT(r.StartedAt)} · ${esc(r.Message || '')}</small></span>
+      <span class="badge ${r.Status === 'success' ? 'b-ok' : r.Status === 'failed' ? 'b-bad' : 'b-cyan'}">${r.Status === 'success' ? 'Başarılı' : r.Status === 'failed' ? 'Hatalı' : 'Çalışıyor'}</span></div></li>`).join('')
+      : '<li class="faint" style="font-size:13px">Henüz çalışmadı.</li>';
+    const total = d.upcoming.reduce((a, x) => a + x.Total, 0);
+    document.getElementById('upcoming').textContent = total ? `Önümüzdeki 7 günde ${fmtN(total)} IOC'nin süresi dolacak.` : 'Önümüzdeki 7 günde süresi dolacak IOC yok.';
+  }
+
   function newUser() {
     const d = dialog(`<form><div class="dlg-head"><h2>Kullanıcı ekle</h2><button type="button" class="btn icon ghost" data-dismiss aria-label="Kapat"><i data-lucide="x"></i></button></div>
       <div class="form-grid"><div class="field"><label for="nu-u">Kullanıcı adı</label><input class="input" id="nu-u" name="username" required minlength="3" pattern="[A-Za-z0-9._\\-]+"></div>
@@ -76,7 +93,12 @@
       try { await api(`/api/users/${s.dataset.role}`, { method: 'PATCH', body: { role: s.value } }); toast('Rol güncellendi.'); } catch (err) { toast(err.message, 'err'); users(); } });
     box.addEventListener('click', async (e) => { const b = e.target.closest('[data-active]'); if (!b) return;
       try { await api(`/api/users/${b.dataset.active}`, { method: 'PATCH', body: { isActive: b.dataset.v === '1' } }); toast('Kullanıcı durumu güncellendi.'); users(); } catch (err) { toast(err.message, 'err'); } });
-    users().catch((e) => toast(e.message, 'err')); system().catch((e) => toast(e.message, 'err'));
+    users().catch((e) => toast(e.message, 'err')); system().catch((e) => toast(e.message, 'err')); retention().catch((e) => toast(e.message, 'err'));
+    document.getElementById('retention').addEventListener('change', async (e) => {
+      const i = e.target.closest('[data-policy]'); if (!i) return;
+      try { await api(`/api/retention/${i.dataset.policy}`, { method: 'PUT', body: { lifetimeDays: +i.value } }); toast("Süre güncellendi. Yeni içe aktarmalara ve yeniden görülen IOC'lere uygulanır."); }
+      catch (err) { toast(err.message, 'err'); retention(); }
+    });
     icons();
   });
 })();

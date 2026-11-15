@@ -299,3 +299,47 @@ def system_status(db: Db = Depends(get_db)):
     return {"server": server, "objects": objects, "indexCount": indexes, "dbRoles": roles, "graph": graph,
             "integrations": {"abusechKey": bool(os.getenv("ABUSECH_AUTH_KEY", "").strip()),
                              "odbcDriver": config.pick_driver(), "dbServer": config.DB_SERVER}}
+
+
+# ============================== Yaşam döngüsü ===========================
+
+@router.get("/retention")
+def retention(db: Db = Depends(get_db)):
+    """IOC geçerlilik süresi politikaları, son bakım işleri (SQL Server Agent) ve yaklaşan süre dolumları."""
+    policies = db.query(
+        """
+        WITH applied AS (   -- her IOC için geçerli politika (en özel olan, fn_LifetimeDays), tek geçişte gruplanır
+            SELECT lp.PolicyID, COUNT(*) AS AppliesTo
+            FROM dbo.Indicator AS i CROSS APPLY dbo.fn_LifetimeDays(i.SourceID, i.TypeID) AS lp
+            GROUP BY lp.PolicyID
+        )
+        SELECT p.PolicyID, p.SourceID, s.Name AS SourceName, p.TypeID, t.Code AS TypeCode, t.Name AS TypeName, p.LifetimeDays, p.Note,
+               ISNULL(a.AppliesTo, 0) AS AppliesTo
+        FROM dbo.RetentionPolicy AS p
+        LEFT JOIN applied AS a ON a.PolicyID = p.PolicyID
+        LEFT JOIN dbo.Source AS s ON s.SourceID = p.SourceID
+        LEFT JOIN dbo.IndicatorType AS t ON t.TypeID = p.TypeID
+        ORDER BY CASE WHEN p.SourceID IS NULL THEN 1 ELSE 0 END, s.Name, CASE WHEN p.TypeID IS NULL THEN 1 ELSE 0 END, p.TypeID;
+        """)
+    runs = db.query("SELECT TOP (10) RunID, Task, StartedAt, FinishedAt, RowsAffected, Status, Message FROM dbo.MaintenanceRun ORDER BY RunID DESC;")
+    upcoming = db.query(
+        """
+        -- Önümüzdeki 7 gün içinde süresi dolacak aktif IOC'ler, güne göre
+        SELECT CAST(ExpiresAt AS DATE) AS [Day], COUNT(*) AS Total
+        FROM dbo.Indicator
+        WHERE Status = 'active' AND ExpiresAt >= SYSUTCDATETIME() AND ExpiresAt < DATEADD(DAY, 7, SYSUTCDATETIME())
+        GROUP BY CAST(ExpiresAt AS DATE) ORDER BY [Day];
+        """)
+    return {"policies": policies, "runs": runs, "upcoming": upcoming}
+
+
+class PolicyUpdate(BaseModel):
+    lifetimeDays: int = Field(ge=1, le=3650)
+
+
+@router.put("/retention/{policy_id}", dependencies=[Depends(require_admin)])
+def update_retention(policy_id: int, body: PolicyUpdate, db: Db = Depends(get_db)):
+    """Süre değişikliği yeni içe aktarmalara ve yeniden görülen IOC'lere uygulanır; mevcut bitiş tarihleri korunur."""
+    if not db.execute("UPDATE dbo.RetentionPolicy SET LifetimeDays = ? WHERE PolicyID = ?;", (body.lifetimeDays, policy_id)):
+        raise HTTPException(404, "Politika bulunamadı.")
+    return {"ok": True}

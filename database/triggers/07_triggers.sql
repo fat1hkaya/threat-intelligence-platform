@@ -173,10 +173,14 @@ BEGIN
     UPDATE i
     SET i.LastSeen  = CASE WHEN s.MaxSightedAt > i.LastSeen THEN s.MaxSightedAt ELSE i.LastSeen END,
         i.Status    = CASE WHEN i.Status = 'expired' THEN 'active' ELSE i.Status END,   -- iptal/yanlış pozitif kararına dokunmaz
+        -- kurum içinde görülen IOC'nin geçerlilik süresi görülme tarihinden itibaren yeniden başlar
+        i.ExpiresAt = CASE WHEN i.ExpiresAt IS NULL OR DATEADD(DAY, lp.LifetimeDays, s.MaxSightedAt) > i.ExpiresAt
+                           THEN DATEADD(DAY, lp.LifetimeDays, s.MaxSightedAt) ELSE i.ExpiresAt END,
         i.UpdatedAt = SYSUTCDATETIME()
     FROM dbo.Indicator AS i
     JOIN (SELECT IndicatorID, MAX(SightedAt) AS MaxSightedAt FROM inserted GROUP BY IndicatorID) AS s
-      ON s.IndicatorID = i.IndicatorID;
+      ON s.IndicatorID = i.IndicatorID
+    CROSS APPLY dbo.fn_LifetimeDays(i.SourceID, i.TypeID) AS lp;
 END;
 GO
 

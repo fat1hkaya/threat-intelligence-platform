@@ -239,3 +239,46 @@ def test_audit_records_user_under_application_role(analyst, admin, unique):
         assert log["Username"] == "analist"          # SESSION_CONTEXT rol bağlantısında ayarlandı
     finally:
         analyst.delete(f"/api/iocs/{iid}")
+
+
+# ------------------------------------------------------------------ yaşam döngüsü
+def test_new_ioc_gets_expiry_from_policy(analyst, unique):
+    iid = analyst.post("/api/iocs", json={"type": "ipv4", "value": "203.0.113." + str(int(unique, 16) % 200 + 20), "sourceId": 7}).json()
+    if "IndicatorID" not in iid:                                                       # adres zaten kayıtlıysa domain ile dene
+        iid = analyst.post("/api/iocs", json={"value": f"ttl-{unique}.test", "sourceId": 7}).json()
+    iid = iid["IndicatorID"]
+    try:
+        ind = analyst.get(f"/api/iocs/{iid}").json()["indicator"]
+        assert ind["ExpiresAt"] is not None                                            # Analist girişi politikası: 180 gün
+    finally:
+        analyst.delete(f"/api/iocs/{iid}")
+
+
+def test_retention_policy_and_admin_only_edit(admin, analyst):
+    d = admin.get("/api/retention").json()
+    assert d["policies"] and sum(p["AppliesTo"] for p in d["policies"]) == admin.get("/api/iocs?size=5").json()["total"]
+    pid, days = d["policies"][0]["PolicyID"], d["policies"][0]["LifetimeDays"]
+    assert analyst.put(f"/api/retention/{pid}", json={"lifetimeDays": 10}).status_code == 403
+    assert admin.put(f"/api/retention/{pid}", json={"lifetimeDays": days}).status_code == 200
+    assert admin.put(f"/api/retention/{pid}", json={"lifetimeDays": 0}).status_code == 422
+
+
+def test_expire_procedure_logs_run(conn):
+    row = conn.cursor().execute("EXEC dbo.sp_ExpireIndicators;").fetchone()
+    assert row[0] >= 0
+    last = conn.cursor().execute("SELECT TOP (1) Task, Status FROM dbo.MaintenanceRun ORDER BY RunID DESC;").fetchone()
+    assert tuple(last) == ("expire-indicators", "success")
+
+
+def test_stale_import_is_stored_as_expired(analyst, unique):
+    """Kaynak aylar önce görülmüş bir IOC bildirirse bitiş tarihi geçmişte kalır: kayıt 'expired' eklenir ve
+    yeniden içe aktarıldığında etkinleşmez (aktif/pasif arasında gidip gelmez)."""
+    csv = f"type,value,first_seen,last_seen\ndomain,stale-{unique}.test,2020-01-01T00:00:00,2020-01-02T00:00:00\n".encode()
+    for _ in range(2):
+        r = analyst.post("/api/imports", files={"file": ("old.csv", csv, "text/csv")}, data={"strict": "false"}).json()
+        assert r["status"] == "success"
+    hit = analyst.get("/api/iocs", params={"q": f"stale-{unique}.test"}).json()["items"][0]
+    try:
+        assert hit["Status"] == "expired"
+    finally:
+        analyst.delete(f"/api/iocs/{hit['IndicatorID']}")

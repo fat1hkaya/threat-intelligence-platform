@@ -37,6 +37,19 @@
   </article>
 </div>
 
+<div class="grid g-main-side">
+  <article class="card flush">
+    <div class="card-head"><div><h2>IOC yaşam döngüsü</h2><p>RetentionPolicy: bitiş = son görülme + süre. En özel politika kazanır (kaynak + tip &gt; kaynak &gt; tip &gt; genel).</p></div></div>
+    <div id="retention"></div>
+  </article>
+  <article class="card">
+    <h2>Zamanlanmış bakım işleri</h2>
+    <p class="muted" style="font-size:12.5px;margin:4px 0 10px">SQL Server Agent: her gece 02:00 süresi dolan IOC'ler, her pazar 03:00 graf bakımı. Beslemeler Windows Görev Zamanlayıcı ile 6 saatte bir çekilir.</p>
+    <ul class="list" id="runs"></ul>
+    <p class="muted" style="font-size:12.5px;margin-top:10px" id="upcoming"></p>
+  </article>
+</div>
+
 <div class="grid g-2">
   <article class="card">
     <h2>Veritabanı</h2>

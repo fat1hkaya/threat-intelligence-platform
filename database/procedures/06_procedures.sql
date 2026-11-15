@@ -57,6 +57,8 @@ BEGIN
 
         IF @IndicatorID IS NULL
         BEGIN
+            IF @ExpiresAt IS NULL   -- bitiş verilmezse yaşam döngüsü politikası uygulanır
+                SET @ExpiresAt = (SELECT DATEADD(DAY, LifetimeDays, SYSUTCDATETIME()) FROM dbo.fn_LifetimeDays(@SourceID, @TypeID));
             INSERT INTO dbo.Indicator (TypeID, Value, NormalizedValue, Confidence, SeverityID, TLPID, SourceID, Status, Description, ExpiresAt, CreatedBy)
             VALUES (@TypeID, @Value, @NormalizedValue, @Confidence, @SeverityID, @TLPID, @SourceID, @Status, @Description, @ExpiresAt, @UserID);
             SET @IndicatorID = SCOPE_IDENTITY();
@@ -224,21 +226,30 @@ BEGIN
         BEGIN TRANSACTION;
 
         -- 1) Var olanları güncelle (son görülme ileri, güven yukarı; iptal edilmiş/yanlış pozitif dokunulmaz)
+        --    Yeniden görülen IOC'nin geçerlilik süresi de uzar (yaşam döngüsü politikası, 10_lifecycle.sql)
         UPDATE i
         SET i.LastSeen   = CASE WHEN s.LastSeen > i.LastSeen THEN s.LastSeen ELSE i.LastSeen END,
             i.Confidence = CASE WHEN s.Confidence > i.Confidence THEN s.Confidence ELSE i.Confidence END,
-            i.Status     = CASE WHEN i.Status = 'expired' THEN 'active' ELSE i.Status END,
+            -- süresi dolmuş IOC yalnızca yeni bitiş tarihi gelecekteyse yeniden etkinleşir
+            -- (kaynak aylar önceki bir görülmeyi tekrar bildirdiğinde aktif/pasif arasında gidip gelmesin)
+            i.Status     = CASE WHEN i.Status = 'expired' AND DATEADD(DAY, lp.LifetimeDays, s.LastSeen) > @now THEN 'active' ELSE i.Status END,
+            i.ExpiresAt  = CASE WHEN i.ExpiresAt IS NULL OR DATEADD(DAY, lp.LifetimeDays, s.LastSeen) > i.ExpiresAt
+                                THEN DATEADD(DAY, lp.LifetimeDays, s.LastSeen) ELSE i.ExpiresAt END,
             i.UpdatedAt  = @now
         FROM dbo.Indicator AS i
         JOIN @stage AS s ON s.TypeID = i.TypeID AND s.NormalizedValue = i.NormalizedValue
+        CROSS APPLY dbo.fn_LifetimeDays(i.SourceID, i.TypeID) AS lp
         WHERE s.Error IS NULL AND s.IsDuplicate = 0;
         SET @updated = @@ROWCOUNT;
 
         -- 2) Yenileri ekle
-        INSERT INTO dbo.Indicator (TypeID, Value, NormalizedValue, Confidence, SeverityID, TLPID, SourceID, Description, FirstSeen, LastSeen, ExpiresAt)
+        --    Bitiş tarihi zaten geçmişte kalan (kaynağın eski kaydı) IOC doğrudan 'expired' olarak eklenir
+        INSERT INTO dbo.Indicator (TypeID, Value, NormalizedValue, Confidence, SeverityID, TLPID, SourceID, Description, FirstSeen, LastSeen, ExpiresAt, Status)
         SELECT s.TypeID, ISNULL(s.Value, s.NormalizedValue), s.NormalizedValue, s.Confidence, s.SeverityID, s.TLPID, @SourceID,
-               s.Description, s.FirstSeen, s.LastSeen, s.ExpiresAt
+               s.Description, s.FirstSeen, s.LastSeen, x.ExpiresAt, CASE WHEN x.ExpiresAt < @now THEN 'expired' ELSE 'active' END
         FROM @stage AS s
+        CROSS APPLY dbo.fn_LifetimeDays(@SourceID, s.TypeID) AS lp
+        CROSS APPLY (SELECT ISNULL(s.ExpiresAt, DATEADD(DAY, lp.LifetimeDays, s.LastSeen)) AS ExpiresAt) AS x
         WHERE s.Error IS NULL AND s.IsDuplicate = 0
           AND NOT EXISTS (SELECT 1 FROM dbo.Indicator AS i WHERE i.TypeID = s.TypeID AND i.NormalizedValue = s.NormalizedValue);
         SET @inserted = @@ROWCOUNT;
@@ -395,17 +406,7 @@ BEGIN
 END;
 GO
 
-/* Süresi dolan göstergeleri pasife çeker (zamanlanmış görev olarak çalıştırılabilir) */
-CREATE OR ALTER PROCEDURE dbo.sp_ExpireIndicators
-AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE dbo.Indicator
-    SET Status = 'expired', UpdatedAt = SYSUTCDATETIME()
-    WHERE Status = 'active' AND ExpiresAt IS NOT NULL AND ExpiresAt < SYSUTCDATETIME();
-    SELECT @@ROWCOUNT AS ExpiredCount;
-END;
-GO
+/* sp_ExpireIndicators: database/migrations/10_lifecycle.sql (yaşam döngüsü politikasıyla birlikte) */
 
 /* ---------------------------------------------------------------------
    sp_GlobalSearch: tek kutudan her şeyi ara (komut paleti).

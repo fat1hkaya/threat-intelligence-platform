@@ -7,3 +7,4 @@ venv/
 *.bak
 node_modules/
 .claude/settings.local.json
+logs/
