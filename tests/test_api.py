@@ -398,3 +398,44 @@ def test_hunt_rejects_empty_and_lists_history(analyst):
     assert analyst.post("/api/hunt", data={"text": "  ", "location": "pytest"}).status_code == 400
     assert analyst.get("/api/hunt").json()
     assert analyst.get("/api/hunt/sample").json()["text"]
+
+
+# ------------------------------------------------------------------ tespit kapsama
+def test_coverage_actor_percentage_inheritance_and_division(analyst, viewer, admin):
+    ids = {a["Name"]: a["ActorID"] for a in admin.get("/api/actors", params={"size": 200}).json()["items"]}
+    apt29 = ids["APT29"]
+    techs = analyst.get(f"/api/coverage/actor/{apt29}").json()["techniques"]
+    parent = next(t for t in techs if "." not in t["ExternalID"])
+    sub = analyst.get("/api/techniques", params={"q": parent["ExternalID"] + ".", "subtechniques": "true", "size": 5}).json()["items"]
+    try:
+        assert viewer.put(f"/api/coverage/technique/{parent['TechniqueID']}", json={"level": 2}).status_code == 403
+        assert analyst.put(f"/api/coverage/technique/{parent['TechniqueID']}", json={"level": 2, "dataSource": "pytest"}).status_code == 200
+        if sub:   # alt teknik üst tekniğin düzeyini devralır
+            s = analyst.get(f"/api/coverage/technique/{sub[0]['TechniqueID']}").json()
+            assert s["EffectiveLevel"] == 2 and s["Inherited"]
+        after = analyst.get(f"/api/coverage/actor/{apt29}").json()["summary"]
+        assert after["FullCount"] >= 1 and float(after["CoveragePct"]) > 0
+        ov = analyst.get("/api/coverage").json()
+        assert ov["totals"]["Marked"] >= 1 and all(g["TechniqueID"] != parent["TechniqueID"] for g in ov["gaps"])
+        log = admin.get("/api/audit-logs", params={"table": "DetectionCoverage", "record": parent["TechniqueID"]}).json()["items"]
+        assert log and log[0]["Username"] == "analist"
+    finally:
+        analyst.delete(f"/api/coverage/technique/{parent['TechniqueID']}")
+
+
+def test_relational_division_matches_python(conn):
+    """sp_CoverageOverview'daki ilişkisel bölme (çift NOT EXISTS) sonucu, aynı sorunun Python'daki küme hesabıyla aynı olmalı."""
+    cur = conn.cursor()
+    sets = []
+    cur.execute("EXEC dbo.sp_CoverageOverview;")
+    while True:
+        if cur.description:
+            sets.append(cur.fetchall())
+        if not cur.nextset():
+            break
+    sql_actors = {r.ActorID for r in sets[3]}
+    covered = {r[0] for r in cur.execute("SELECT TechniqueID FROM dbo.fn_EffectiveCoverage() WHERE Level > 0;").fetchall()}
+    by_actor = {}
+    for a, t in cur.execute("SELECT ActorID, TechniqueID FROM dbo.ActorTechnique;").fetchall():
+        by_actor.setdefault(a, set()).add(t)
+    assert sql_actors == {a for a, ts in by_actor.items() if ts <= covered}

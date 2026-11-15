@@ -2,7 +2,7 @@
 {% block content %}
 <div class="page-head">
   <div><h1>MITRE ATT&amp;CK</h1><p>Enterprise ATT&amp;CK taktikleri ve teknikleri; hangi aktör, kampanya ve zararlının hangi tekniği kullandığı.</p></div>
-  <div class="seg" role="group" aria-label="Görünüm" id="view"><button type="button" data-v="list" aria-pressed="true">Teknik listesi</button><button type="button" data-v="matrix">Matris</button></div>
+  <div class="seg" role="group" aria-label="Görünüm" id="view"><button type="button" data-v="list" aria-pressed="true">Teknik listesi</button><button type="button" data-v="matrix">Matris</button><button type="button" data-v="coverage">Kapsama</button></div>
 </div>
 
 <section aria-label="Taktikler"><div class="tactics" id="tactics"></div></section>
@@ -16,6 +16,24 @@
   <div class="field"><span>&nbsp;</span><label class="check"><input type="checkbox" name="subtechniques" id="subtechniques" value="true">Alt teknikleri de listele</label></div>
   <div class="field" style="display:flex;flex-direction:row;gap:8px"><button class="btn primary" type="submit"><i data-lucide="search"></i>Ara</button><button class="btn" type="reset">Temizle</button></div>
 </form>
+
+<section id="coverageView" hidden aria-label="Tespit kapsama haritası">
+  <p class="notice"><i data-lucide="shield-half"></i><span>Kurumunuzun her tekniği ne düzeyde tespit edebildiğini teknik detayında işaretleyin. Alt teknik işaretlenmemişse üst tekniğin düzeyini devralır. Kapsama kurumun kendi beyanıdır; başlangıçta hiçbir teknik işaretli değildir.</span></p>
+  <section class="grid g-4" id="covKpis" style="margin-top:18px"></section>
+  <div class="grid g-main-side" style="margin-top:18px">
+    <article class="card flush"><div class="card-head"><div><h2>Öncelikli kör noktalar</h2><p>Tespit edemediğimiz ve en çok aktörün kullandığı teknikler</p></div></div><div id="covGaps"></div></article>
+    <article class="card"><h2>Aktöre göre kapsama</h2>
+      <div class="field" style="margin:10px 0"><label for="covActor">Aktör</label><select class="input" id="covActor"><option value="">Seçin</option></select></div>
+      <div id="covActorOut"><p class="faint" style="font-size:13px">Bir aktör seçin: tekniklerinin yüzde kaçını görebildiğiniz ve kör noktalarınız listelenir.</p></div></article>
+  </div>
+  <div class="grid g-2" style="margin-top:18px">
+    <article class="card"><h2>Taktik bazında kapsama</h2><div class="bars" id="covTactics" style="margin-top:12px"></div></article>
+    <article class="card"><h2>En zayıf kapsadığımız aktörler</h2><ul class="list" id="covWeak" style="margin-top:10px"></ul>
+      <h3 style="margin-top:16px">Tüm tekniklerini tespit edebildiğimiz aktörler</h3>
+      <p class="faint" style="font-size:12px">İlişkisel bölme: kullandığı her tekniği en az kısmi tespit ettiğimiz aktörler (çift NOT EXISTS)</p>
+      <div id="covFull" style="margin-top:8px"></div></article>
+  </div>
+</section>
 
 <div class="split no-panel" id="split">
   <section class="card flush" aria-label="Teknikler">

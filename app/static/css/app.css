@@ -269,6 +269,12 @@ a.chip:hover { border-color: var(--purple); text-decoration: none; }
   background: color-mix(in srgb, var(--purple) calc(var(--heat, 0) * 55%), var(--card)); color: var(--text); cursor: pointer; }
 .matrix .cell.hl { border-color: var(--cyan); box-shadow: inset 3px 0 0 var(--cyan); }
 .matrix .cell small { color: var(--text-2); font-family: var(--mono); }
+.matrix .cell[data-cov="2"] { box-shadow: inset 0 -3px 0 var(--low); }
+.matrix .cell[data-cov="1"] { box-shadow: inset 0 -3px 0 var(--medium); }
+.matrix .cell.hl[data-cov="2"] { box-shadow: inset 3px 0 0 var(--cyan), inset 0 -3px 0 var(--low); }
+.matrix .cell.hl[data-cov="1"] { box-shadow: inset 3px 0 0 var(--cyan), inset 0 -3px 0 var(--medium); }
+.cov-pill { display: inline-flex; align-items: center; gap: 6px; }
+.cov-2 { color: var(--low); } .cov-1 { color: var(--medium); } .cov-0 { color: var(--critical); }
 
 /* ---------- Diğer ---------- */
 .timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
