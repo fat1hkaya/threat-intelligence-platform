@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Arama</h1><p>Ad, takma ad, kimlik ve IOC eşleşmeleri ile aktör, zararlı, kampanya ve teknik açıklamalarında ve ilişki kanıtlarında tam metin arama.</p></div>
+</div>
+<form class="card filters" id="sForm" role="search" aria-label="Arama">
+  <div class="field wide"><label for="sq">Aranacak ifade</label><input class="input" id="sq" name="q" type="search" minlength="2" required placeholder="ör. spearphishing government, ransomware healthcare, APT29, T1059"></div>
+  <div class="field" style="display:flex;flex-direction:row;gap:8px"><button class="btn primary" type="submit"><i data-lucide="search"></i>Ara</button></div>
+</form>
+<div id="sOut"></div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/search.js?v={{ v }}"></script>{% endblock %}

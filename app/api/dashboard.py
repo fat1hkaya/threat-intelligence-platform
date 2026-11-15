@@ -52,23 +52,9 @@ def dashboard_summary(days: int = Query(30, ge=7, le=180), db: Db = Depends(get_
             (SELECT COUNT(*) FROM dbo.Technique)                                         AS Techniques,
             (SELECT ISNULL(SUM(Quantity), 0) FROM dbo.Sighting WHERE SightedAt >= DATEADD(DAY, -7, @now)) AS Sightings7d;
         """, (days,))
-    by_severity = db.query(
-        """
-        SELECT s.Code, s.Name, COUNT(i.IndicatorID) AS Total
-        FROM dbo.SeverityLevel AS s
-        LEFT JOIN dbo.Indicator AS i ON i.SeverityID = s.SeverityID AND i.Status = 'active'
-        GROUP BY s.SeverityID, s.Code, s.Name
-        ORDER BY s.SeverityID DESC;
-        """)
-    by_type = db.query(
-        """
-        SELECT t.Code, t.Name, COUNT(i.IndicatorID) AS Total
-        FROM dbo.IndicatorType AS t
-        LEFT JOIN dbo.Indicator AS i ON i.TypeID = t.TypeID AND i.Status = 'active'
-        GROUP BY t.TypeID, t.Code, t.Name
-        HAVING COUNT(i.IndicatorID) > 0
-        ORDER BY Total DESC;
-        """)
+    # Sayaçlar ve dağılımlar indexed view'dan (vw_IndicatorCounts, WITH NOEXPAND): satır taramadan, önceden toplanmış
+    fast, by_severity, by_type = (db.query_sets("EXEC dbo.sp_IndicatorCountsFast;") + [[{}], [], []])[:3]
+    kpi.update({k: v for k, v in (fast[0] if fast else {}).items() if v is not None})
     trend = db.query(
         """
         -- Son N gün: özyinelemeli CTE ile takvim üretilir, kayıt olmayan günler 0 görünür

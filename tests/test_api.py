@@ -461,3 +461,27 @@ def test_temporal_versions_and_as_of(analyst, unique):
         assert before["state"] is None                                              # henüz yoktu
     finally:
         analyst.delete(f"/api/iocs/{iid}")
+
+
+# ------------------------------------------------------------------ arama, indexed view, Query Store
+def test_full_text_search(viewer):
+    d = viewer.get("/api/search/full", params={"q": "spearphishing government"}).json()
+    assert d["engine"] in ("fulltext", "like")
+    if d["engine"] == "fulltext":
+        assert d["entities"] and d["evidence"] and d["evidence"][0]["Summary"]
+
+
+def test_dashboard_counts_from_indexed_view_match_base_table(admin, conn):
+    k = admin.get("/api/dashboard/summary").json()["kpi"]
+    cur = conn.cursor()
+    assert k["TotalIOCs"] == cur.execute("SELECT COUNT(*) FROM dbo.Indicator;").fetchone()[0]
+    assert k["ActiveIOCs"] == cur.execute("SELECT COUNT(*) FROM dbo.Indicator WHERE Status = 'active';").fetchone()[0]
+    plan_uses_view = cur.execute(
+        "SELECT COUNT(*) FROM sys.dm_db_index_usage_stats WHERE database_id = DB_ID() AND object_id = OBJECT_ID('dbo.vw_IndicatorCounts');").fetchone()[0]
+    assert plan_uses_view >= 1
+
+
+def test_query_store_admin_only(admin, analyst):
+    assert analyst.get("/api/system/queries").status_code == 403
+    rows = admin.get("/api/system/queries").json()
+    assert isinstance(rows, list)

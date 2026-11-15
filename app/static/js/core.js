@@ -196,7 +196,7 @@
       else if (e.key === 'Enter') {
         e.preventDefault();
         if (idx >= 0 && items[idx]) location.href = entityUrl(items[idx].EntityType, items[idx].EntityID);
-        else if (input.value.trim()) location.href = '/iocs?q=' + encodeURIComponent(input.value.trim());
+        else if (input.value.trim()) location.href = '/search?q=' + encodeURIComponent(input.value.trim());
       }
     });
     document.addEventListener('click', (e) => { if (!e.target.closest('.omni')) close(); });

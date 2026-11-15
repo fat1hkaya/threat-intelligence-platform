@@ -6,13 +6,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import config
-from .api import admin, attack, auth, coverage, dashboard, entities, graph, hunt, iocs
+from .api import admin, attack, auth, coverage, dashboard, entities, graph, hunt, iocs, search
 from .security import page_user
 
 app = FastAPI(title="ThreatLens API", version="1.0.0", docs_url="/api/docs", openapi_url="/api/openapi.json",
               description="ThreatLens Tehdit İstihbaratı Platformu - MSSQL Graph + FastAPI (ORM yok, parametreli T-SQL)")
 
-for module in (auth, dashboard, iocs, hunt, graph, entities, attack, coverage, admin):
+for module in (auth, dashboard, search, iocs, hunt, graph, entities, attack, coverage, admin):
     app.include_router(module.router)
 
 app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
@@ -74,6 +74,11 @@ def iocs_page(request: Request):
 @app.get("/iocs/{indicator_id}", include_in_schema=False)
 def ioc_detail_page(request: Request, indicator_id: int):
     return render(request, "iocs", "ioc_detail.html", indicator_id=indicator_id)
+
+
+@app.get("/search", include_in_schema=False)
+def search_page(request: Request):
+    return render(request, "search", "search.html", title="Arama")
 
 
 @app.get("/hunt", include_in_schema=False)

@@ -104,6 +104,17 @@
     box.addEventListener('click', async (e) => { const b = e.target.closest('[data-active]'); if (!b) return;
       try { await api(`/api/users/${b.dataset.active}`, { method: 'PATCH', body: { isActive: b.dataset.v === '1' } }); toast('Kullanıcı durumu güncellendi.'); users(); } catch (err) { toast(err.message, 'err'); } });
     users().catch((e) => toast(e.message, 'err')); system().catch((e) => toast(e.message, 'err')); retention().catch((e) => toast(e.message, 'err'));
+    if (can('admin')) api('/api/system/queries').then((rows) => {
+      document.getElementById('qsCard').hidden = false;
+      document.getElementById('qsTbl').innerHTML = rows.length ? table([
+        { label: 'Sorgu', primary: true, render: (q) => `<span class="mono" style="font-size:11.5px;display:block;max-width:560px;white-space:normal">${esc(q.QueryText)}</span>` },
+        { label: 'Çalışma', num: true, render: (q) => fmtN(q.Executions) },
+        { label: 'Ort. ms', num: true, render: (q) => Number(q.AvgMs).toLocaleString('tr-TR') },
+        { label: 'En çok ms', num: true, render: (q) => Number(q.MaxMs).toLocaleString('tr-TR') },
+        { label: 'Ort. okuma', num: true, render: (q) => fmtN(Math.round(q.AvgReads)) },
+        { label: 'Plan', num: true, render: (q) => q.Plans },
+      ], rows, { caption: 'Query Store en pahalı sorgular' }) : empty('Query Store henüz veri toplamadı.');
+    }).catch((e) => toast(e.message, 'err'));
     document.getElementById('retention').addEventListener('change', async (e) => {
       const i = e.target.closest('[data-policy]'); if (!i) return;
       try { await api(`/api/retention/${i.dataset.policy}`, { method: 'PUT', body: { lifetimeDays: +i.value } }); toast("Süre güncellendi. Yeni içe aktarmalara ve yeniden görülen IOC'lere uygulanır."); }

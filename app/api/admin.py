@@ -316,6 +316,12 @@ def system_status(db: Db = Depends(get_db)):
                              "odbcDriver": config.pick_driver(), "dbServer": config.DB_SERVER}}
 
 
+@router.get("/system/queries", dependencies=[Depends(require_admin)])
+def top_queries(db: Db = Depends(get_db)):
+    """Query Store: ortalama süreye göre en pahalı sorgular (sp_TopQueries; VIEW DATABASE STATE)."""
+    return db.query("EXEC dbo.sp_TopQueries @Top = ?;", (10,))
+
+
 # ============================== Yaşam döngüsü ===========================
 
 @router.get("/retention")

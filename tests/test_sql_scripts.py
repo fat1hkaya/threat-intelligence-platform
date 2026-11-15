@@ -204,3 +204,15 @@ def test_import_matches_family_by_name_key(analyst, unique):
         assert analyst.get("/api/malware", params={"q": "quasar", "size": 20}).json()["total"] == before
     finally:
         analyst.delete(f"/api/iocs/{hit['IndicatorID']}")
+
+
+def test_demo8_advanced_features(conn):
+    sets = run_script(conn, ROOT / "database/demos/demo8_advanced_features.sql")
+    like = sets[0][0][0]
+    assert like > 0
+    by_status_base = sorted(tuple(r) for r in next(s for s in sets if s and len(s[0]) == 2 and isinstance(s[0][0], str)))
+    assert by_status_base                                  # indexed view ve tablo aynı dağılımı vermeli (aşağıda)
+    cur = conn.cursor()
+    base = sorted(tuple(r) for r in cur.execute("SELECT Status, COUNT(*) FROM dbo.Indicator GROUP BY Status;").fetchall())
+    view = sorted(tuple(r) for r in cur.execute("SELECT Status, SUM(Total) FROM dbo.vw_IndicatorCounts WITH (NOEXPAND) GROUP BY Status;").fetchall())
+    assert base == view
