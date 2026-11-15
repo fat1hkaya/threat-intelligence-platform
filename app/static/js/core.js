@@ -212,6 +212,20 @@
     const ub = document.getElementById('userBtn'), um = document.getElementById('userMenu');
     ub?.addEventListener('click', (e) => { e.stopPropagation(); um.hidden = !um.hidden; ub.setAttribute('aria-expanded', String(!um.hidden)); });
     document.addEventListener('click', (e) => { if (um && !e.target.closest('#userMenu')) { um.hidden = true; ub?.setAttribute('aria-expanded', 'false'); } });
+    document.getElementById('pwBtn')?.addEventListener('click', () => {
+      const d = dialog(`<form><div class="dlg-head"><h2>Parolamı değiştir</h2><button type="button" class="btn icon ghost" data-dismiss aria-label="Kapat"><i data-lucide="x"></i></button></div>
+        <div class="field"><label for="pw-c">Mevcut parola</label><input class="input" id="pw-c" name="current" type="password" autocomplete="current-password" required></div>
+        <div class="field"><label for="pw-n">Yeni parola (en az 10 karakter, harf ve rakam/sembol)</label><input class="input" id="pw-n" name="new" type="password" autocomplete="new-password" minlength="10" required></div>
+        <div class="field"><label for="pw-r">Yeni parola (tekrar)</label><input class="input" id="pw-r" name="repeat" type="password" autocomplete="new-password" minlength="10" required></div>
+        <p class="err" role="alert"></p><div class="dlg-foot"><button type="button" class="btn" data-dismiss>Vazgeç</button><button class="btn primary">Parolayı değiştir</button></div></form>`);
+      d.querySelector('form').onsubmit = async (e) => {
+        e.preventDefault(); const f = formData(e.target), err = e.target.querySelector('.err');
+        if (f.new !== f.repeat) { err.textContent = 'Yeni parolalar eşleşmiyor.'; return; }
+        try { const r = await api('/api/auth/password', { method: 'POST', body: { current: f.current, new: f.new } });
+          d.close(); toast(`Parola değiştirildi.${r.endedSessions ? ` Diğer ${r.endedSessions} oturum kapatıldı.` : ''}`); }
+        catch (x) { err.textContent = x.message; }
+      };
+    });
     document.getElementById('logoutBtn')?.addEventListener('click', async () => { await api('/api/auth/logout', { method: 'POST' }).catch(() => {}); location.href = '/login'; });
     document.getElementById('sqlBtn')?.addEventListener('click', openSql);
     document.getElementById('sqlClose')?.addEventListener('click', closeSql);

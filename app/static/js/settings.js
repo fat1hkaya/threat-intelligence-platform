@@ -26,7 +26,8 @@
       { label: 'Durum', render: (u) => u.IsActive ? '<span class="badge b-ok">Aktif</span>' : '<span class="badge b-muted">Devre dışı</span>' },
       { label: 'Son giriş', render: (u) => u.LastLoginAt ? fmtDT(u.LastLoginAt) : '<span class="faint">Hiç</span>' },
       { label: 'Denetim olayı', num: true, render: (u) => fmtN(u.AuditCount) },
-      { label: '', render: (u) => u.UserID === TL.user.UserID ? '<span class="faint" style="font-size:12px">Siz</span>' : `<button class="btn sm" data-active="${u.UserID}" data-v="${u.IsActive ? 0 : 1}">${u.IsActive ? 'Devre dışı bırak' : 'Etkinleştir'}</button>` },
+      { label: '', render: (u) => u.UserID === TL.user.UserID ? '<span class="faint" style="font-size:12px">Siz</span>' : `<button class="btn sm" data-active="${u.UserID}" data-v="${u.IsActive ? 0 : 1}">${u.IsActive ? 'Devre dışı bırak' : 'Etkinleştir'}</button>
+          <button class="btn sm" data-reset="${u.UserID}" data-name="${esc(u.Username)}">Parola sıfırla</button>` },
     ], rows, { caption: 'Kullanıcılar' });
     icons();
   }
@@ -91,6 +92,15 @@
     const box = document.getElementById('users');
     box.addEventListener('change', async (e) => { const s = e.target.closest('[data-role]'); if (!s) return;
       try { await api(`/api/users/${s.dataset.role}`, { method: 'PATCH', body: { role: s.value } }); toast('Rol güncellendi.'); } catch (err) { toast(err.message, 'err'); users(); } });
+    box.addEventListener('click', (e) => { const b = e.target.closest('[data-reset]'); if (!b) return;
+      const d = dialog(`<form><div class="dlg-head"><h2>Parola sıfırla: @${esc(b.dataset.name)}</h2><button type="button" class="btn icon ghost" data-dismiss aria-label="Kapat"><i data-lucide="x"></i></button></div>
+        <div class="field"><label for="rs-p">Geçici parola (en az 10 karakter)</label><input class="input" id="rs-p" name="password" type="password" minlength="10" required autocomplete="new-password"></div>
+        <p class="faint" style="font-size:12.5px">Kullanıcının tüm oturumları kapatılır; yeni parolayla giriş yapıp Parolamı değiştir menüsünden değiştirmesi önerilir.</p>
+        <p class="err" role="alert"></p><div class="dlg-foot"><button type="button" class="btn" data-dismiss>Vazgeç</button><button class="btn primary">Parolayı sıfırla</button></div></form>`);
+      d.querySelector('form').onsubmit = async (ev) => { ev.preventDefault();
+        try { await api(`/api/users/${b.dataset.reset}`, { method: 'PATCH', body: { password: formData(ev.target).password } }); d.close(); toast('Parola sıfırlandı, oturumları kapatıldı.'); }
+        catch (x) { ev.target.querySelector('.err').textContent = x.message; } };
+    });
     box.addEventListener('click', async (e) => { const b = e.target.closest('[data-active]'); if (!b) return;
       try { await api(`/api/users/${b.dataset.active}`, { method: 'PATCH', body: { isActive: b.dataset.v === '1' } }); toast('Kullanıcı durumu güncellendi.'); users(); } catch (err) { toast(err.message, 'err'); } });
     users().catch((e) => toast(e.message, 'err')); system().catch((e) => toast(e.message, 'err')); retention().catch((e) => toast(e.message, 'err'));

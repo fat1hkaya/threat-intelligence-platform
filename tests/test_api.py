@@ -306,3 +306,53 @@ def test_create_entities_on_tables_with_triggers(analyst, admin, unique):
     analyst.delete(f"/api/malware/{mal.json()['MalwareID']}")
     analyst.delete(f"/api/vulnerabilities/{vuln.json()['VulnerabilityID']}")
     admin.patch(f"/api/users/{user.json()['UserID']}", json={"isActive": False})
+
+
+# ------------------------------------------------------------------ kimlik doğrulama güvenliği
+def _fresh_client():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    return TestClient(app)
+
+
+def test_session_token_stored_only_as_hash(conn):
+    import hashlib
+    c = _fresh_client()
+    assert c.post("/api/auth/login", json={"username": "izleyici", "password": "ThreatLens2026!"}).status_code == 200
+    raw = c.cookies.get("tl_session")
+    cur = conn.cursor()
+    assert cur.execute("SELECT COUNT(*) FROM dbo.UserSession WHERE Token = ?;", raw).fetchone()[0] == 0
+    assert cur.execute("SELECT COUNT(*) FROM dbo.UserSession WHERE Token = ?;", hashlib.sha256(raw.encode()).hexdigest()).fetchone()[0] == 1
+    c.post("/api/auth/logout")
+
+
+def test_login_lockout_after_five_failures(unique):
+    c = _fresh_client()
+    name = f"pytest-lock-{unique}"
+    codes = [c.post("/api/auth/login", json={"username": name, "password": "yanlis"}).status_code for _ in range(6)]
+    assert codes[:5] == [401] * 5 and codes[5] == 429
+
+
+def test_password_change_and_admin_reset(admin, unique):
+    uname = f"pw{unique}"
+    uid = admin.post("/api/users", json={"username": uname, "fullName": "Parola Testi", "role": "viewer", "password": "Ilk-Parola-123"}).json()["UserID"]
+    try:
+        c = _fresh_client()
+        assert c.post("/api/auth/login", json={"username": uname, "password": "Ilk-Parola-123"}).status_code == 200
+        assert c.post("/api/auth/password", json={"current": "yanlis-parola", "new": "Yeni-Parola-456"}).status_code == 400
+        assert c.post("/api/auth/password", json={"current": "Ilk-Parola-123", "new": "kisa"}).status_code == 422
+        assert c.post("/api/auth/password", json={"current": "Ilk-Parola-123", "new": "Yeni-Parola-456"}).status_code == 200
+        c2 = _fresh_client()
+        assert c2.post("/api/auth/login", json={"username": uname, "password": "Ilk-Parola-123"}).status_code == 401
+        assert c2.post("/api/auth/login", json={"username": uname, "password": "Yeni-Parola-456"}).status_code == 200
+        assert admin.patch(f"/api/users/{uid}", json={"password": "Sifirlanan-789"}).status_code == 200
+        assert c2.get("/api/auth/me").status_code == 401                       # sıfırlama tüm oturumları kapatır
+        assert _fresh_client().post("/api/auth/login", json={"username": uname, "password": "Sifirlanan-789"}).status_code == 200
+    finally:
+        admin.patch(f"/api/users/{uid}", json={"isActive": False})
+
+
+def test_login_attempts_visible_only_to_admin(admin, analyst):
+    assert analyst.get("/api/audit-logs/logins").status_code == 403
+    d = admin.get("/api/audit-logs/logins").json()
+    assert d["items"] and d["totals"]["Total"] >= len(d["items"])

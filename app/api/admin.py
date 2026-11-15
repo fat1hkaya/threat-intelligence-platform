@@ -177,6 +177,13 @@ def audit_logs(table: str = "", action: str = "", user: int | None = None, recor
     return {"items": items, "total": total, "page": page, "size": size}
 
 
+@router.get("/audit-logs/logins", dependencies=[Depends(require_admin)])
+def login_attempts(db: Db = Depends(get_db)):
+    """Giriş denemeleri (yalnızca yönetici; tabloya doğrudan erişim kapalı, sp_LoginAttempts üzerinden)."""
+    items, totals = (db.query_sets("EXEC dbo.sp_LoginAttempts @Top = ?;", (50,)) + [[], [{}]])[:2]
+    return {"items": items, "totals": totals[0] if totals else {}}
+
+
 @router.get("/audit-logs/stats")
 def audit_stats(db: Db = Depends(get_db)):
     totals = db.one(
@@ -245,6 +252,7 @@ class UserUpdate(BaseModel):
     role: str | None = None
     isActive: bool | None = None
     fullName: str | None = Field(None, min_length=2, max_length=100)
+    password: str | None = Field(None, min_length=10, max_length=200, description="Yönetici parola sıfırlaması")
 
 
 @router.patch("/users/{user_id}")
@@ -263,6 +271,11 @@ def update_user(user_id: int, body: UserUpdate, me: dict = Depends(require_admin
             db.execute("UPDATE dbo.AppUser SET IsActive = ? WHERE UserID = ?;", (int(body.isActive), user_id))
             if not body.isActive:
                 db.execute("EXEC dbo.sp_EndUserSessions @UserID = ?;", (user_id,))
+        if body.password:
+            # tip_admin AppUser'a UPDATE yetkisine sahiptir; özet okunmaz, yalnızca yazılır
+            db.execute("UPDATE dbo.AppUser SET PasswordHash = ? WHERE UserID = ?;", (hash_password(body.password), user_id))
+            db.statements[-1]["params"][0] = "<parola özeti>"
+            db.execute("EXEC dbo.sp_EndUserSessions @UserID = ?;", (user_id,))
     return {"ok": True}
 
 

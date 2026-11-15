@@ -17,6 +17,11 @@ def hash_password(password: str) -> str:
     return f"pbkdf2_sha256${_ITERATIONS}${salt}${digest}"
 
 
+def token_hash(token: str) -> str:
+    """Oturum anahtarının veritabanında saklanan biçimi (SHA-256). Çerezdeki ham anahtar veritabanına yazılmaz."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
 def verify_password(password: str, stored: str) -> bool:
     try:
         _, iterations, salt, digest = stored.split("$")
@@ -30,7 +35,7 @@ def current_user(request: Request, db: Db = Depends(get_db)) -> dict:
     token = request.cookies.get(COOKIE)
     user = None
     if token:
-        user = db.one(_USER_SQL, (token,), trace=False)
+        user = db.one(_USER_SQL, (token_hash(token),), trace=False)
     if not user:
         raise HTTPException(401, "Oturum açmanız gerekiyor.")
     db.activate_role(user["Role"])          # bundan sonraki tüm sorgular rolün GRANT/DENY sınırları içinde
@@ -70,6 +75,6 @@ def page_user(request: Request) -> dict | None:
     except Exception as exc:  # pyodbc.Error
         return {"_db_error": str(exc)}
     try:
-        return db.one(_USER_SQL, (token,), trace=False)
+        return db.one(_USER_SQL, (token_hash(token),), trace=False)
     finally:
         db.close()
