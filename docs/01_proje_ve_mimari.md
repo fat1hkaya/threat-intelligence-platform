@@ -121,6 +121,8 @@ Kurulum sırasında karşılaşılan iki pratik sorun ve çözümü:
 | Yordam | `sp_SaveIndicator`, `sp_BulkImportIndicators`, `sp_StartImportJob`, `sp_FinishImportJob`, `sp_AddSighting`, `sp_ExpireIndicators`, `sp_GlobalSearch`, `sp_GetNeighborhood`, `sp_AttackMatrix`, `sp_ImportAttackBundle`, `sp_SyncGraph`, `sp_CheckGraphConsistency`, `sp_IndicatorKillChain`, `sp_ActorShortestPath`, `sp_RefreshActorSimilarity` |
 | Tetikleyici | Denetim: `trg_Indicator/ThreatActor/Malware/Campaign/AppUser_Audit`. Koruma: `trg_AuditLog_Protect` (INSTEAD OF). İş kuralı: `trg_Sighting_AfterInsert`, `trg_Technique_Hierarchy`. Graf eşleme: 15 tetikleyici. |
 
+Migration'larla (`database/migrations/10–20`) eklenen nesnelerin tam listesi canlı sistemden üretilen [veritabani_nesneleri.md](veritabani_nesneleri.md) dosyasındadır; özet için §10'a bakın.
+
 Transaction örnekleri:
 - `sp_SaveIndicator`: IOC + etiketler tek transaction. Eski RowVer ile güncelleme 50009 hatası verir.
 - `sp_BulkImportIndicators`: yığın başına transaction. Katı modda ROLLBACK yapılır; hata kayıtları ROLLBACK'ten **sonra** yazılır, çünkü tablo değişkeni geri alınmaz.
@@ -129,6 +131,8 @@ Transaction örnekleri:
 ## 7. Güvenlik
 
 - **Uygulama katmanı:** `require_analyst`, `require_admin` bağımlılıkları. İzleyici yazma denemesinde 403 alır.
+- **Application Role:** oturum doğrulandıktan sonra bağlantı `sp_setapprole` ile kullanıcının rolüne (`app_viewer`, `app_analyst`, `app_admin`) indirgenir. Uygulama katmanındaki bir hata bile rolün GRANT/DENY sınırını aşamaz. Rol parolaları `.env` dosyasındaki `TL_APPROLE_SECRET` sırrından türetilir. `sp_setapprole` her çağrıda yaklaşık 150 ms sürdüğü için rol başına ayrı bağlantı havuzu tutulur; ODBC havuzu kapalıdır, çünkü rol etkin bağlantıyı bozar.
+- **Oturum ve giriş:** oturum belirteci veritabanında SHA-256 özetiyle saklanır (sızan tablo belirteç vermez). `LoginAttempt` + `fn_LoginLock`: 15 dakikada 5 hatalı deneme hesabı kilitler (429). Parola değişince diğer oturumlar kapanır.
 - **Veritabanı katmanı** (`08_security.sql`):
   - `tip_reader` şemayı okur; `UserSession` ve `AppUser.PasswordHash` kolonu için DENY vardır.
   - `tip_analyst`, IOC ve ilişki tablolarına yazabilir ve içe aktarma yordamlarını çalıştırabilir.
@@ -146,10 +150,34 @@ Transaction örnekleri:
 | abuse.ch ThreatFox / MalwareBazaar / URLhaus | B | IOC, hash, URL | Auth-Key gerekir |
 | abuse.ch Feodo Tracker | B | Botnet C2 IP'leri | Anahtarsız, yüklü |
 | CISA KEV | A | İstismar edilen zafiyetler | Anahtarsız, yüklü (1781 zafiyet) |
+| Malpedia (Fraunhofer FKIE) | B | Zararlı ailesi diğer adları ve aile → aktör atıfları (CC BY-SA 4.0) | Anahtarsız, yüklü |
+| iptoasn.com ip2asn-v4 | B | IPv4 aralığı → ASN ve ülke (Public Domain, PDDL v1.0) | Anahtarsız, yönetici yükler |
 | Analist girişi | B | Elle veya dosyayla eklenenler | |
+
+USOM'un zararlı bağlantı listesi değerlendirildi ama eklenmedi: `.txt` paylaşımı 1 Haziran 2026'da sona erdi; yerine gösterilen siberguvenlik.gov.tr API'sinin belgesi ve kullanım koşulları yayımlanmadı.
+
+Beslemeler Windows Görev Zamanlayıcı ile 6 saatte bir senkronize edilir (`scripts/sync_feeds.cmd`).
 
 ## 9. Performans
 
 - Kapsayan indeksler (`IX_Indicator_LastSeen INCLUDE …`), filtreli indeks (`WHERE Status = 'active' AND ExpiresAt IS NOT NULL`), ara tablolarda ters yön indeksleri ve filtreli UNIQUE (`ExternalID`) kullanılır.
 - Demo 5'te 500.000 satırlık tabloda indekssiz ve indeksli arama karşılaştırılır (`SET STATISTICS IO/TIME`). Öndeki joker karakter (`LIKE '%…'`) indeksin kullanılamadığı durumu gösterir.
 - Tipik API yanıt süreleri (yerel, ATT&CK verisiyle, Kasım 2026 ölçümü): liste ekranları 10–35 ms, teknik listesi ~80–330 ms, graf komşuluğu ~30 ms.
+
+## 10. İleri özellikler (migration 10–20)
+
+| # | Özellik | Veritabanı tarafı | Neden ilginç |
+|---|---|---|---|
+| 10–11 | IOC yaşam döngüsü | `RetentionPolicy` + `fn_LifetimeDays` (satır içi TVF), `sp_ExpireIndicators`, `sp_GraphMaintenance`, `MaintenanceRun`; SQL Server Agent işleri (her gece 02:00, pazar 03:00) | Süresi dolan IOC'ler sunucu içinde, uygulamadan bağımsız olarak kapanır; görülme tetikleyicisi süreyi uzatır |
+| 12 | Zararlı ailesi adı | `fn_NameKey` (SCHEMABINDING, kalıcı hesaplanmış sütun + indeks), `fn_FindMalware`, `sp_MergeMalware`, `sp_ImportMalpedia` | "Cobalt Strike", "CobaltStrike", "cobalt_strike" tek aileye düşer; birleştirmede ilişkiler ve graf kenarları taşınır |
+| 13 | Kimlik doğrulama | `LoginAttempt`, `fn_LoginLock`, `sp_EndUserSessions`, Application Role | Bkz. §7 |
+| 3 | Açıklanabilir risk skoru | `fn_RiskBreakdown` (satır içi TVF): bileşenleri ayrı sütunlar; `fn_RiskScore` ondan türer | Skor sorgu planına gömülür (skaler UDF maliyeti yok), arayüz her bileşeni gösterir |
+| 14 | Log avı (retro-hunt) | `HuntRun`, `HuntMatch`, `sp_RetroHunt` | Binlerce aday tek set tabanlı sorguda birebir / URL ana bilgisayarı / üst domain olarak eşlenir |
+| 15 | Tespit kapsamı | `DetectionCoverage`, `fn_EffectiveCoverage` (üst teknikten devralma), `sp_ActorCoverage`, `sp_CoverageOverview` | **İlişkisel bölme** (çift `NOT EXISTS`): tüm teknikleri kapsanan aktörler |
+| 16 | Temporal tablolar | `Indicator`, `MalwareIndicator` (`SYSTEM_VERSIONING`, 90 gün, gizli dönem sütunları) | `FOR SYSTEM_TIME AS OF`: "bu IOC geçen salı ne durumdaydı?" |
+| 17 | Performans | `vw_IndicatorCounts` indexed view (`WITH NOEXPAND`; Standard sürüm otomatik eşlemez), `AuditLog` columnstore, Query Store + `sp_TopQueries` | Gösterge paneli sayaçları birkaç önceden toplanmış satırdan okunur |
+| 18 | Tam metin arama | `FREETEXTTABLE` / `CONTAINS`, `sp_TextSearch`; kurulu değilse LIKE | Kelime biçimleri ve alaka sıralaması |
+| 19 | Vakalar | `Investigation`, `InvestigationNote`, `InvestigationNode` (AS NODE), `InvestigationIncludes` (AS EDGE, 6 bağlantı türü, ON DELETE CASCADE), `vw_InvestigationItem` (MATCH) | Çok biçimli ilişki ("vaka herhangi bir varlığı içerebilir") yabancı anahtarsız EntityType/EntityID anti-deseni yerine tür güvenli tek kenar tablosuyla çözülür |
+| 20 | Ağ zenginleştirme | `AutonomousSystem`, `IpRange`, `IndicatorNetwork` (1:1), `fn_Ipv4ToBigint`, `sp_EnrichNetwork`, `trg_Indicator_Network`, `sp_InfrastructureOverlap` | Aralık araması `BETWEEN` yerine `TOP (1) ... WHERE StartIP <= ip ORDER BY StartIP DESC` ile tek indeks araması; /24 kümeleri paylaşılan altyapıyı gösterir |
+
+Dışa aktarma (`app/api/exports.py`): STIX 2.1 paketleri (IOC, aktör, vaka = `grouping`, notlar = `note`, graf kenarları = `relationship`, TLP işaretlemesi, belirlenimci `uuid5` kimlikleri) ve MITRE ATT&CK Navigator katmanları (aktör teknikleri, kapsama renkleri).

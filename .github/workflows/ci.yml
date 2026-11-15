@@ -1,0 +1,85 @@
+# Sürekli tümleştirme: her push/PR'da gerçek bir SQL Server (Linux kapsayıcısı) üzerinde
+# veritabanı kurulur (tüm şema, graf, migration'lar, ATT&CK anlık görüntüsü) ve pytest çalışır.
+# Dış besleme (abuse.ch, KEV, Malpedia) indirilmez: testler kendi verisini oluşturup siler.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  js-syntax:
+    name: JavaScript sözdizimi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: node --check
+        run: |
+          set -e
+          for f in app/static/js/*.js; do node --check "$f"; echo "ok  $f"; done
+
+  test:
+    name: Veritabanı + API testleri
+    runs-on: ubuntu-latest
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2025-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_PID: Developer
+          MSSQL_AGENT_ENABLED: "true"
+          # Yalnızca bu iş için açılıp atılan kapsayıcının parolası; gerçek bir sır değildir.
+          MSSQL_SA_PASSWORD: "Tl-CI-Passw0rd!"
+        ports:
+          - 1433:1433
+    env:
+      TL_DB_SERVER: "localhost,1433"
+      TL_DB_USER: sa
+      TL_DB_PASSWORD: "Tl-CI-Passw0rd!"
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: ODBC Driver 18
+        run: |
+          if odbcinst -q -d -n "ODBC Driver 18 for SQL Server" >/dev/null 2>&1; then
+            echo "ODBC Driver 18 kurulu"
+          else
+            curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+            curl -fsSL "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+            sudo apt-get update
+            sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
+          fi
+      - name: Python bağımlılıkları
+        run: pip install -r requirements.txt
+      - name: Application Role sırrı (her çalıştırmada rastgele)
+        run: echo "TL_APPROLE_SECRET=$(python -c 'import secrets; print(secrets.token_hex(24))')" >> "$GITHUB_ENV"
+      - name: SQL Server hazır olana kadar bekle
+        run: |
+          python - <<'PY'
+          import time, pyodbc
+          from app import config
+          for i in range(60):
+              try:
+                  pyodbc.connect(config.connection_string("master"), timeout=5).close()
+                  print("SQL Server hazır"); break
+              except pyodbc.Error as exc:
+                  print("bekleniyor:", str(exc)[:80]); time.sleep(3)
+          else:
+              raise SystemExit("SQL Server başlamadı")
+          PY
+      - name: Veritabanını kur
+        run: python scripts/setup_db.py --no-feeds
+      - name: pytest
+        run: python -m pytest -q

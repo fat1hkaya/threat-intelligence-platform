@@ -1,4 +1,32 @@
-# GÜNCEL DURUM — 15 Kasım 2026 (önce bunu okuyun)
+# SON DURUM — 15 Kasım 2026, geliştirme turu 2 (önce bunu okuyun)
+
+İkinci turda platform 12 adımda genişletildi. Her adım gerçek sunucuda test edildi, ayrı commit olarak GitHub'a gönderildi.
+
+| Adım | Ne eklendi | Ana dosyalar |
+|---|---|---|
+| 1 | IOC yaşam döngüsü: saklama politikası, süresi dolan IOC işi, bakım günlüğü | `migrations/10_lifecycle.sql`, Ayarlar |
+| 2 | SQL Server Agent işleri; Windows Görev Zamanlayıcı ile 6 saatte bir besleme senkronu | `11_agent_jobs.sql`, `scripts/sync_feeds.cmd` |
+| 3 | Zararlı ailesi ad anahtarı, Malpedia içe aktarma, aile birleştirme | `12_malware_names.sql`, `importers/malpedia.py` |
+| 4 | Kimlik doğrulama: Application Role, özetlenmiş oturum belirteci, giriş kilitleme, parola değişimi | `13_auth.sql`, `app/db.py`, `app/security.py` |
+| 5 | Açıklanabilir risk skoru (satır içi TVF) | `03_functions.sql`, IOC detayı |
+| 6 | Log avı (retro-hunt) | `14_hunt.sql`, `app/services/hunt.py`, `/hunt` |
+| 7 | Tespit kapsamı ve ilişkisel bölme | `15_coverage.sql`, ATT&CK kapsama görünümü |
+| 8 | Temporal tablolar, zaman yolculuğu | `16_temporal.sql` |
+| 9 | Tam metin arama, indexed view, columnstore, Query Store | `17_performance.sql`, `18_fulltext.sql`, `/search`, demo 8 |
+| 10 | Vaka çalışma alanı (SQL Graph kenarı), ortak bağlantı önerisi, graf vaka modu | `19_investigations.sql`, `app/api/cases.py`, `/cases` |
+| 11 | STIX 2.1 ve ATT&CK Navigator dışa aktarımı; IP → ASN/ülke zenginleştirme ve altyapı örtüşmesi | `app/api/exports.py`, `20_network.sql`, `importers/ip2asn.py`, `/infrastructure` |
+| 12 | GitHub Actions CI (SQL Server 2025 kapsayıcısı + pytest, JS sözdizimi), belgeler | `.github/workflows/ci.yml`, `README.md`, `docs/` |
+
+**Testler:** 133/133 geçti (yerelde).
+
+**Açık kalanlar:**
+1. **IP aralığı verisi yüklenmedi.** iptoasn.com verisi (Public Domain) indirilmeden ASN/ülke sütunları boş kalır; /24 kümeleri yine çalışır. Yüklemek için: `python -m importers ip2asn` ya da Veri Kaynakları → iptoasn.com → Senkronize et (yönetici).
+2. **USOM eklenmedi.** `.txt` listesi 1 Haziran 2026'da kapatıldı, yeni API'nin belgesi yok.
+3. Tespit kapsamı tablosu boş: kurum kendi beyanını girmeli; uydurma veri yüklenmez.
+4. Ekip işleri: draw.io Chen ER, normalizasyon raporu metni (26 Kasım), ekran görüntüleri.
+5. Tam metin arama Linux CI kapsayıcısında kurulu değil; CI LIKE yedeğini sınar.
+
+# ÖNCEKİ DURUM — 15 Kasım 2026, ilk tur
 
 **Proje çalışır durumda ve tamamlandı.** Aşağıdaki eski bölümler (§1–§11) tarihsel kayıttır; "yapılacak" diye geçen maddelerin hepsi bu oturumda yapıldı.
 

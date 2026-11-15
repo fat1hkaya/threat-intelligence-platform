@@ -6,13 +6,16 @@
 .venv\Scripts\python -m pytest -q
 ```
 
-Son sonuç: **81 test geçti, 0 başarısız**. Ortam: SQL Server 2025 Developer 17.0.1000.7, Python 3.14. Test, `setup_db.py --reset` ile sıfırdan kurulmuş veritabanında çalıştırıldı (15 Kasım 2026).
+Son sonuç: **133 test geçti, 0 başarısız**. Ortam: SQL Server 2025 Developer 17.0.1000.7, Python 3.14 (15 Kasım 2026). Aynı testler GitHub Actions'ta SQL Server 2025 Linux kapsayıcısında da çalışır (`.github/workflows/ci.yml`).
 
 | Dosya | Test | Doğrulanan |
 |---|---:|---|
 | `test_normalize.py` | 34 | IPv4/IPv6/domain/URL/hash/e-posta normalleştirme ve defang çözümü |
-| `test_api.py` | 35 | Giriş, 401/403, IOC yaşam döngüsü + denetim + graf düğümü, tekrar kaydı, hatalı değerler, RowVer eşzamanlılığı, SQL enjeksiyonu, görülme, katı/esnek içe aktarma, graf tutarlılığı, MATCH atfı, kenar kanıtı, SHORTEST_PATH, kanıtsız ilişkinin reddi, gösterge paneli sayılarının veritabanıyla eşitliği, 10 sayfanın açılması, SQL izi |
-| `test_sql_scripts.py` | 12 | Demo 1–5 ve 7 betikleri, örnek sorgular, yedekleme/geri yükleme, iki oturumla kirli okuma ve kilit zaman aşımı, RowVer ile kayıp güncellemenin önlenmesi, GRANT/DENY (hata 229 ve 230) |
+| `test_hunt_extract.py` | 6 | Log ayıklama: defang çözümü, URL ana bilgisayarı ve üst domain adayları, dosya uzantısı eleme |
+| `test_api.py` | 61 | Giriş, 401/403, Application Role sınırları (sp_setapprole), giriş kilitleme (429), parola değişimi, IOC yaşam döngüsü + denetim + graf düğümü, RowVer eşzamanlılığı, SQL enjeksiyonu, içe aktarma, graf tutarlılığı, MATCH, SHORTEST_PATH, saklama politikası ve süresi dolan IOC işi, Malpedia ad birleştirme, risk skoru (Python ile aynı sonuç), log avı, tespit kapsamı ve ilişkisel bölme, temporal sürümler ve geçmiş hâl, tam metin arama, indexed view sayıları, Query Store yetkisi, vaka yaşam döngüsü ve CASCADE |
+| `test_exports.py` | 6 | ATT&CK Navigator katmanı biçimi, STIX 2.1 paketlerinin yapısal doğrulaması (`tests/stix_check.py`), belirlenimci kimlikler, vaka = grouping |
+| `test_network.py` | 11 | IPv4 → tamsayı dönüşümü, ip2asn ayrıştırıcı, tetikleyiciyle zenginleştirme, `TOP (1)` aralık araması, /24 komşuları, yönetici yetkisi |
+| `test_sql_scripts.py` | 15 | Demo 1–8 betikleri, örnek sorgular, yedekleme/geri yükleme, kirli okuma ve kilit zaman aşımı, kayıp güncellemenin önlenmesi, GRANT/DENY (229 ve 230), CISA KEV MERGE, zararlı ailesi birleştirme ve ad anahtarıyla eşleme |
 
 Testlerin yakaladığı ve düzeltilen hatalar:
 
@@ -23,8 +26,13 @@ Testlerin yakaladığı ve düzeltilen hatalar:
 | `/api/tactics`: toplama fonksiyonu içinde alt sorgu kullanılmıştı | CTE ile yeniden yazıldı |
 | ODBC sürücüsü `SHORTEST_PATH(...{1,6})` ifadesini bozuyordu | Bağlantıda `SQL_ATTR_NOSCAN` açıldı |
 | CISA KEV içe aktarıcısında `FROM @changes` eksikti, içe aktarma hiç çalışmıyordu | Düzeltildi; ağa çıkmadan SQL'i sınayan test eklendi |
+| Tetikleyicisi olan tablolarda `INTO`'suz `OUTPUT` yasak (hata 334): kayıt oluşturan uçlar 500 veriyordu | `Db.insert_id` çıktıyı tablo değişkenine yazıyor |
+| Application Role etkinken ODBC bağlantı havuzu oturumu bozuyordu | ODBC havuzu kapatıldı; rol başına ayrı uygulama havuzu |
+| `sp_InvestigationRemoveItem`: alt sorgulu `CASE` ifadesi `$to_id` ile karşılaştırılınca hiç eşleşmiyordu | Düğüm kimlikleri önce değişkene alınıyor |
+| Feodo IOC'leri her senkronda etkin/süresi dolmuş arasında gidip geliyordu | Yalnızca yeni bitiş tarihi gelecekteyse yeniden etkinleştiriliyor |
+| `setup_db.py` çıktı yönlendirilince cp1254 kod sayfası "⊂" yazamayıp çöküyordu | stdout UTF-8'e ayarlanıyor |
 
-Elle yapılan tarayıcı kontrolleri: 11 sayfa 1440 / 1024 / 390 px genişlikte açıldı. JavaScript hatası çıkmadı ve yatay taşma görülmedi (tek taşma 390 px'deki IOC detayındaydı, düzeltildi).
+Elle yapılan tarayıcı kontrolleri: ilk 11 sayfa 1440 / 1024 / 390 px genişlikte açıldı. JavaScript hatası çıkmadı ve yatay taşma görülmedi (tek taşma 390 px'deki IOC detayındaydı, düzeltildi).
 
 Tarayıcıda yapılmayan kontroller:
 - Ekran okuyucuyla deneme.
@@ -88,6 +96,16 @@ Her demo hem arayüzden hem SSMS'ten gösterilebilir. Arayüzde her ekranın sa�
 ### Demo 7: MATCH ile çok adımlı sorgu ve SHORTEST_PATH
 - **Arayüz:** İlişki grafı ekranında "Aktörler arası en kısa yol" kutusuna APT29 → FIN7 girin. Sonuç 1 adımdır; ortak araçlar AdFind, Cobalt Strike ve Mimikatz'tır. APT28 → Lazarus Group için yol bulunmaz.
 - **SQL:** `demo7_graph_match.sql`. Üç adımlı MATCH deseni ile aynı sorunun 6 JOIN'li ilişkisel karşılığı aynı sonucu verir; bu testle doğrulandı.
+
+### Demo 8: İleri veritabanı özellikleri (`demo8_advanced_features.sql`)
+SSMS'te gerçek yürütme planı açıkken: `LIKE '%phish%'` ile `CONTAINS`/`FREETEXTTABLE` karşılaştırması, `COUNT(*) GROUP BY` ile indexed view (`WITH NOEXPAND`), columnstore'lu ve columnstore'suz denetim analizi, bir IOC'nin temporal sürümleri ve 1 saat önceki hâli, Query Store'dan en pahalı sorgular.
+
+### Ek demolar (arayüzden)
+- **Log avı:** Log Avı → "Örnek log yükle" → Avla. Gerçek IOC'ler içeren log satırları birebir, URL ana bilgisayarı ve üst domain eşleşmesiyle bulunur; SQL çekmecesinde tek `sp_RetroHunt` çağrısı görünür.
+- **Vaka:** bir IOC detayında "Vakaya ekle" → yeni vaka; aktör panelinden aynı vakaya ekleyin. Vaka detayında "Ortak bağlantılar" vakadaki iki öğeye birden bağlı varlıkları önerir; "Vaka grafı" ve "STIX 2.1" düğmeleri.
+- **Tespit kapsamı:** ATT&CK → Kapsama görünümü; teknik detayında düzey işaretleyin, aktör yüzdesi ve kör noktalar değişir; "Navigator'a aktar" katman dosyasını indirir (https://mitre-attack.github.io/attack-navigator/ adresinde açılır).
+- **Zaman yolculuğu:** IOC detayında güveni değiştirin, "Bu tarihteki hâli" ile önceki değeri görün (`FOR SYSTEM_TIME AS OF`).
+- **Altyapı:** aynı /24 alt ağı paylaşan farklı zararlı aileleri (ör. 17 IOC'lu 31.57.216.0/24).
 
 ### Ek: yedekleme ve geri yükleme
 - `database/backup/backup_restore.sql`: BACKUP (COMPRESSION, CHECKSUM), RESTORE VERIFYONLY, FILELISTONLY ve farklı adla RESTORE … MOVE adımlarını içerir. Ardından satır sayısı karşılaştırılır ve kopya silinir.
