@@ -114,6 +114,10 @@ def load_feeds(conn) -> None:
 
 
 def main() -> None:
+    # Çıktı dosyaya/boruya yönlendirildiğinde Windows kod sayfası (cp1254) bazı simgeleri yazamaz
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     reset, feeds = "--reset" in sys.argv, "--no-feeds" not in sys.argv
     print(f"Sunucu: {config.DB_SERVER} | Veritabanı: {config.DB_NAME} | Sürücü: {config.pick_driver()}")
     try:

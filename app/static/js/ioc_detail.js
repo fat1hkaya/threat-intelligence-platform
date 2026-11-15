@@ -57,10 +57,11 @@
         <div class="entity-title">${TL.nodeIcon('indicator')}<div style="min-width:0">
           <h1 class="mono" style="font-size:18px;overflow-wrap:anywhere">${esc(i.Value)}</h1>
           <div class="chips" style="margin-top:8px">${typeBadge(i.TypeCode)}${sev(i.SeverityCode)}${status(i.Status)}<span class="badge b-muted">${esc(i.TLPCode)}</span>${sourceBadge(i.SourceName)}</div>
+          <div class="chips" id="caseChips" style="margin-top:6px"></div>
           ${i.OriginalValue !== i.Value ? `<p class="faint" style="font-size:12.5px;margin-top:6px">Kaynaktaki yazımı: <span class="mono">${esc(i.OriginalValue)}</span></p>` : ''}
         </div></div>
         <div class="page-actions">${copyBtn(i.Value).replace('btn sm icon ghost', 'btn').replace('</i>', '</i>Kopyala')}
-          <a class="btn" href="${TL.graphUrl('indicator', id)}"><i data-lucide="share-2"></i>İlişki grafı</a>
+          <a class="btn" href="${TL.graphUrl('indicator', id)}"><i data-lucide="share-2"></i>İlişki grafı</a>${TL.caseBtn('indicator', id, i.Value, 'btn')}
           ${writer ? `<button class="btn" id="sightBtn"><i data-lucide="eye"></i>Görülme ekle</button><button class="btn" id="linkBtn"><i data-lucide="link"></i>İlişki ekle</button>
           <button class="btn primary" id="editBtn"><i data-lucide="pencil"></i>Düzenle</button><button class="btn danger" id="delBtn" aria-label="Sil"><i data-lucide="trash-2"></i></button>` : ''}</div>
       </div>
@@ -102,6 +103,7 @@
       </div>`;
     icons();
     timeTravel();
+    TL.caseChips('indicator', id).then((h) => { const el = document.getElementById('caseChips'); if (el && h) { el.innerHTML = h; icons(); } });
     if (!writer) return;
     document.getElementById('editBtn').onclick = () => TL.iocForm(i, load);
     document.getElementById('delBtn').onclick = () => {

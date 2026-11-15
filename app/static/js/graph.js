@@ -62,7 +62,7 @@
 
   async function open(type, id) {
     st.start = { type, id };
-    qs.set({ type, id, q: null });
+    qs.set({ type, id, q: null, case: null });
     document.getElementById('gStatus').textContent = 'Graf yükleniyor…';
     try {
       const d = await api('/api/graph/neighborhood', { params: { type, id, depth: st.depth, limit: document.getElementById('limit').value,
@@ -70,6 +70,30 @@
       ensureNetwork(); nodes.clear(); edges.clear(); merge(d, true);
       if (d.truncated) toast(`Düğüm sınırına (${d.limit}) ulaşıldı. Komşuları görmek için bir düğüme çift tıklayın veya sınırı artırın.`);
       const s = nodes.get(nid(type, id)); if (s) showNode(s);
+    } catch (e) { toast(e.message, 'err'); document.getElementById('gStatus').textContent = ''; }
+  }
+
+  // Vaka modu: vakadaki varlıklar (kalın çerçeve) + en az iki vaka öğesine bağlı ortak düğümler (kesikli çerçeve)
+  async function openCase(caseId) {
+    st.start = null;
+    document.getElementById('gStatus').textContent = 'Vaka grafı yükleniyor…';
+    try {
+      const [c, d] = await Promise.all([api(`/api/cases/${caseId}`), api(`/api/cases/${caseId}/graph`)]);
+      ensureNetwork(); nodes.clear(); edges.clear();
+      nodes.update(d.nodes.map((n) => ({ ...toNode(n), ...(n.Lvl === 0 ? {} : { shapeProperties: { borderDashes: [4, 4] }, borderWidth: 2,
+        color: { background: '#0B1020', border: NODE[n.NodeType].color, highlight: { background: NODE[n.NodeType].color, border: '#FFFFFF' }, hover: { background: '#1F2D48', border: '#FFFFFF' } } }) })));
+      edges.update(d.edges.map(toEdge));
+      document.getElementById('gEmpty').hidden = nodes.length > 0;
+      network.setOptions({ physics: { enabled: true } });
+      status();
+      network.once('stabilizationIterationsDone', () => network.fit({ animation: { duration: 400 } }));
+      const box = document.getElementById('side');
+      box.innerHTML = `<div class="entity-title"><span class="ic" style="background:var(--purple-soft);color:#B9A8FF"><i data-lucide="briefcase"></i></span><div style="min-width:0">
+          <span class="muted" style="font-size:12px">Vaka grafı</span><h2 style="font-size:17px">#${c.case.InvestigationID} ${esc(c.case.Title)}</h2></div></div>
+        <dl class="kv" style="margin-top:14px"><dt>Vaka öğesi</dt><dd>${c.items.length}</dd><dt>Ortak bağlantı</dt><dd>${d.common.length}</dd><dt>Kenar</dt><dd>${d.edges.length}</dd></dl>
+        <p class="faint" style="font-size:12.5px;margin-top:10px">Kalın çerçeveli düğümler vakada. Kesikli çerçeveliler vakada değil ama vakadaki en az iki varlığa bağlı: incelemeye değer adaylar.</p>
+        <div class="chips" style="margin-top:14px"><a class="btn sm" href="/cases?id=${c.case.InvestigationID}"><i data-lucide="arrow-left"></i>Vakaya dön</a></div>`;
+      icons();
     } catch (e) { toast(e.message, 'err'); document.getElementById('gStatus').textContent = ''; }
   }
 
@@ -99,7 +123,7 @@
       <dl class="kv" style="margin-top:14px">${facts}${kv('Bağlantı', `${d.OutDegree} giden · ${d.InDegree} gelen kenar`)}</dl>
       ${d.Description ? `<p class="desc" style="margin-top:12px">${esc(d.Description)}</p>` : ''}
       <div class="chips" style="margin-top:14px"><button class="btn sm" id="nExpand"><i data-lucide="plus-circle"></i>Komşuları ekle</button>
-        <button class="btn sm" id="nStart"><i data-lucide="crosshair"></i>Buradan başlat</button><a class="btn sm" href="${entityUrl(n.type, n.rid)}"><i data-lucide="external-link"></i>Kayda git</a></div>`;
+        <button class="btn sm" id="nStart"><i data-lucide="crosshair"></i>Buradan başlat</button><a class="btn sm" href="${entityUrl(n.type, n.rid)}"><i data-lucide="external-link"></i>Kayda git</a>${TL.caseBtn(n.type, n.rid, d.Label)}</div>`;
     icons();
     document.getElementById('nExpand').onclick = () => expand(n);
     document.getElementById('nStart').onclick = () => open(n.type, n.rid);
@@ -203,7 +227,8 @@
     api('/api/actors', { params: { size: 200, sort: 'name' } }).then((r) => {
       document.getElementById('actorList').innerHTML = r.items.map((a) => `<option value="${esc(a.Name)}" data-id="${a.ActorID}"></option>`).join('');
     });
-    const t = qs.get('type'), id = qs.get('id'), q = qs.get('q');
-    if (t && id) open(t, +id); else if (q) { document.getElementById('gq').value = q; search(q); }
+    const t = qs.get('type'), id = qs.get('id'), q = qs.get('q'), cs = qs.get('case');
+    if (cs) openCase(+cs);
+    else if (t && id) open(t, +id); else if (q) { document.getElementById('gq').value = q; search(q); }
   });
 })();

@@ -13,6 +13,9 @@ from app.services.importer import run_import
 
 
 def main(args: list[str]) -> None:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     wanted = args or ["all"]
     if "all" in wanted:
         wanted = ["attack", *abusech.FEEDS, "kev", "malpedia"]

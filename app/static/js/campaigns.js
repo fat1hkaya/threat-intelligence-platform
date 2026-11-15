@@ -23,7 +23,7 @@
       return `<section><div class="entity-title">${TL.nodeIcon('campaign')}<div><h2>${esc(c.Name)}</h2><span class="muted mono" style="font-size:12px">${esc(c.ExternalID || 'Analist kaydı')}</span></div></div>
           <div class="chips">${ongoing(c)}</div>
           ${c.Description ? `<p class="desc">${esc(c.Description)}</p>` : ''}
-          <div class="chips"><a class="btn sm" href="${graphUrl('campaign', c.CampaignID)}"><i data-lucide="share-2"></i>İlişki grafı</a>
+          <div class="chips"><a class="btn sm" href="${graphUrl('campaign', c.CampaignID)}"><i data-lucide="share-2"></i>İlişki grafı</a>${TL.caseBtn('campaign', c.CampaignID, c.Name)}
             <a class="btn sm" href="/attack?campaign=${c.CampaignID}"><i data-lucide="grid-3x3"></i>Teknikleri ATT&amp;CK'te göster</a></div></section>
         <section><h3><i data-lucide="user-round-x"></i>İlişkili tehdit aktörü</h3>
           ${c.ActorID ? `<ul class="list"><li><a href="/actors?id=${c.ActorID}"><b>${esc(c.ActorName)}</b><small>atfedildi</small></a></li></ul>

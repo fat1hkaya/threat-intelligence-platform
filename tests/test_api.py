@@ -485,3 +485,63 @@ def test_query_store_admin_only(admin, analyst):
     assert analyst.get("/api/system/queries").status_code == 403
     rows = admin.get("/api/system/queries").json()
     assert isinstance(rows, list)
+
+
+# ------------------------------------------------------------------ vaka çalışma alanı
+def test_case_lifecycle_graph_edges_and_roles(analyst, viewer, admin, linked_ioc, conn, unique):
+    assert viewer.post("/api/cases", json={"title": "izleyici vakası"}).status_code == 403
+    r = analyst.post("/api/cases", json={"title": f"pytest vaka {unique}", "severity": "high", "summary": "test"})
+    assert r.status_code == 201, r.text
+    cid = r.json()["InvestigationID"]
+    try:
+        # IOC ve zararlı yazılım vakaya eklenir; aynı öğe iki kez eklenemez
+        assert analyst.post(f"/api/cases/{cid}/items", json={"type": "indicator", "id": linked_ioc["IndicatorID"], "note": "logda"}).status_code == 201
+        assert analyst.post(f"/api/cases/{cid}/items", json={"type": "malware", "id": linked_ioc["MalwareID"]}).status_code == 201
+        assert analyst.post(f"/api/cases/{cid}/items", json={"type": "indicator", "id": linked_ioc["IndicatorID"]}).status_code in (400, 409)
+        assert analyst.post(f"/api/cases/{cid}/items", json={"type": "actor", "id": 999999999}).status_code in (400, 404)
+        assert viewer.post(f"/api/cases/{cid}/items", json={"type": "malware", "id": linked_ioc["MalwareID"]}).status_code == 403
+
+        d = viewer.get(f"/api/cases/{cid}").json()
+        assert {(i["NodeType"], i["NodeID"]) for i in d["items"]} == {("indicator", linked_ioc["IndicatorID"]), ("malware", linked_ioc["MalwareID"])}
+        assert next(i for i in d["items"] if i["NodeType"] == "indicator")["Note"] == "logda"
+        # öğeler gerçekten SQL Graph kenarı: MATCH ile doğrudan sorgulanır
+        n = conn.cursor().execute(
+            """SELECT COUNT(*) FROM dbo.InvestigationNode AS v, dbo.InvestigationIncludes AS e, dbo.IndicatorNode AS t
+               WHERE MATCH(v-(e)->t) AND v.InvestigationID = ? AND t.IndicatorID = ?;""", cid, linked_ioc["IndicatorID"]).fetchone()[0]
+        assert n == 1
+        # vaka grafı: IOC -> zararlı kenarı iki vaka öğesi arasında görünür
+        g = viewer.get(f"/api/cases/{cid}/graph").json()
+        assert any(e["SourceType"] == "indicator" and e["TargetType"] == "malware" and e["TargetID"] == linked_ioc["MalwareID"] for e in g["edges"])
+        assert all(c["Connects"] >= 2 for c in g["common"])
+        assert any(c["InvestigationID"] == cid for c in viewer.get("/api/cases/for-entity", params={"type": "indicator", "id": linked_ioc["IndicatorID"]}).json())
+
+        assert analyst.post(f"/api/cases/{cid}/notes", json={"body": "İlk bulgu"}).status_code == 201
+        assert analyst.delete(f"/api/cases/{cid}/items", params={"type": "malware", "id": linked_ioc["MalwareID"]}).status_code == 200
+        # kapatma: ClosedAt dolar, CHECK kısıtı sağlanır; yeniden açınca boşalır
+        assert analyst.patch(f"/api/cases/{cid}", json={"status": "closed"}).status_code == 200
+        c = viewer.get(f"/api/cases/{cid}").json()
+        assert c["case"]["Status"] == "closed" and c["case"]["ClosedAt"] and len(c["items"]) == 1 and len(c["notes"]) == 1
+        assert analyst.post(f"/api/cases/{cid}/items", json={"type": "malware", "id": linked_ioc["MalwareID"]}).status_code in (400, 409)
+        assert analyst.patch(f"/api/cases/{cid}", json={"status": "open"}).status_code == 200
+        assert viewer.get(f"/api/cases/{cid}").json()["case"]["ClosedAt"] is None
+        log = admin.get("/api/audit-logs", params={"table": "Investigation", "record": cid}).json()["items"]
+        assert {x["Action"] for x in log} >= {"I", "U"} and log[0]["Username"] == "analist"
+    finally:
+        assert analyst.delete(f"/api/cases/{cid}").status_code == 200
+    # vaka silinince graf düğümü ve kenarları da gider
+    cur = conn.cursor()
+    assert cur.execute("SELECT COUNT(*) FROM dbo.InvestigationNode WHERE InvestigationID = ?;", cid).fetchone()[0] == 0
+    assert cur.execute("SELECT COUNT(*) FROM dbo.vw_InvestigationItem WHERE InvestigationID = ?;", cid).fetchone()[0] == 0
+
+
+def test_case_edge_cascades_when_entity_deleted(analyst, conn, unique):
+    """Kenar kısıtı ON DELETE CASCADE: vakadaki IOC silinirse vaka kenarı sarkık kalmaz."""
+    iid = analyst.post("/api/iocs", json={"value": f"vaka-{unique}.example", "sourceId": 7}).json()["IndicatorID"]
+    cid = analyst.post("/api/cases", json={"title": f"pytest cascade {unique}"}).json()["InvestigationID"]
+    try:
+        assert analyst.post(f"/api/cases/{cid}/items", json={"type": "indicator", "id": iid}).status_code == 201
+        assert analyst.delete(f"/api/iocs/{iid}").status_code == 200
+        assert analyst.get(f"/api/cases/{cid}").json()["items"] == []
+        assert conn.cursor().execute("SELECT COUNT(*) FROM dbo.InvestigationIncludes WHERE $from_id IS NULL OR $to_id IS NULL;").fetchone()[0] == 0
+    finally:
+        analyst.delete(f"/api/cases/{cid}")
