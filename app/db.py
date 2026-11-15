@@ -4,6 +4,7 @@ ORM yoktur: her sorgu elle yazılmış, parametreli T-SQL'dir. Bu sınıf yalnı
 bağlantıyı açar, satırları sözlüğe çevirir ve çalıştırılan sorguları kaydeder.
 Kaydedilen sorgular arayüzdeki "SQL" çekmecesinde gösterilir.
 """
+import queue
 import re
 import time
 import uuid
@@ -16,20 +17,56 @@ from fastapi import HTTPException, Request, Response
 
 from . import config
 
-pyodbc.pooling = True
+# ODBC sürücü havuzu kapalı: sürücünün bağlantı sıfırlaması (sp_reset_connection) Application Role ile uyumsuz.
+pyodbc.pooling = False
+
+# Uygulama rolü -> SQL Server Application Role. Her istekte kullanıcının rolü etkinleştirilir; bundan sonra
+# bağlantı, Windows hesabının (sysadmin) değil, yalnızca bu rolün (tip_reader/analyst/admin) yetkileriyle çalışır.
+APP_ROLES = {"viewer": "app_viewer", "analyst": "app_analyst", "admin": "app_admin"}
+
+# Rol bazlı bağlantı havuzları. sp_setapprole parola doğrulaması pahalıdır (~150 ms, SQL Server 2025), bu yüzden
+# rolü etkinleştirilmiş bağlantı kapatılmadan YALNIZCA aynı rolün havuzuna döner ve o rolün isteklerinde tekrar
+# kullanılır. None anahtarı: rol etkinleştirilmemiş (giriş/oturum denetimi için) bağlantılar.
+_POOLS: dict = {None: queue.LifoQueue(maxsize=6), **{r: queue.LifoQueue(maxsize=6) for r in APP_ROLES.values()}}
+
+
+def _new_connection() -> pyodbc.Connection:
+    conn = pyodbc.connect(config.connection_string(), autocommit=True)
+    conn.set_attr(2, 1)        # SQL_ATTR_NOSCAN: ODBC escape ({…}) taraması kapalı, T-SQL olduğu gibi gider
+    return conn
+
+
+def _acquire(role: str | None) -> pyodbc.Connection | None:
+    try:
+        return _POOLS[role].get_nowait()
+    except queue.Empty:
+        return None
+
+
+def _release(conn: pyodbc.Connection, role: str | None) -> None:
+    """Bağlantıyı temizleyip kendi rolünün havuzuna koyar; temizlik başarısızsa kapatır."""
+    try:
+        if not conn.autocommit:
+            conn.rollback()
+            conn.autocommit = True
+        conn.cursor().execute("EXEC sys.sp_set_session_context @key = N'user_id', @value = NULL; "
+                              "EXEC sys.sp_set_session_context @key = N'skip_audit', @value = NULL;")
+        _POOLS[role].put_nowait(conn)
+    except (pyodbc.Error, queue.Full):
+        try:
+            conn.close()
+        except pyodbc.Error:
+            pass
 
 
 class Db:
     def __init__(self) -> None:
-        self.conn = pyodbc.connect(config.connection_string(), autocommit=True)
-        self.conn.set_attr(2, 1)        # SQL_ATTR_NOSCAN: ODBC escape ({…}) taraması kapalı, T-SQL olduğu gibi gider
+        self.approle: str | None = None
+        self.conn = _acquire(None) or _new_connection()
         self.statements: list[dict] = []
 
     def close(self) -> None:
-        try:
-            self.conn.close()
-        except pyodbc.Error:
-            pass
+        _release(self.conn, self.approle)
 
     # -- çalıştırma ---------------------------------------------------
     def _run(self, sql: str, params: tuple, trace: bool):
@@ -104,6 +141,25 @@ class Db:
             raise
         finally:
             self.conn.autocommit = True
+
+    def activate_role(self, role_code: str) -> None:
+        """Bağlantıyı kullanıcının rolüne indirger (sp_setapprole). Rol havuzunda hazır bağlantı varsa o kullanılır,
+        yoksa yeni bağlantıda rol bir kez etkinleştirilir. Rol adı sabit listeden, parola uygulama sırrından gelir
+        (sp_setapprole parametreli/sp_executesql içinde çağrılamaz)."""
+        name = APP_ROLES[role_code]
+        pooled = _acquire(name)
+        _release(self.conn, None)                      # rolsüz bağlantı rolsüz havuza döner
+        if pooled is not None:
+            self.conn = pooled
+            note = "-- havuzdan, rolü zaten etkin bağlantı"
+        else:
+            self.conn = _new_connection()
+            pwd = config.approle_password(name).replace("'", "''")
+            self.conn.cursor().execute(f"EXEC sys.sp_setapprole @rolename = N'{name}', @password = N'{pwd}';")
+            note = "-- yeni bağlantı"
+        self.approle = name
+        self.statements.append({"sql": f"EXEC sys.sp_setapprole @rolename = N'{name}', @password = N'***';  {note}",
+                                "params": [], "ms": 0, "rows": None})
 
     def set_user(self, user_id: int) -> None:
         """Tetikleyiciler 'değişikliği kim yaptı' bilgisini buradan okur."""

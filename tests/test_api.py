@@ -197,3 +197,45 @@ def test_sql_trace_records_parameterized_queries(admin):
     r = admin.get("/api/iocs", params={"q": "example", "size": 5})
     trace = admin.get(f"/api/trace/{r.headers['X-Trace-Id']}").json()
     assert any("LIKE ?" in s["sql"] for s in trace["statements"])
+
+
+# ------------------------------------------------------------------ Application Role
+@pytest.mark.parametrize("role,can_delete", [("viewer", False), ("analyst", True), ("admin", True)])
+def test_application_role_limits_connection(role, can_delete):
+    """Uygulama bağlantısı sp_setapprole ile kullanıcının rolüne indirgenir: sysadmin yetkisi kalmaz,
+    izleyici rolünde DELETE ve parola özetini okuma veritabanı tarafından reddedilir (hata 229/230)."""
+    import pyodbc
+    from app.db import Db
+    db = Db()
+    try:
+        db.activate_role(role)
+        cur = db.conn.cursor()
+        user, sysadmin = cur.execute("SELECT USER_NAME(), IS_SRVROLEMEMBER('sysadmin');").fetchone()
+        assert user == f"app_{role}" and sysadmin == 0
+        if can_delete:
+            cur.execute("DELETE FROM dbo.Indicator WHERE IndicatorID = -1;")
+        else:
+            with pytest.raises(pyodbc.Error, match="229"):
+                cur.execute("DELETE FROM dbo.Indicator WHERE IndicatorID = -1;")
+        with pytest.raises(pyodbc.Error, match="230"):
+            cur.execute("SELECT TOP (1) PasswordHash FROM dbo.AppUser;")
+    finally:
+        db.close()
+    fresh = Db()                                   # rolsüz havuzdan gelen bağlantıda rol etkin olmamalı
+    assert fresh.conn.cursor().execute("SELECT USER_NAME();").fetchone()[0] not in ("app_viewer", "app_analyst", "app_admin")
+    fresh.close()
+
+
+def test_requests_run_under_application_role(viewer):
+    r = viewer.get("/api/iocs?size=5")
+    trace = viewer.get(f"/api/trace/{r.headers['X-Trace-Id']}").json()
+    assert any("sp_setapprole" in s["sql"] and "app_viewer" in s["sql"] for s in trace["statements"])
+
+
+def test_audit_records_user_under_application_role(analyst, admin, unique):
+    iid = analyst.post("/api/iocs", json={"value": f"approle-{unique}.test", "sourceId": 7}).json()["IndicatorID"]
+    try:
+        log = admin.get("/api/audit-logs", params={"table": "Indicator", "record": iid}).json()["items"][0]
+        assert log["Username"] == "analist"          # SESSION_CONTEXT rol bağlantısında ayarlandı
+    finally:
+        analyst.delete(f"/api/iocs/{iid}")

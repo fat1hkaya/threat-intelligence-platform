@@ -58,6 +58,31 @@ def run_file(conn: pyodbc.Connection, path: Path, skip_schema: bool) -> tuple[in
     return ran, skipped
 
 
+APP_ROLE_MEMBERSHIP = {"app_viewer": "tip_reader", "app_analyst": "tip_analyst", "app_admin": "tip_admin"}
+
+
+def ensure_app_roles(conn) -> None:
+    """SQL Server Application Role'leri. Parolalar depoda değil, .env'deki TL_APPROLE_SECRET'tan türetilir."""
+    import secrets as _secrets
+
+    if not config.APPROLE_SECRET:
+        secret = _secrets.token_urlsafe(32)
+        env = ROOT / ".env"
+        text = env.read_text(encoding="utf-8") if env.exists() else ""
+        line = f"# Application Role parolalarının türetildiği sır (setup_db.py üretti; paylaşmayın)\nTL_APPROLE_SECRET={secret}\n"
+        env.write_text(text.rstrip("\n") + "\n" + line, encoding="utf-8")
+        config.APPROLE_SECRET = secret
+        print("  TL_APPROLE_SECRET üretildi ve .env dosyasına yazıldı.")
+    cur = conn.cursor()
+    for role, db_role in APP_ROLE_MEMBERSHIP.items():
+        pwd = config.approle_password(role).replace("'", "''")
+        verb = "ALTER" if cur.execute("SELECT DATABASE_PRINCIPAL_ID(?);", role).fetchone()[0] else "CREATE"
+        cur.execute(f"{verb} APPLICATION ROLE {role} WITH PASSWORD = N'{pwd}'" + (", DEFAULT_SCHEMA = dbo;" if verb == "CREATE" else ";"))
+        if not cur.execute("SELECT IS_ROLEMEMBER(?, ?);", db_role, role).fetchone()[0]:
+            cur.execute(f"ALTER ROLE {db_role} ADD MEMBER {role};")
+    print("  Application Role'ler hazır: app_viewer ⊂ tip_reader, app_analyst ⊂ tip_analyst, app_admin ⊂ tip_admin")
+
+
 def load_feeds(conn) -> None:
     """Gerçek beslemeler. Biri başarısız olursa (internet yok, anahtar yok) kurulum durmaz, nedeni yazılır."""
     import os
@@ -121,6 +146,7 @@ def main() -> None:
 
     conn = connect()
     cur = conn.cursor()
+    ensure_app_roles(conn)
     for username, full_name, email, role_id in USERS:
         if not cur.execute("SELECT 1 FROM dbo.AppUser WHERE Username = ?;", username).fetchone():
             cur.execute("INSERT INTO dbo.AppUser (Username, FullName, Email, PasswordHash, RoleID) VALUES (?, ?, ?, ?, ?);",

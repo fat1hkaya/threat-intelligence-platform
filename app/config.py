@@ -28,6 +28,16 @@ DB_PASSWORD = os.getenv("TL_DB_PASSWORD", "")
 DB_DRIVER = os.getenv("TL_DB_DRIVER", "")      # boşsa kurulu en yeni ODBC sürücüsü seçilir
 SESSION_HOURS = int(os.getenv("TL_SESSION_HOURS", "12"))
 ABUSECH_AUTH_KEY = os.getenv("ABUSECH_AUTH_KEY", "")
+# Application Role parolalarının türetildiği sır. setup_db.py yoksa üretip .env'e yazar.
+APPROLE_SECRET = os.getenv("TL_APPROLE_SECRET", "")
+
+
+def approle_password(role_name: str) -> str:
+    if not APPROLE_SECRET:
+        raise RuntimeError("TL_APPROLE_SECRET tanımlı değil. 'python scripts/setup_db.py' çalıştırın (sırrı üretip .env'e yazar).")
+    import hashlib
+    # Rol başına ayrı parola; karmaşıklık kuralını sağlamak için sabit bir önek eklenir
+    return "Tl#9" + hashlib.sha256(f"{APPROLE_SECRET}:{role_name}".encode()).hexdigest()[:32]
 
 
 def pick_driver() -> str:

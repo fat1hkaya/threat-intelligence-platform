@@ -832,3 +832,15 @@ BEGIN
            (SELECT COUNT(*) FROM dbo.Campaign) AS Campaigns, (SELECT COUNT(*) FROM dbo.Evidence) AS Evidence;
 END;
 GO
+
+/* Kullanıcının tüm oturumlarını kapatır (devre dışı bırakma, parola değişimi).
+   UserSession tablosu uygulama rollerine kapalıdır (DENY); erişim yalnızca bu yordam üzerinden olur
+   (sahiplik zinciri: yordam ve tablo dbo'ya ait olduğu için tablo izni ayrıca denetlenmez). */
+CREATE OR ALTER PROCEDURE dbo.sp_EndUserSessions @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DELETE FROM dbo.UserSession WHERE UserID = @UserID;
+    SELECT @@ROWCOUNT AS EndedSessions;
+END;
+GO

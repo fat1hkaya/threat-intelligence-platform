@@ -260,7 +260,7 @@ def update_user(user_id: int, body: UserUpdate, me: dict = Depends(require_admin
         if body.isActive is not None:
             db.execute("UPDATE dbo.AppUser SET IsActive = ? WHERE UserID = ?;", (int(body.isActive), user_id))
             if not body.isActive:
-                db.execute("DELETE FROM dbo.UserSession WHERE UserID = ?;", (user_id,))
+                db.execute("EXEC dbo.sp_EndUserSessions @UserID = ?;", (user_id,))
     return {"ok": True}
 
 

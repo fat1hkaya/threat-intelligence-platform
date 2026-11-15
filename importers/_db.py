@@ -9,6 +9,9 @@ if str(ROOT) not in sys.path:
 
 import pyodbc  # noqa: E402
 
+# Havuzlama kapalı (app/db.py ile aynı): Application Role etkin bağlantı havuza dönmemeli. İlk bağlantıdan önce ayarlanmalı.
+pyodbc.pooling = False
+
 from app import config  # noqa: E402
 
 GO = re.compile(r"^\s*GO\s*;?\s*$", re.I | re.M)

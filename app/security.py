@@ -33,7 +33,8 @@ def current_user(request: Request, db: Db = Depends(get_db)) -> dict:
         user = db.one(_USER_SQL, (token,), trace=False)
     if not user:
         raise HTTPException(401, "Oturum açmanız gerekiyor.")
-    db.set_user(user["UserID"])
+    db.activate_role(user["Role"])          # bundan sonraki tüm sorgular rolün GRANT/DENY sınırları içinde
+    db.set_user(user["UserID"])             # tetikleyiciler "kim değiştirdi" bilgisini bu bağlamdan okur
     return user
 
 

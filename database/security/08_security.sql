@@ -67,7 +67,22 @@ GRANT INSERT, UPDATE, DELETE ON dbo.AppUser TO tip_admin;
 GRANT INSERT, UPDATE, DELETE ON dbo.Source  TO tip_admin;
 
 GRANT EXECUTE ON SCHEMA::dbo TO tip_admin;
+-- Ayarlar ekranı: veritabanı boyutu, nesne ve yetki kataloğu
+GRANT VIEW DATABASE STATE TO tip_admin;
+GRANT VIEW DEFINITION TO tip_admin;
 GO
+
+/* Uygulama bağlantısı: SQL Server Application Role
+   Web uygulaması her istekte oturum açan kullanıcının rolüne göre sp_setapprole çağırır:
+     app_viewer  ⊂ tip_reader,  app_analyst ⊂ tip_analyst,  app_admin ⊂ tip_admin
+   Rol etkinleşince bağlantı, Windows hesabının yetkilerini (ör. sysadmin) kaybeder ve yalnızca bu rolün
+   GRANT/DENY sınırları içinde çalışır. Roller ve parolaları scripts/setup_db.py tarafından oluşturulur;
+   parolalar depoda değil, .env dosyasındaki TL_APPROLE_SECRET'tan türetilir.
+   Elle deneme (SSMS):
+     DECLARE @c VARBINARY(8000);
+     EXEC sys.sp_setapprole @rolename = N'app_viewer', @password = N'<parola>', @fCreateCookie = 1, @cookie = @c OUTPUT;
+     DELETE FROM dbo.Indicator WHERE IndicatorID = -1;   -- Hata 229: DELETE izni reddedildi
+     EXEC sys.sp_unsetapprole @c; */
 
 /* Hiçbir rol denetim kaydını elle yazamaz/değiştiremez (yalnızca tetikleyiciler yazar) */
 DENY INSERT, UPDATE, DELETE ON dbo.AuditLog TO tip_reader;
