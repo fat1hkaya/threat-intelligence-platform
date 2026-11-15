@@ -5,7 +5,7 @@ BLM3001 Veri Tabanı Yönetim Sistemleri dersi projesi. Microsoft SQL Server (il
 Bir IOC'nin (IP, domain, URL, MD5/SHA-1/SHA-256) yalnızca kaydını değil, **zararlı yazılım → kampanya → tehdit aktörü → MITRE ATT&CK tekniği** zincirindeki ilişkilerini, her ilişkinin **kanıtı ve kaynağıyla** gösterir. İlişkiler veritabanında `AS NODE` / `AS EDGE` tablolarında saklanır ve `MATCH` / `SHORTEST_PATH` ile sorgulanır.
 
 - **ORM yok:** Tüm veritabanı erişimi elle yazılmış, parametreli T-SQL (`pyodbc`). Arayüzdeki **SQL** düğmesi o ekranın çalıştırdığı gerçek sorguları gösterir.
-- **Uydurma veri yok:** Gösterge paneli sayıları canlı sorgulardan gelir. Sentetik sunum verisi açıkça **DEMO DATA** kaynağına yazılır, her ilişkisinin kanıt metni "DEMO DATA: sentetik ilişki" ile başlar.
+- **Uydurma veri yok:** Veritabanındaki her IOC gerçek bir kaynaktan (CISA KEV, abuse.ch Feodo Tracker / ThreatFox / MalwareBazaar / URLhaus) ya da bir analistin girişinden gelir. Gösterge paneli sayıları canlı sorgulardan hesaplanır; sentetik (demo) veri yoktur.
 
 ## Ekranlar
 
@@ -56,7 +56,7 @@ Betik sırasıyla şunları yapar:
 1. `database/*/NN_*.sql` dosyalarını numara sırasıyla çalıştırır.
 2. Kullanıcıları ekler.
 3. MITRE ATT&CK Enterprise v20.1 anlık görüntüsünü yükler (15 taktik, 706 teknik, 178 aktör, 842 yazılım, 57 kampanya, 19.000 kanıtlı ilişki).
-4. DEMO DATA'yı yükler (1446 sentetik IOC).
+4. Gerçek beslemeleri çeker: CISA KEV ve Feodo Tracker anahtarsız çalışır. `.env` dosyasında `ABUSECH_AUTH_KEY` varsa ThreatFox, MalwareBazaar ve URLhaus da çekilir. İnternet yoksa `--no-feeds` ile yalnızca ATT&CK yüklenir.
 5. Graf tutarlılığını denetler.
 
 Süre yaklaşık 20 saniye. Tekrar çalıştırmak güvenlidir; var olan tablolara dokunmaz. Baştan kurmak için `--reset` ekleyin, ama bu veritabanını **siler**.
@@ -83,7 +83,7 @@ ThreatFox, MalwareBazaar ve URLhaus API'leri ücretsiz bir **Auth-Key** ister: h
 .venv\Scripts\python -m importers threatfox malwarebazaar urlhaus feodo kev
 ```
 
-Anahtar yoksa bu kaynaklar atlanır, uygulama ATT&CK ve DEMO DATA ile çalışmaya devam eder. MalwareBazaar'dan **yalnızca hash ve aile bilgisi** alınır; zararlı dosya asla indirilmez.
+Anahtar yoksa bu kaynaklar atlanır; uygulama ATT&CK, CISA KEV ve Feodo Tracker verisiyle çalışmaya devam eder. IOC sayısı az kalır, çünkü Feodo Tracker şu an yalnızca birkaç IP yayımlıyor. MalwareBazaar'dan **yalnızca hash ve aile bilgisi** alınır; zararlı dosya asla indirilmez.
 
 ## Testler
 
@@ -122,7 +122,7 @@ app/            FastAPI uygulaması
   templates/    Jinja2 sayfaları
   static/       css, js (saf JavaScript), vendor (vis-network, Chart.js, Lucide, yazı tipleri; çevrimdışı çalışır), samples
 database/       T-SQL: schema, indexes, functions, views, graph, procedures, triggers, security, seed, demos, backup
-importers/      MITRE ATT&CK, abuse.ch, CISA KEV, DEMO DATA içe aktarıcıları
+importers/      MITRE ATT&CK, abuse.ch, CISA KEV içe aktarıcıları
 scripts/        setup_db.py (kurulum), gen_docs.py (belge üretimi)
 tests/          pytest
 docs/           proje belgeleri ve tasarım referansları
@@ -141,6 +141,5 @@ _archive/       eski React prototipi ve eski betikler (yalnızca referans)
 
 - **MITRE ATT&CK** ilişkileri (aktör–yazılım, aktör–teknik, kampanya–aktör…) kaynaktaki açıklamalarıyla birlikte `Evidence` tablosuna yazılır.
 - **Aktör köken ülkesi, motivasyonu ve hedef sektörleri** ATT&CK açıklamasından anahtar sözcükle **sezgisel** olarak çıkarılır. Emin olunamayanlar boş bırakılır.
-- **DEMO DATA:** IP'ler RFC 5737 belgeleme aralıklarından, alan adları `.example/.test/.invalid` uzantılarından gelir, hash'ler rastgeledir. Bunlar gerçek aile adlarına **yapay** olarak bağlıdır ve arayüzde pembe "DEMO DATA" rozetiyle işaretlidir.
-- **CVE → zararlı bağlantıları** kamuya açık raporlara dayanır (kaynak: "Analist girişi").
+- **Sentetik veri yoktur.** Eski sürümdeki DEMO DATA modülü kaldırıldı (`_archive/demo_data_kaldirildi.py` yalnızca referans olarak duruyor). Testler kendi IOC'lerini oluşturup test sonunda siler.
 - `SHORTEST_PATH` **ağırlıksız** en kısa yolu bulur. Güven puanı yol ağırlığı olarak kullanılmaz.

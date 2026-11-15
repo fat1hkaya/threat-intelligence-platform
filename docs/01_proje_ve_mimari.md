@@ -144,13 +144,12 @@ Transaction örnekleri:
 |---|---|---|---|
 | MITRE ATT&CK Enterprise v20.1 (STIX 2.1) | A | Taktik, teknik, aktör, yazılım, kampanya ve aralarındaki 19.000 ilişki (açıklamalarıyla) | Yerel anlık görüntü, yüklü |
 | abuse.ch ThreatFox / MalwareBazaar / URLhaus | B | IOC, hash, URL | Auth-Key gerekir |
-| abuse.ch Feodo Tracker | B | Botnet C2 IP'leri | Anahtarsız |
-| CISA KEV | A | İstismar edilen zafiyetler | Anahtarsız |
+| abuse.ch Feodo Tracker | B | Botnet C2 IP'leri | Anahtarsız, yüklü |
+| CISA KEV | A | İstismar edilen zafiyetler | Anahtarsız, yüklü (1781 zafiyet) |
 | Analist girişi | B | Elle veya dosyayla eklenenler | |
-| DEMO DATA | C | Sentetik sunum verisi | Yüklü, işaretli |
 
 ## 9. Performans
 
 - Kapsayan indeksler (`IX_Indicator_LastSeen INCLUDE …`), filtreli indeks (`WHERE Status = 'active' AND ExpiresAt IS NOT NULL`), ara tablolarda ters yön indeksleri ve filtreli UNIQUE (`ExternalID`) kullanılır.
 - Demo 5'te 500.000 satırlık tabloda indekssiz ve indeksli arama karşılaştırılır (`SET STATISTICS IO/TIME`). Öndeki joker karakter (`LIKE '%…'`) indeksin kullanılamadığı durumu gösterir.
-- Tipik API yanıt süreleri (yerel, 1446 IOC + ATT&CK): liste ekranları 10–35 ms, teknik listesi ~80–330 ms, graf komşuluğu ~30 ms.
+- Tipik API yanıt süreleri (yerel, ATT&CK verisiyle, Kasım 2026 ölçümü): liste ekranları 10–35 ms, teknik listesi ~80–330 ms, graf komşuluğu ~30 ms.

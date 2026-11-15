@@ -7,7 +7,7 @@
    ===================================================================== */
 USE ThreatLens;
 GO
--- 1) Örnek bir SHA-256 seç (demo verisinden; kendi değerinizi de yazabilirsiniz)
+-- 1) Örnek bir SHA-256 seç (MalwareBazaar/ThreatFox'tan gelenlerden; kendi değerinizi de yazabilirsiniz)
 DECLARE @hash NVARCHAR(400) = (
     SELECT TOP (1) i.NormalizedValue
     FROM dbo.Indicator AS i

@@ -144,11 +144,9 @@
   async function examples() {
     const box = document.getElementById('examples');
     const ex = [{ label: 'APT29', q: 'APT29' }, { label: 'Cobalt Strike', q: 'Cobalt Strike' }];
-    try {
-      const c = await api('/api/campaigns', { params: { size: 60 } });
-      const camp = c.items.find((x) => x.ActorName && x.IndicatorCount > 0 && x.MalwareCount > 0);
-      if (camp) { const d = await api(`/api/campaigns/${camp.CampaignID}`); const i = d.indicators.find((x) => x.TypeCode === 'sha256') || d.indicators[0];
-        if (i) ex.unshift({ label: `Hash → ${camp.Name}`, type: 'indicator', id: i.IndicatorID, value: i.Value }); }
+    try {   // aktöre atfedilmiş gerçek bir IOC (IOC -> zararlı -> aktör zinciri olan)
+      const r = await api('/api/iocs/examples');
+      r.forEach((i) => ex.unshift({ label: `${TL.TYPE_LABEL[i.TypeCode] || 'IOC'} → ${i.MalwareName} → ${i.ActorName}`, type: 'indicator', id: i.IndicatorID, value: i.Value }));
     } catch { /* örnekler isteğe bağlı */ }
     box.innerHTML = ex.map((e, k) => `<button class="btn sm" data-ex="${k}">${esc(e.label)}</button>`).join('');
     box.onclick = (ev) => { const b = ev.target.closest('[data-ex]'); if (!b) return; const e = ex[+b.dataset.ex];

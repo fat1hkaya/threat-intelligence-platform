@@ -33,7 +33,7 @@
   const job = (s) => { const [l, c, i] = JOB[s] || [s, 'b-muted', 'circle']; return `<span class="badge ${c}"><i data-lucide="${i}" style="width:13px;height:13px"></i>${esc(l)}</span>`; };
   const conf = (n) => n == null ? '<span class="faint">—</span>' :
     `<span class="conf"><span class="meter" aria-hidden="true"><i style="width:${n}%;background:${n >= 80 ? 'var(--low)' : n >= 50 ? 'var(--medium)' : 'var(--high)'}"></i></span>${n}</span>`;
-  const sourceBadge = (name) => name === 'DEMO DATA' ? `<span class="badge b-demo" title="Sentetik sunum verisi, gerçek tehdit verisi değildir">DEMO DATA</span>` : esc(name || '—');
+  const sourceBadge = (name) => esc(name || '—');
   const copyBtn = (v) => `<button class="btn sm icon ghost" data-copy="${esc(v)}" aria-label="Değeri kopyala" title="Kopyala"><i data-lucide="copy"></i></button>`;
   const nodeIcon = (t) => { const n = NODE[t] || NODE.indicator; return `<span class="ic" style="background:${n.color}22;color:${n.color}"><i data-lucide="${n.icon}"></i></span>`; };
 

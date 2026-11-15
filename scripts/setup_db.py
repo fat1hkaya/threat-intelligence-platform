@@ -3,10 +3,12 @@
     python scripts/setup_db.py            # kur; veritabanı varsa tablolara dokunmaz, nesneleri (görünüm, yordam,
                                           # tetikleyici, yetki) günceller, eksik veriyi yükler
     python scripts/setup_db.py --reset    # VERİTABANINI SİLİP baştan kurar (yalnızca bilerek kullanın)
-    python scripts/setup_db.py --no-demo  # sentetik DEMO DATA göstergelerini yükleme
+    python scripts/setup_db.py --no-feeds # internet beslemelerini çekme (yalnızca yerel ATT&CK verisi)
 
 Sıra: database/<klasör>/NN_*.sql dosyaları numaraya göre (01 tablolar ... 09 sözlük verisi)
--> kullanıcılar -> MITRE ATT&CK anlık görüntüsü -> DEMO DATA -> graf tutarlılık denetimi.
+-> kullanıcılar -> MITRE ATT&CK anlık görüntüsü -> gerçek beslemeler (CISA KEV, Feodo Tracker; .env'de
+ABUSECH_AUTH_KEY varsa ThreatFox, MalwareBazaar, URLhaus) -> graf tutarlılık denetimi.
+Sentetik (demo) veri YÜKLENMEZ: veritabanındaki her IOC gerçek bir kaynaktan gelir.
 """
 import re
 import sys
@@ -56,8 +58,34 @@ def run_file(conn: pyodbc.Connection, path: Path, skip_schema: bool) -> tuple[in
     return ran, skipped
 
 
+def load_feeds(conn) -> None:
+    """Gerçek beslemeler. Biri başarısız olursa (internet yok, anahtar yok) kurulum durmaz, nedeni yazılır."""
+    import os
+
+    from app.services.importer import run_import
+    from importers import abusech, cisa_kev
+    from importers._db import source_id
+
+    try:
+        r = cisa_kev.run(conn)
+        print(f"  CISA KEV: {r['status']}" + (f", {r.get('inserted', 0)} zafiyet eklendi" if r["status"] == "success" else f" ({r.get('message')})"))
+    except Exception as exc:  # ağ hatası vb.
+        print(f"  CISA KEV: atlandı - {exc}")
+    names = ["feodo"] + (["threatfox", "malwarebazaar", "urlhaus"] if os.getenv("ABUSECH_AUTH_KEY", "").strip() else [])
+    for name in names:
+        try:
+            source, items = abusech.FEEDS[name]()
+            res = run_import(conn, source_id(conn, source), items, job_type="feed")
+            print(f"  {source}: {res.status}, okunan {res.read}, eklenen {res.inserted}, güncellenen {res.updated}, hatalı {res.failed}")
+        except abusech.FeedError as exc:
+            print(f"  {name}: atlandı - {exc}")
+    if len(names) == 1:
+        print("  ThreatFox / MalwareBazaar / URLhaus atlandı: .env dosyasında ABUSECH_AUTH_KEY yok (https://auth.abuse.ch).")
+    conn.cursor().execute("EXEC dbo.sp_RefreshActorSimilarity;")
+
+
 def main() -> None:
-    reset, demo = "--reset" in sys.argv, "--no-demo" not in sys.argv
+    reset, feeds = "--reset" in sys.argv, "--no-feeds" not in sys.argv
     print(f"Sunucu: {config.DB_SERVER} | Veritabanı: {config.DB_NAME} | Sürücü: {config.pick_driver()}")
     try:
         master = connect("master")
@@ -99,7 +127,7 @@ def main() -> None:
                         username, full_name, email, hash_password(DEMO_PASSWORD), role_id)
             print(f"  Kullanıcı eklendi: {username} ({full_name})")
 
-    from importers import demo_data, mitre_attack
+    from importers import mitre_attack
 
     if not cur.execute("SELECT COUNT(*) FROM dbo.Technique;").fetchone()[0]:
         res = mitre_attack.run(conn)
@@ -108,8 +136,8 @@ def main() -> None:
     else:
         print("  MITRE ATT&CK zaten yüklü (güncellemek için: python -m importers attack)")
 
-    if demo:
-        demo_data.run(conn)
+    if feeds:
+        load_feeds(conn)
 
     print("\nGraf tutarlılık denetimi (sp_CheckGraphConsistency):")
     bad = 0
@@ -121,7 +149,7 @@ def main() -> None:
         raise SystemExit(f"{bad} graf nesnesi tutarsız. 'EXEC dbo.sp_SyncGraph;' ile onarın.")
 
     print("\nKurulum tamam. Başlatmak için:  python run.py   ->  http://127.0.0.1:8000")
-    print(f"Kullanıcılar: fatih (yönetici) / analist / izleyici   Parola: {DEMO_PASSWORD}  (yalnızca yerel demo içindir)")
+    print(f"Kullanıcılar: fatih (yönetici) / analist / izleyici   Parola: {DEMO_PASSWORD}  (yalnızca yerel kullanım içindir)")
 
 
 if __name__ == "__main__":

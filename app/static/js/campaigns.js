@@ -35,8 +35,7 @@
           ${d.malware.length ? `<div class="chips">${d.malware.map((m) => `<a class="chip" href="/malware?id=${m.MalwareID}">${esc(m.Name)}</a>`).join('')}</div>` : '<p class="faint" style="font-size:13px">Kayıt yok.</p>'}</section>
         <section><h3><i data-lucide="grid-3x3"></i>Öne çıkan teknikler</h3>${TL.techByTactic(d.techniques, 40)}</section>
         <section><h3><i data-lucide="fingerprint"></i>Gözlenen IOC'ler (${d.indicators.length}${d.indicators.length >= 40 ? '+' : ''})</h3>
-          ${list(d.indicators.slice(0, 12), (i) => `<li><a href="/iocs/${i.IndicatorID}"><span class="mono value" style="max-width:220px">${esc(i.Value)}</span>${typeBadge(i.TypeCode)}</a></li>`, 'Bu kampanyaya bağlı IOC yok.')}
-          ${d.indicators.some(() => true) ? '<p class="faint" style="font-size:11.5px">Kampanya-IOC bağlantıları DEMO DATA kaynağındandır (sentetik).</p>' : ''}</section>`;
+          ${list(d.indicators.slice(0, 12), (i) => `<li><a href="/iocs/${i.IndicatorID}"><span class="mono value" style="max-width:220px">${esc(i.Value)}</span>${typeBadge(i.TypeCode)}</a></li>`, 'Bu kampanyaya bağlı IOC yok.')}</section>`;
     },
   });
   document.addEventListener('DOMContentLoaded', page.start);

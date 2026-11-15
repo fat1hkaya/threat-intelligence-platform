@@ -2,7 +2,7 @@
 (() => {
   const { api, esc, fmtN, fmtDT, ago, job, table, pager, empty, loading, icons, toast, can, dialog, qs } = TL;
   const REL = { A: 'A · tamamen güvenilir', B: 'B · genelde güvenilir', C: 'C · oldukça güvenilir', D: 'D · genelde güvenilmez', E: 'E · güvenilmez', F: 'F · değerlendirilemez' };
-  const TYPE = { feed: 'Besleme', file: 'Dosya', attack: 'ATT&CK', demo: 'Demo' };
+  const TYPE = { feed: 'Besleme', file: 'Dosya', attack: 'ATT&CK' };
   const st = { page: 1 };
 
   async function loadSources() {

@@ -88,6 +88,5 @@ INSERT INTO dbo.Source (Name, Url, Reliability, Description) VALUES
     (N'abuse.ch URLhaus',     N'https://urlhaus.abuse.ch',            'B', N'Zararlı yazılım dağıtan URL''ler.'),
     (N'abuse.ch Feodo Tracker', N'https://feodotracker.abuse.ch',     'B', N'Botnet komuta-kontrol sunucusu IP adresleri.'),
     (N'CISA KEV',             N'https://www.cisa.gov/known-exploited-vulnerabilities-catalog', 'A', N'Sahada istismar edildiği bilinen zafiyetler.'),
-    (N'Analist girişi',       NULL,                                   'B', N'Platform kullanıcılarının elle girdiği veya dosyayla yüklediği kayıtlar.'),
-    (N'DEMO DATA',            NULL,                                   'C', N'Sunum için üretilmiş sentetik göstergeler ve ilişkiler. Gerçek tehdit verisi değildir.');
+    (N'Analist girişi',       NULL,                                   'B', N'Platform kullanıcılarının elle girdiği veya dosyayla yüklediği kayıtlar.');
 GO

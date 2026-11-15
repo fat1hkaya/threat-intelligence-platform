@@ -108,6 +108,22 @@ def bulk_lookup(body: BulkLookup, db: Db = Depends(get_db)):
     return {"asked": len(asked), "matches": matches, "unknown": [asked[k] for k in asked if k not in found]}
 
 
+@router.get("/examples")
+def examples(db: Db = Depends(get_db)):
+    """İlişki grafı ekranındaki örnek düğmeleri: atıf zinciri bir aktöre ulaşan gerçek IOC'ler (tip başına en yenisi)."""
+    return db.query(
+        """
+        WITH chain AS (   -- MATCH tabanlı görünüm: IOC -> zararlı -> aktör
+            SELECT a.IndicatorID, a.ViaName AS MalwareName, a.ActorName,
+                   ROW_NUMBER() OVER (PARTITION BY v.TypeCode ORDER BY v.LastSeen DESC) AS rn, v.TypeCode, v.Value
+            FROM dbo.vw_IndicatorAttribution AS a
+            JOIN dbo.vw_Indicator AS v ON v.IndicatorID = a.IndicatorID
+            WHERE a.ViaType = 'malware' AND a.ActorID IS NOT NULL AND v.TypeCode IN ('sha256', 'ipv4', 'domain')
+        )
+        SELECT IndicatorID, TypeCode, Value, MalwareName, ActorName FROM chain WHERE rn = 1;
+        """)
+
+
 @router.get("/{indicator_id}")
 def get_ioc(indicator_id: int, db: Db = Depends(get_db)):
     ind = db.one("SELECT * FROM dbo.vw_Indicator WHERE IndicatorID = ?;", (indicator_id,))

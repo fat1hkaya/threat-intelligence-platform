@@ -90,7 +90,12 @@ def test_optimistic_concurrency_rowversion(analyst, unique):
         analyst.delete(f"/api/iocs/{iid}")
 
 
-def test_sql_injection_attempt_is_harmless(analyst):
+def test_graph_examples_are_real_attributed_iocs(admin, linked_ioc):
+    ex = admin.get("/api/iocs/examples").json()
+    assert ex and all(e["ActorName"] and e["MalwareName"] for e in ex)
+
+
+def test_sql_injection_attempt_is_harmless(analyst, linked_ioc):
     r = analyst.get("/api/iocs", params={"q": "' OR 1=1; DROP TABLE dbo.Indicator; --", "sort": "value; DROP TABLE x"})
     assert r.status_code == 200 and r.json()["total"] == 0
     assert analyst.get("/api/iocs?size=5").json()["total"] > 0
@@ -132,23 +137,21 @@ def test_graph_consistency_all_true(admin):
     assert rows and all(r["IsConsistent"] for r in rows)
 
 
-def test_neighborhood_edges_only_between_returned_nodes(admin):
-    hit = admin.get("/api/iocs", params={"type": "sha256", "size": 5}).json()["items"][0]
-    d = admin.get("/api/graph/neighborhood", params={"type": "indicator", "id": hit["IndicatorID"], "depth": 2}).json()
+def test_neighborhood_edges_only_between_returned_nodes(admin, linked_ioc):
+    d = admin.get("/api/graph/neighborhood", params={"type": "indicator", "id": linked_ioc["IndicatorID"], "depth": 2}).json()
     keys = {(n["NodeType"], n["NodeID"]) for n in d["nodes"]}
     assert d["edges"] and all((e["SourceType"], e["SourceID"]) in keys and (e["TargetType"], e["TargetID"]) in keys for e in d["edges"])
 
 
-def test_relationships_use_match_attribution(admin):
-    hit = admin.get("/api/iocs", params={"type": "sha256", "size": 5}).json()["items"][0]
-    rel = admin.get(f"/api/iocs/{hit['IndicatorID']}/relationships").json()
-    assert any(a["ViaType"] == "malware" and a["ViaName"] == hit["MalwareName"] for a in rel["attribution"])
+def test_relationships_use_match_attribution(admin, linked_ioc):
+    rel = admin.get(f"/api/iocs/{linked_ioc['IndicatorID']}/relationships").json()
+    assert any(a["ViaType"] == "malware" and a["ViaName"] == linked_ioc["MalwareName"] and a["ActorName"] for a in rel["attribution"])
+    assert rel["killchain"] and rel["malwareTechniques"]                                   # çok adımlı MATCH sonuç verdi
     assert all(a["Evidence"] for a in rel["attribution"] if a["ViaType"] == "malware")    # her bağlantının kanıtı var
 
 
-def test_edge_detail_has_evidence_source(admin):
-    hit = admin.get("/api/iocs", params={"type": "sha256", "size": 5}).json()["items"][0]
-    d = admin.get("/api/graph/neighborhood", params={"type": "indicator", "id": hit["IndicatorID"], "depth": 1}).json()
+def test_edge_detail_has_evidence_source(admin, linked_ioc):
+    d = admin.get("/api/graph/neighborhood", params={"type": "indicator", "id": linked_ioc["IndicatorID"], "depth": 1}).json()
     e = d["edges"][0]
     r = admin.get("/api/graph/edge", params={"sourceType": e["SourceType"], "sourceId": e["SourceID"], "targetType": e["TargetType"],
                                              "targetId": e["TargetID"], "relation": e["Relation"]}).json()

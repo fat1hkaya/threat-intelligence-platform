@@ -21,7 +21,8 @@ WHEN NOT MATCHED THEN INSERT (CveID, Title, Vendor, Product, Description, Publis
                       VALUES (s.cve, s.title, s.vendor, s.product, s.[desc], s.added, 1)
 OUTPUT $action INTO @changes;
 SELECT ISNULL(SUM(CASE WHEN Act = 'INSERT' THEN 1 ELSE 0 END), 0) AS Ins,
-       ISNULL(SUM(CASE WHEN Act = 'UPDATE' THEN 1 ELSE 0 END), 0) AS Upd;
+       ISNULL(SUM(CASE WHEN Act = 'UPDATE' THEN 1 ELSE 0 END), 0) AS Upd
+FROM @changes;
 """
 
 

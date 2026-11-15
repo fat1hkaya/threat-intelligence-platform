@@ -42,7 +42,6 @@
       panel(split, `${panelHead('IOC detayı')}
         <section><div class="entity-title">${TL.nodeIcon('indicator')}<div style="min-width:0"><h2 class="mono" style="font-size:14px">${esc(i.Value)}</h2>
           <div class="chips" style="margin-top:6px">${typeBadge(i.TypeCode)}${sev(i.SeverityCode)}${status(i.Status)}</div></div></div>
-          ${i.SourceName === 'DEMO DATA' ? '<p class="notice demo"><i data-lucide="flask-conical"></i>Bu IOC sunum için üretilmiş sentetik veridir (DEMO DATA).</p>' : ''}
           <div class="chips">${copyBtn(i.Value).replace('btn sm icon ghost', 'btn sm').replace('</i>', '</i>Kopyala')}
             <a class="btn sm" href="/iocs/${i.IndicatorID}"><i data-lucide="file-text"></i>Detay sayfası</a>
             <a class="btn sm" href="${TL.graphUrl('indicator', i.IndicatorID)}"><i data-lucide="share-2"></i>Grafta aç</a></div></section>

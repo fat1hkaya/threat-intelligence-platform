@@ -25,7 +25,6 @@
           ${writer ? `<button class="btn" id="sightBtn"><i data-lucide="eye"></i>Görülme ekle</button><button class="btn" id="linkBtn"><i data-lucide="link"></i>İlişki ekle</button>
           <button class="btn primary" id="editBtn"><i data-lucide="pencil"></i>Düzenle</button><button class="btn danger" id="delBtn" aria-label="Sil"><i data-lucide="trash-2"></i></button>` : ''}</div>
       </div>
-      ${i.SourceName === 'DEMO DATA' ? '<p class="notice demo" style="margin-bottom:18px"><i data-lucide="flask-conical"></i>Bu IOC ve ilişkileri sunum için üretilmiş sentetik veridir (DEMO DATA). Gerçek tehdit verisi değildir.</p>' : ''}
       <div class="grid g-main-side">
         <div class="grid" style="align-content:start">
           <article class="card"><div class="card-head"><div><h2>Atıf zinciri</h2><p>SQL Graph: vw_IndicatorAttribution görünümü (MATCH)</p></div></div>${TL.chains(i, rel.attribution)}</article>

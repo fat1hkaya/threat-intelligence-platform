@@ -31,7 +31,7 @@ def run_script(_conn, path: Path) -> list[list[tuple]]:
     return sets
 
 
-def test_demo1_hash_investigation(conn):
+def test_demo1_hash_investigation(conn, linked_ioc):
     sets = run_script(conn, ROOT / "database/demos/demo1_hash_investigation.sql")
     assert len(sets[0][0][0]) == 64                         # seçilen SHA-256
     assert sets[2], "atıf zinciri (vw_IndicatorAttribution) boş"
@@ -113,11 +113,12 @@ def test_backup_and_restore(conn):
     assert conn.cursor().execute("SELECT DB_ID('ThreatLens_Restore');").fetchone()[0] is None
 
 
-def test_demo6_dirty_read_and_blocking(conn):
+def test_demo6_dirty_read_and_blocking(conn, linked_ioc):
     """İki oturum: 1. oturum COMMIT etmeden günceller. READ UNCOMMITTED kirli değeri görür,
     READ COMMITTED bekler (kilit zaman aşımı), ROLLBACK sonrası eski değer okunur."""
     from importers._db import connect
-    iid, original = conn.cursor().execute("SELECT TOP (1) IndicatorID, Confidence FROM dbo.Indicator ORDER BY IndicatorID;").fetchone()
+    iid = linked_ioc["IndicatorID"]
+    original = conn.cursor().execute("SELECT Confidence FROM dbo.Indicator WHERE IndicatorID = ?;", iid).fetchone()[0]
     s1, s2 = connect(), connect()
     try:
         s1.autocommit = False
@@ -134,11 +135,11 @@ def test_demo6_dirty_read_and_blocking(conn):
         s1.close(); s2.close()
 
 
-def test_rowversion_lost_update_prevented(conn):
+def test_rowversion_lost_update_prevented(conn, linked_ioc):
     """İki oturum aynı RowVer'i okur; ilki kaydeder, ikincisi 50009 hatası alır."""
     cur = conn.cursor()
     row = cur.execute("""SELECT TOP (1) v.IndicatorID, v.TypeCode, v.OriginalValue, v.Value, v.Confidence, v.SeverityCode, v.TLPCode, v.SourceID, v.RowVer
-                         FROM dbo.vw_Indicator AS v ORDER BY v.IndicatorID DESC;""").fetchone()
+                         FROM dbo.vw_Indicator AS v WHERE v.IndicatorID = ?;""", linked_ioc["IndicatorID"]).fetchone()
     sql = """EXEC dbo.sp_SaveIndicator @IndicatorID = ?, @TypeCode = ?, @Value = ?, @NormalizedValue = ?, @Confidence = ?,
              @SeverityCode = ?, @TLPCode = ?, @SourceID = ?, @RowVer = ?;"""
     args = (row.IndicatorID, row.TypeCode, row.OriginalValue, row.Value, row.Confidence, row.SeverityCode, row.TLPCode, row.SourceID, row.RowVer)
@@ -165,3 +166,9 @@ def test_db_role_permissions(conn):
         assert as_viewer("SELECT COUNT(*) FROM dbo.Indicator;")[0][0] > 0      # okuma serbest
     finally:
         cur.execute("ALTER ROLE tip_reader DROP MEMBER tl_test_viewer; DROP USER tl_test_viewer;")
+
+
+def test_cisa_kev_merge_sql_runs(conn):
+    """CISA KEV içe aktarıcısının MERGE sorgusu ağa çıkmadan, boş girdiyle derlenip çalışabilmeli."""
+    from importers.cisa_kev import MERGE_SQL
+    assert tuple(conn.cursor().execute(MERGE_SQL, "[]").fetchone()) == (0, 0)

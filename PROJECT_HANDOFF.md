@@ -7,12 +7,12 @@
 2. `.venv\Scripts\python run.py`
 3. http://127.0.0.1:8000 adresini açın; kullanıcı `fatih` / `ThreatLens2026!`.
 
-**Ortam (bu bilgisayar):** SQL Server **2025 Developer** 17.0.1000.7, varsayılan örnek MSSQLSERVER, Windows kimlik doğrulama, sysadmin = NULLTRACEXatih. SQL Server 2022 web yükleyicisi Microsoft tarafından emekliye ayrıldığı için 2025 kuruldu. Ayrıca ODBC Driver 18, sqlcmd ve `.venv` (Python 3.14) kurulu.
+**Ortam:** SQL Server **2025 Developer** 17.0.1000.7, varsayılan örnek MSSQLSERVER, Windows kimlik doğrulama (kurulumu yapan Windows kullanıcısı sysadmin). SQL Server 2022 web yükleyicisi Microsoft tarafından emekliye ayrıldığı için 2025 kuruldu. Ayrıca ODBC Driver 18, sqlcmd, GitHub CLI ve `.venv` (Python 3.14) kurulu.
 
 **Yapılanlar (hepsi gerçek sunucuda çalıştırıldı):**
 - **Veritabanı:**
   - 01–09 SQL dosyaları sıfırdan kurulumda hatasız çalışıyor (`--reset` ile doğrulandı, ≈20 sn).
-  - ATT&CK v20.1 (19.000 kanıtlı ilişki) ve DEMO DATA (1446 IOC) yüklü; graf tutarlı.
+  - **Sentetik (DEMO) veri kaldırıldı.** Veritabanında ATT&CK v20.1 (19.000 kanıtlı ilişki), CISA KEV (1781 zafiyet) ve Feodo Tracker (gerçek C2 IP'leri) var; graf tutarlı. ThreatFox / MalwareBazaar / URLhaus için `.env` dosyasına `ABUSECH_AUTH_KEY` girilmeli.
   - §5.3'teki 5 graf varsayımının **5'i de doğrulandı**.
   - Düzeltmeler:
     - ODBC escape taraması kapatıldı (`SQL_ATTR_NOSCAN`).
@@ -20,23 +20,24 @@
     - `trg_AppUser_Audit` eklendi.
     - Demo 5'teki PK hatası giderildi.
     - Yedekleme betiği taşınabilir yollara geçirildi.
+    - CISA KEV içe aktarıcısındaki eksik `FROM @changes` hatası düzeltildi.
 - **Backend:**
   - `app/api/` şartnamedeki uçlarla yeniden yazıldı: `dashboard`, `iocs`, `graph`, `attack`, `entities`, `admin`, `auth`.
-  - `config.py` ROOT hatası, `setup_db.py` ve `importers/demo_data.py` düzeltildi/yazıldı.
+  - `config.py` ROOT hatası düzeltildi; `setup_db.py` gerçek beslemeleri çekiyor (`--no-feeds` ile kapatılır).
 - **Arayüz** (Jinja2 + saf JS): 11 ekran + giriş sayfası.
   - SQL çekmecesi, global arama (Ctrl+K), vis-network graf (kenar kanıtı, genişletme, SHORTEST_PATH), Chart.js grafikleri.
   - Duyarlı tasarım (1440/1024/390 px tarandı, JS hatası ve yatay taşma yok).
   - Kütüphaneler `app/static/vendor/` altında; çevrimdışı çalışır.
-- **Testler:** `pytest` → **79/79 geçti** (normalleştirme, API, rol yetkileri, eşzamanlılık, ROLLBACK, graf, demo betikleri, yedekleme, GRANT/DENY).
+- **Testler:** `pytest` → **81/81 geçti**; testler kendi IOC'lerini oluşturup siler (normalleştirme, API, rol yetkileri, eşzamanlılık, ROLLBACK, graf, demo betikleri, yedekleme, GRANT/DENY).
 - **Belgeler:** `README.md`, `docs/01_proje_ve_mimari.md`, `docs/02_normalizasyon_taslak.md` (5 örnek, 4 adım, sorgular doğrulandı; **ekip özgün metne çevirmeli**), `docs/03_test_ve_demo.md`, `docs/diyagramlar/` (Chen ER .dot, Mermaid şema), `docs/api.md` ve `docs/veritabani_nesneleri.md` (`scripts/gen_docs.py` ile üretilir).
-- **Git:** yerel depo açıldı ve ilk commit atıldı. GitHub'a gönderilmedi; uzak depo yok.
+- **Git:** depo GitHub'a herkese açık olarak yüklenir (commit yazarı GitHub noreply adresi).
 
 **Açık kalanlar:**
-1. GitHub deposu oluşturup push etmek: `gh` kurulu değil, web arayüzünden depo açıp `git remote add origin …` ve `git push -u origin main` komutlarını çalıştırın.
-2. abuse.ch anahtarı alıp canlı beslemeleri denemek; canlı istekler hiç yapılmadı.
+1. abuse.ch anahtarı yoksa ThreatFox / MalwareBazaar / URLhaus verisi gelmez; anahtar: https://auth.abuse.ch → `.env` → `python -m importers threatfox malwarebazaar urlhaus`.
+2. Feodo Tracker şu an yalnızca birkaç IP yayımlıyor; asıl IOC hacmi abuse.ch API'lerinden gelir.
 3. Raporlar için ekran görüntüleri ve draw.io ile Chen ER çizimi (ekip derste bu formatı kullanıyor; `.dot` dosyası referans).
 4. Ekran okuyucuyla erişilebilirlik denemesi yapılmadı.
-5. Test çalıştırmak veritabanına denetim/iş kaydı ekler (tasarım gereği silinemez). Sunum öncesi temiz veri için `setup_db.py --reset` kullanın.
+5. Test çalıştırmak veritabanına denetim/iş kaydı ekler (tasarım gereği silinemez). Sunum öncesi temiz veri için `setup_db.py --reset` kullanın (beslemeler yeniden çekilir).
 
 ---
 
