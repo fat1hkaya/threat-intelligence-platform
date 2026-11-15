@@ -141,7 +141,7 @@ def _sync_actor_lists(db: Db, actor_id: int, body: ActorIn) -> None:
 @router.post("/actors")
 def create_actor(body: ActorIn, user: dict = Depends(require_analyst), db: Db = Depends(get_db)):
     with db.transaction():
-        actor_id = db.scalar(
+        actor_id = db.insert_id(
             """
             INSERT INTO dbo.ThreatActor (Name, Description, MotivationID, CountryCode, IsActive)
             OUTPUT inserted.ActorID
@@ -272,7 +272,7 @@ def _sync_malware_aliases(db: Db, malware_id: int, body: MalwareIn) -> None:
 @router.post("/malware")
 def create_malware(body: MalwareIn, user: dict = Depends(require_analyst), db: Db = Depends(get_db)):
     with db.transaction():
-        malware_id = db.scalar(
+        malware_id = db.insert_id(
             "INSERT INTO dbo.Malware (Name, MalwareTypeID, Description, Platforms) OUTPUT inserted.MalwareID VALUES (?, ?, ?, ?);",
             (body.name.strip(), body.malwareTypeId, body.description or None, body.platforms or None))
         _sync_malware_aliases(db, malware_id, body)
@@ -373,7 +373,7 @@ class CampaignIn(BaseModel):
 
 @router.post("/campaigns")
 def create_campaign(body: CampaignIn, user: dict = Depends(require_analyst), db: Db = Depends(get_db)):
-    campaign_id = db.scalar(
+    campaign_id = db.insert_id(
         "INSERT INTO dbo.Campaign (Name, Description, ActorID, StartDate, EndDate) OUTPUT inserted.CampaignID VALUES (?, ?, ?, ?, ?);",
         (body.name.strip(), body.description or None, body.actorId, body.startDate or None, body.endDate or None))
     return {"CampaignID": campaign_id}
@@ -459,7 +459,7 @@ class VulnerabilityIn(BaseModel):
 
 @router.post("/vulnerabilities")
 def create_vulnerability(body: VulnerabilityIn, user: dict = Depends(require_analyst), db: Db = Depends(get_db)):
-    vuln_id = db.scalar(
+    vuln_id = db.insert_id(
         """
         INSERT INTO dbo.Vulnerability (CveID, Title, Description, Vendor, Product, CvssScore, PublishedDate, IsKnownExploited)
         OUTPUT inserted.VulnerabilityID

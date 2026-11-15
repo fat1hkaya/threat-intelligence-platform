@@ -7,7 +7,7 @@
 """
 import sys
 
-from . import abusech, cisa_kev, mitre_attack
+from . import abusech, cisa_kev, malpedia, mitre_attack
 from ._db import connect, source_id
 from app.services.importer import run_import
 
@@ -15,12 +15,14 @@ from app.services.importer import run_import
 def main(args: list[str]) -> None:
     wanted = args or ["all"]
     if "all" in wanted:
-        wanted = ["attack", *abusech.FEEDS, "kev"]
+        wanted = ["attack", *abusech.FEEDS, "kev", "malpedia"]
     conn = connect()
     for name in wanted:
         try:
             if name == "attack":
                 print("MITRE ATT&CK:", mitre_attack.run(conn))
+            elif name == "malpedia":
+                print("Malpedia:", malpedia.run(conn))
             elif name == "kev":
                 print("CISA KEV:", cisa_kev.run(conn))
             elif name in abusech.FEEDS:
@@ -29,7 +31,7 @@ def main(args: list[str]) -> None:
                 print(f"{source}: {res.status}, okunan {res.read}, eklenen {res.inserted}, güncellenen {res.updated}, "
                       f"atlanan {res.skipped}, hatalı {res.failed}")
             else:
-                print(f"Bilinmeyen kaynak: {name}. Seçenekler: attack, {', '.join(abusech.FEEDS)}, kev, all")
+                print(f"Bilinmeyen kaynak: {name}. Seçenekler: attack, {', '.join(abusech.FEEDS)}, kev, malpedia, all")
                 continue
             if name != "kev":
                 conn.cursor().execute("EXEC dbo.sp_RefreshActorSimilarity;")

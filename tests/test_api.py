@@ -162,8 +162,9 @@ def test_shortest_path_apt29_fin7(admin):
     ids = {a["Name"]: a["ActorID"] for a in admin.get("/api/actors", params={"size": 200}).json()["items"]}
     r = admin.get("/api/graph/path", params={"fromActor": ids["APT29"], "toActor": ids["FIN7"]}).json()
     assert r["found"] and r["hops"] == 1 and r["steps"][0]["shared"]
-    none = admin.get("/api/graph/path", params={"fromActor": ids["APT28"], "toActor": ids["Lazarus Group"]}).json()
-    assert none["found"] is False
+    # hiç aracı olmayan bir aktöre yol olamaz (veri zenginleştikçe değişmeyen bir durum)
+    loner = next(a["ActorID"] for a in admin.get("/api/actors", params={"size": 200}).json()["items"] if a["MalwareCount"] == 0)
+    assert admin.get("/api/graph/path", params={"fromActor": ids["APT29"], "toActor": loner}).json()["found"] is False
 
 
 def test_link_requires_evidence_and_creates_edge(analyst, unique):
@@ -282,3 +283,26 @@ def test_stale_import_is_stored_as_expired(analyst, unique):
         assert hit["Status"] == "expired"
     finally:
         analyst.delete(f"/api/iocs/{hit['IndicatorID']}")
+
+
+# ------------------------------------------------------------------ varlık ekleme uçları (tetikleyicili tablolar)
+def test_create_entities_on_tables_with_triggers(analyst, admin, unique):
+    """ThreatActor, Malware, Campaign, Vulnerability ve AppUser tablolarında tetikleyici var: INSERT ... OUTPUT INTO ile çalışmalı."""
+    actor = analyst.post("/api/actors", json={"name": f"Pytest Actor {unique}", "aliases": [f"pta-{unique}"]})
+    assert actor.status_code == 200, actor.text
+    mal = analyst.post("/api/malware", json={"name": f"Pytest Mal {unique}", "malwareTypeId": 1})
+    assert mal.status_code == 200, mal.text
+    camp = analyst.post("/api/campaigns", json={"name": f"Pytest Camp {unique}", "actorId": actor.json()["ActorID"]})
+    assert camp.status_code == 200, camp.text
+    cve = f"CVE-2099-{int(unique, 16) % 90000 + 10000}"
+    vuln = analyst.post("/api/vulnerabilities", json={"cveId": cve, "title": "pytest zafiyeti"})
+    assert vuln.status_code == 200, vuln.text
+    user = admin.post("/api/users", json={"username": f"pyt{unique}", "fullName": "Pytest Kullanıcı", "role": "viewer", "password": "Gecici-Parola-123"})
+    assert user.status_code == 201, user.text
+    graph = admin.get("/api/graph/stats").json()
+    assert all(r["IsConsistent"] for r in graph)
+    analyst.delete(f"/api/campaigns/{camp.json()['CampaignID']}")
+    analyst.delete(f"/api/actors/{actor.json()['ActorID']}")
+    analyst.delete(f"/api/malware/{mal.json()['MalwareID']}")
+    analyst.delete(f"/api/vulnerabilities/{vuln.json()['VulnerabilityID']}")
+    admin.patch(f"/api/users/{user.json()['UserID']}", json={"isActive": False})

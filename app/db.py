@@ -112,6 +112,13 @@ class Db:
             self.statements[-1]["rows"] = count
         return count
 
+    def insert_id(self, sql: str, params: tuple = ()):
+        """INSERT ... OUTPUT inserted.<kimlik> ifadesini çalıştırıp yeni kimliği döndürür.
+        Tetikleyicisi olan tablolarda INTO'suz OUTPUT yasaktır (hata 334); bu yüzden çıktı bir tablo değişkenine yazılır."""
+        wrapped = re.sub(r"OUTPUT\s+(inserted\.\w+)", r"OUTPUT \1 INTO @new", sql, count=1, flags=re.I)
+        body = wrapped.strip().rstrip(";")
+        return self.scalar("SET NOCOUNT ON; DECLARE @new TABLE (ID BIGINT);\n" + body + ";\nSELECT ID FROM @new;", params)
+
     def query_sets(self, sql: str, params: tuple = ()) -> list[list[dict]]:
         """Birden çok sonuç kümesi döndüren saklı yordamlar için."""
         cur = self._run(sql, params, True)

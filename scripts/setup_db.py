@@ -96,6 +96,7 @@ def load_feeds(conn) -> None:
         print(f"  CISA KEV: {r['status']}" + (f", {r.get('inserted', 0)} zafiyet eklendi" if r["status"] == "success" else f" ({r.get('message')})"))
     except Exception as exc:  # ağ hatası vb.
         print(f"  CISA KEV: atlandı - {exc}")
+    from importers import malpedia
     names = ["feodo"] + (["threatfox", "malwarebazaar", "urlhaus"] if os.getenv("ABUSECH_AUTH_KEY", "").strip() else [])
     for name in names:
         try:
@@ -106,6 +107,9 @@ def load_feeds(conn) -> None:
             print(f"  {name}: atlandı - {exc}")
     if len(names) == 1:
         print("  ThreatFox / MalwareBazaar / URLhaus atlandı: .env dosyasında ABUSECH_AUTH_KEY yok (https://auth.abuse.ch).")
+    r = malpedia.run(conn)   # besleme ailelerini adlandırır ve aktörlere bağlar; abuse.ch'den SONRA çalışmalı
+    print(f"  Malpedia: {r['status']}" + (f", {r['merged']} tekrar birleştirildi, {r['aliases']} takma ad, {r['actor_links']} aile-aktör ilişkisi"
+                                          if r["status"] == "success" else f" ({r.get('message')})"))
     conn.cursor().execute("EXEC dbo.sp_RefreshActorSimilarity;")
 
 

@@ -268,12 +268,14 @@ BEGIN
 
         -- 3) Zararlı yazılım bağlantısı. Aile adı bilinmiyorsa "genel" tipte açılır.
         --    Kanıt: kaynağın bu göstergeyi bu aileyle ilişkilendirdiği beyan (ör. ThreatFox "malware_printable")
+        --    Eşleme ad anahtarıyla yapılır (fn_FindMalware, 12_malware_names.sql): "QuasarRAT" mevcut "Quasar RAT" kaydına
+        --    bağlanır; aynı yığında farklı yazılan aynı aile için tek kayıt açılır.
         INSERT INTO dbo.Malware (Name, MalwareTypeID)
-        SELECT DISTINCT s.Malware, (SELECT MalwareTypeID FROM dbo.MalwareType WHERE Code = 'malware')
+        SELECT MIN(s.Malware), (SELECT MalwareTypeID FROM dbo.MalwareType WHERE Code = 'malware')
         FROM @stage AS s
         WHERE s.IndicatorID IS NOT NULL AND s.Malware IS NOT NULL
-          AND NOT EXISTS (SELECT 1 FROM dbo.Malware AS m WHERE m.Name = s.Malware)
-          AND NOT EXISTS (SELECT 1 FROM dbo.MalwareAlias AS ma WHERE ma.Alias = s.Malware);
+          AND NOT EXISTS (SELECT 1 FROM dbo.fn_FindMalware(s.Malware))
+        GROUP BY dbo.fn_NameKey(s.Malware);
 
         DECLARE @links TABLE (IndicatorID BIGINT, MalwareID INT, Role VARCHAR(12), Confidence TINYINT, EvidenceText NVARCHAR(1000), EvidenceID INT NULL,
                               PRIMARY KEY (IndicatorID, MalwareID));
@@ -281,13 +283,7 @@ BEGIN
         SELECT s.IndicatorID, MIN(x.MalwareID), MIN(s.Role), MAX(s.Confidence),
                MIN(ISNULL(s.EvidenceText, N'Kaynak bu göstergeyi ' + s.Malware + N' ailesiyle ilişkilendiriyor.'))
         FROM @stage AS s
-        CROSS APPLY (
-            SELECT TOP (1) q.MalwareID
-            FROM (SELECT m.MalwareID, 1 AS Pri FROM dbo.Malware AS m WHERE m.Name = s.Malware
-                  UNION ALL
-                  SELECT ma.MalwareID, 2 FROM dbo.MalwareAlias AS ma WHERE ma.Alias = s.Malware) AS q
-            ORDER BY q.Pri, q.MalwareID
-        ) AS x
+        CROSS APPLY dbo.fn_FindMalware(s.Malware) AS x
         WHERE s.IndicatorID IS NOT NULL AND s.Malware IS NOT NULL
           AND NOT EXISTS (SELECT 1 FROM dbo.MalwareIndicator AS mi WHERE mi.MalwareID = x.MalwareID AND mi.IndicatorID = s.IndicatorID)
         GROUP BY s.IndicatorID, x.MalwareID;

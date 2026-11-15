@@ -8,7 +8,7 @@ from pathlib import Path
 import pyodbc
 import pytest
 
-from conftest import ROOT, needs_db
+from conftest import ROOT, needs_db  # noqa: F401
 
 pytestmark = needs_db
 GO = re.compile(r"^\s*GO\s*;?\s*$", re.I | re.M)
@@ -172,3 +172,35 @@ def test_cisa_kev_merge_sql_runs(conn):
     """CISA KEV içe aktarıcısının MERGE sorgusu ağa çıkmadan, boş girdiyle derlenip çalışabilmeli."""
     from importers.cisa_kev import MERGE_SQL
     assert tuple(conn.cursor().execute(MERGE_SQL, "[]").fetchone()) == (0, 0)
+
+
+def test_merge_malware_moves_links_and_keeps_graph_consistent(conn, linked_ioc):
+    """sp_MergeMalware: silinen kaydın IOC ilişkileri ve adı korunan kayda taşınır, graf tutarlı kalır."""
+    import uuid
+    cur = conn.cursor()
+    tag = uuid.uuid4().hex[:8]
+    ins = "SET NOCOUNT ON; DECLARE @n TABLE (ID INT); INSERT INTO dbo.Malware (Name, MalwareTypeID) OUTPUT inserted.MalwareID INTO @n VALUES (?, 1); SELECT ID FROM @n;"
+    keep = cur.execute(ins, f"PytestKeep {tag}").fetchone()[0]
+    drop = cur.execute(ins, f"pytest-drop-{tag}").fetchone()[0]
+    try:
+        cur.execute("INSERT INTO dbo.MalwareIndicator (MalwareID, IndicatorID, Role) VALUES (?, ?, 'c2');", drop, linked_ioc["IndicatorID"])
+        cur.execute("EXEC dbo.sp_MergeMalware @KeepID = ?, @DropID = ?;", keep, drop)
+        assert cur.execute("SELECT COUNT(*) FROM dbo.Malware WHERE MalwareID = ?;", drop).fetchone()[0] == 0
+        assert cur.execute("SELECT COUNT(*) FROM dbo.MalwareIndicator WHERE MalwareID = ? AND IndicatorID = ?;", keep, linked_ioc["IndicatorID"]).fetchone()[0] == 1
+        assert cur.execute("SELECT Alias FROM dbo.MalwareAlias WHERE MalwareID = ?;", keep).fetchone()[0] == f"pytest-drop-{tag}"
+        assert all(r.IsConsistent for r in cur.execute("EXEC dbo.sp_CheckGraphConsistency;").fetchall())
+    finally:
+        cur.execute("DELETE FROM dbo.Malware WHERE MalwareID IN (?, ?);", keep, drop)
+
+
+def test_import_matches_family_by_name_key(analyst, unique):
+    """'quasar-rat' yazımı ATT&CK'teki 'QuasarRAT' kaydına bağlanmalı, yeni aile açılmamalı."""
+    before = analyst.get("/api/malware", params={"q": "quasar", "size": 20}).json()["total"]
+    csv = f"type,value,malware\ndomain,namekey-{unique}.test,quasar-rat\n".encode()
+    assert analyst.post("/api/imports", files={"file": ("k.csv", csv, "text/csv")}, data={"strict": "true"}).json()["status"] == "success"
+    hit = analyst.get("/api/iocs", params={"q": f"namekey-{unique}.test"}).json()["items"][0]
+    try:
+        assert hit["MalwareName"] == "QuasarRAT"
+        assert analyst.get("/api/malware", params={"q": "quasar", "size": 20}).json()["total"] == before
+    finally:
+        analyst.delete(f"/api/iocs/{hit['IndicatorID']}")

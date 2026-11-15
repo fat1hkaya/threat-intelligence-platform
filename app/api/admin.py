@@ -32,7 +32,7 @@ def sources(db: Db = Depends(get_db)):
         FROM dbo.Source;
         """)
     feeds = {"abuse.ch ThreatFox": "threatfox", "abuse.ch MalwareBazaar": "malwarebazaar", "abuse.ch URLhaus": "urlhaus",
-             "abuse.ch Feodo Tracker": "feodo", "CISA KEV": "kev", "MITRE ATT&CK": "attack"}
+             "abuse.ch Feodo Tracker": "feodo", "CISA KEV": "kev", "MITRE ATT&CK": "attack", "Malpedia": "malpedia"}
     needs_key = {"threatfox", "malwarebazaar", "urlhaus"}
     has_key = bool(os.getenv("ABUSECH_AUTH_KEY", "").strip())
     for s in items:
@@ -115,7 +115,7 @@ class FeedRun(BaseModel):
 @router.post("/imports/feed")
 def run_feed(body: FeedRun, user: dict = Depends(require_analyst), db: Db = Depends(get_db)):
     """Bir beslemeyi elle senkronize eder. abuse.ch anahtarı yoksa iş açılmaz, açık bir mesaj döner."""
-    from importers import abusech, cisa_kev, mitre_attack
+    from importers import abusech, cisa_kev, malpedia, mitre_attack
 
     if body.feed == "attack":
         if user["Role"] != "admin":
@@ -125,6 +125,8 @@ def run_feed(body: FeedRun, user: dict = Depends(require_analyst), db: Db = Depe
         return res
     if body.feed == "kev":
         return cisa_kev.run(db.conn)
+    if body.feed == "malpedia":
+        return malpedia.run(db.conn)
     if body.feed not in abusech.FEEDS:
         raise HTTPException(400, "Bilinmeyen besleme.")
     try:
@@ -232,7 +234,7 @@ def create_user(body: UserIn, db: Db = Depends(get_db)):
     role_id = db.scalar("SELECT RoleID FROM dbo.Role WHERE Code = ?;", (body.role,))
     if not role_id:
         raise HTTPException(400, "Geçersiz rol.")
-    user_id = db.scalar(
+    user_id = db.insert_id(
         "INSERT INTO dbo.AppUser (Username, FullName, Email, PasswordHash, RoleID) OUTPUT inserted.UserID VALUES (?, ?, ?, ?, ?);",
         (body.username.strip(), body.fullName.strip(), body.email or None, hash_password(body.password), role_id))
     db.statements[-1]["params"][3] = "<parola özeti>"
