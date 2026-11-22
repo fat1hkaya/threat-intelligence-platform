@@ -8,8 +8,10 @@ Kullanım koşulları (Kasım 2026'da kontrol edildi):
 - MalwareBazaar'dan yalnızca özet (hash) ve aile bilgisi alınır; dosyanın kendisi ASLA indirilmez
   (get_file sorgusu kullanılmaz).
 """
+import http.client
 import json
 import os
+import time
 import urllib.parse
 import urllib.request
 
@@ -27,17 +29,31 @@ def _key() -> str:
     return key
 
 
+RETRY_DELAYS = (3, 10)        # geçici ağ hatasında 3 ve 10 sn sonra yeniden dene (toplam 3 deneme)
+TRANSIENT = (http.client.IncompleteRead, ConnectionError, TimeoutError, urllib.error.URLError)
+
+
+def _fetch_json(req: urllib.request.Request, label: str):
+    """İsteği gönderip JSON döndürür. Yarıda kesilen yanıt, bağlantı kopması ve zaman aşımı gibi geçici
+    hatalarda yeniden dener; HTTP hataları (ör. 401/403 geçersiz anahtar) hemen bildirilir."""
+    for attempt in range(len(RETRY_DELAYS) + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=90) as r:
+                return json.loads(r.read())
+        except urllib.error.HTTPError as exc:
+            hint = "Auth-Key geçersiz olabilir" if exc.code in (401, 403) else exc.reason
+            raise FeedError(f"{label} HTTP {exc.code}: {hint}") from exc
+        except (TRANSIENT + (json.JSONDecodeError,)) as exc:
+            if attempt == len(RETRY_DELAYS):
+                raise FeedError(f"{label}: {getattr(exc, 'reason', exc)} ({attempt + 1} deneme)") from exc
+            time.sleep(RETRY_DELAYS[attempt])
+
+
 def _post(url: str, data: bytes, content_type: str, auth: bool = True) -> dict:
     headers = {"User-Agent": UA, "Content-Type": content_type}
     if auth:
         headers["Auth-Key"] = _key()
-    try:
-        with urllib.request.urlopen(urllib.request.Request(url, data=data, headers=headers), timeout=90) as r:
-            return json.loads(r.read())
-    except urllib.error.HTTPError as exc:
-        raise FeedError(f"{url} HTTP {exc.code}: {'Auth-Key geçersiz olabilir' if exc.code in (401, 403) else exc.reason}") from exc
-    except urllib.error.URLError as exc:
-        raise FeedError(f"{url} adresine ulaşılamadı: {exc.reason}") from exc
+    return _fetch_json(urllib.request.Request(url, data=data, headers=headers), url)
 
 
 def _ts(value):
@@ -100,11 +116,7 @@ def malwarebazaar() -> tuple[str, list[dict]]:
 def urlhaus(limit: int = 1000) -> tuple[str, list[dict]]:
     req = urllib.request.Request(f"https://urlhaus-api.abuse.ch/v1/urls/recent/limit/{limit}/",
                                  headers={"User-Agent": UA, "Auth-Key": _key()})
-    try:
-        with urllib.request.urlopen(req, timeout=90) as r:
-            data = json.loads(r.read())
-    except urllib.error.URLError as exc:
-        raise FeedError(f"URLhaus: {getattr(exc, 'reason', exc)}") from exc
+    data = _fetch_json(req, "URLhaus")
     items = []
     for r in data.get("urls") or []:
         if not r.get("url") or len(r["url"]) > 400:
@@ -122,11 +134,7 @@ def urlhaus(limit: int = 1000) -> tuple[str, list[dict]]:
 def feodo() -> tuple[str, list[dict]]:
     """Feodo Tracker IP engelleme listesi (herkese açık döküm, anahtar gerekmez)."""
     req = urllib.request.Request("https://feodotracker.abuse.ch/downloads/ipblocklist.json", headers={"User-Agent": UA})
-    try:
-        with urllib.request.urlopen(req, timeout=90) as r:
-            rows = json.loads(r.read())
-    except urllib.error.URLError as exc:
-        raise FeedError(f"Feodo Tracker: {getattr(exc, 'reason', exc)}") from exc
+    rows = _fetch_json(req, "Feodo Tracker")
     return "abuse.ch Feodo Tracker", [{
         "type": "ipv4", "value": r["ip_address"], "confidence": 90 if r.get("status") == "online" else 75,
         "severity": "high", "tlp": "TLP:CLEAR", "malware": r.get("malware"), "role": "c2",

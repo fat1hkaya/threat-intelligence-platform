@@ -129,7 +129,7 @@ Diğer kaynaklar:
 | `python -m importers malpedia` | Malpedia (CC BY-SA 4.0) | Zararlı ailesi diğer adları ve aile → aktör atıfları; besleme adlarını tek aileye birleştirir |
 | `python -m importers ip2asn` | iptoasn.com (Public Domain, PDDL v1.0) | Yaklaşık 500 bin IPv4 aralığı → ASN ve ülke; IOC üretmez, IP IOC'lerini zenginleştirir (yönetici) |
 
-`scripts/sync_feeds.cmd`, Windows Görev Zamanlayıcı ile 6 saatte bir beslemeleri senkronize eder (`logs/sync_feeds.log`).
+Windows Görev Zamanlayıcı 6 saatte bir `pythonw.exe scripts\sync_feeds.py` çalıştırır: konsol penceresi açılmaz, çıktı `logs/sync_feeds.log` dosyasına yazılır, bilgisayar uykudayken kaçırılan çalışma uyanınca yapılır, aynı anda iki senkron çalışmaz. Geçici ağ hatalarında (yarıda kesilen yanıt, bağlantı kopması) her besleme 3 kez denenir. Elle çalıştırmak için `scripts\sync_feeds.cmd`.
 
 ## Testler
 
@@ -179,7 +179,7 @@ database/       T-SQL: schema, indexes, functions, views, graph, procedures, tri
                 migrations (10-22: yaşam döngüsü, Agent işleri, kimlik doğrulama, log avı, kapsama,
                 temporal, performans, tam metin, vakalar, ağ, bakım, ayarlama), demos, backup
 importers/      MITRE ATT&CK, abuse.ch, CISA KEV, Malpedia, iptoasn.com içe aktarıcıları
-scripts/        setup_db.py (kurulum), gen_docs.py (belge üretimi), sync_feeds.cmd (zamanlanmış senkron)
+scripts/        setup_db.py (kurulum), gen_docs.py (belge üretimi), sync_feeds.py (zamanlanmış, penceresiz senkron), sync_feeds.cmd (elle)
 .github/        CI iş akışı (SQL Server kapsayıcısında pytest, JS sözdizimi)
 tests/          pytest
 docs/           proje belgeleri ve tasarım referansları

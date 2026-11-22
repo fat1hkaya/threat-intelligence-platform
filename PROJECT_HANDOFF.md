@@ -13,7 +13,7 @@
 **Testler:** 145/145 geçti. 15 ekran 390 / 768 / 1024 / 1440 px'te ölçüldü: yatay taşma, JS veya CSP hatası, küçük dokunma hedefi, 12 px altı yazı yok.
 
 **Açık kalanlar:**
-1. Zamanlanmış besleme görevi (Windows) 22 Kasım 17:06'da 0xC000013A koduyla kesildi (konsol penceresi kapatıldı ya da bilgisayar uyudu). Görev penceresiz çalışacak şekilde değiştirilebilir.
+1. ~~Zamanlanmış besleme görevi konsol penceresi kapatılınca kesiliyordu (0xC000013A).~~ Görev artık `pythonw.exe scripts\sync_feeds.py` ile penceresiz çalışıyor; kaçırılan çalışma uyanınca yapılıyor, süre sınırı 1 saat. abuse.ch indirmeleri geçici ağ hatasında 3 kez deneniyor.
 2. iptoasn.com aralık verisi hâlâ yüklü değil (önceki deneme harmanlama hatasıyla düşmüştü, düzeltildi): Veri Kaynakları → iptoasn.com → Senkronize et.
 3. Sunumda kullanıcı menüsünden **Geliştirici modu** açılmalı (SQL düğmesi ve teknik açıklamalar).
 4. Ekip işleri: draw.io Chen ER, normalizasyon raporu, ekran görüntüleri.

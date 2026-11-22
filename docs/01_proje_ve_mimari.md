@@ -157,7 +157,7 @@ Transaction örnekleri:
 
 USOM'un zararlı bağlantı listesi değerlendirildi ama eklenmedi: `.txt` paylaşımı 1 Haziran 2026'da sona erdi; yerine gösterilen siberguvenlik.gov.tr API'sinin belgesi ve kullanım koşulları yayımlanmadı.
 
-Beslemeler Windows Görev Zamanlayıcı ile 6 saatte bir senkronize edilir (`scripts/sync_feeds.cmd`).
+Beslemeler Windows Görev Zamanlayıcı ile 6 saatte bir, konsol penceresi açmadan senkronize edilir (`pythonw.exe scripts/sync_feeds.py`); geçici ağ hatalarında her besleme 3 kez denenir.
 
 ## 9. Performans
 
