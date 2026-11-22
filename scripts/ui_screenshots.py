@@ -11,8 +11,9 @@ pencereleri açıp kapatır (form gönderilmez).
 Her sayfada denetlenenler (report.json):
   overflow         belge yatay taşıyor mu (scrollWidth > innerWidth)
   sidebarScroll    kenar çubuğu kendi içinde kayıyor mu
-  nestedScroll     kendi kaydırma çubuğu olan ve içeriği taşan iç öğeler
-  truncatedNoTitle metni kesik (scrollWidth > clientWidth) olup ipucu (title) olmayan öğeler
+  nestedScroll     kendi kaydırma çubuğu olan ve içeriği taşan iç öğeler (izinli olanlar hariç)
+  allowedScroll    şartnamenin izin verdiği iç kaydırmalar: sağ panel, pencere gövdesi, gölgeli yatay tablo/matris
+  truncatedNoTitle metni kesik (scrollWidth > clientWidth) olup ipucu (title) olmayan öğeler (.sr-only hariç)
   overlaps         aynı üst öğedeki metin kutularının kesişmesi
   consoleErrors    konsol hataları ve yakalanmamış istisnalar
 """
@@ -50,15 +51,16 @@ AUDIT_JS = r"""
   out.overflowPx = Math.max(0, document.documentElement.scrollWidth - vw);
   const sb = document.getElementById('sidebar');
   out.sidebarScroll = !!(sb && visible(sb) && sb.getBoundingClientRect().left >= -1 && sb.scrollHeight > sb.clientHeight + 1);
-  const nested = [], trunc = [], overlaps = [];
+  const nested = [], allowed = [], trunc = [], overlaps = [];
+  const okScroll = (el) => el.matches('.panel, dialog') || (el.matches('.table-scroll, .matrix') && el.scrollHeight <= el.clientHeight + 1 && el.closest('.scroll-host'));
   for (const el of document.querySelectorAll('body *')) {
     if (!visible(el) || el.closest('#sqlDrawer, .vis-network, dialog:not([open])')) continue;
     const cs = getComputedStyle(el);
     if (el !== sb && /(auto|scroll)/.test(cs.overflowY + cs.overflowX)
-        && (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1)) nested.push(label(el));
+        && (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1)) (okScroll(el) ? allowed : nested).push(label(el));
     const hasText = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     if (hasText && el.scrollWidth > el.clientWidth + 1 && /(hidden|clip)/.test(cs.overflowX) && !el.closest('[title]')
-        && !el.getAttribute('aria-label')) trunc.push(label(el));
+        && !el.getAttribute('aria-label') && !el.closest('.sr-only')) trunc.push(label(el));
   }
   // Üst üste binen metin: aynı üst öğedeki metinli kardeşlerin kutuları kesişiyor mu
   const parents = new Set([...document.querySelectorAll('body *')].filter((el) => visible(el) && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())).map((el) => el.parentElement));
@@ -72,6 +74,7 @@ AUDIT_JS = r"""
     }
   }
   out.nestedScroll = [...new Set(nested)].slice(0, 25);
+  out.allowedScroll = [...new Set(allowed)].slice(0, 25);
   out.truncatedNoTitle = [...new Set(trunc)].slice(0, 25);
   out.truncatedCount = trunc.length;
   out.overlaps = [...new Set(overlaps)].slice(0, 25);
@@ -209,7 +212,7 @@ def summarize(result: dict) -> str:
         ov = [p for p, a in pages.items() if a["overflow"]]
         sb = [p for p, a in pages.items() if a["sidebarScroll"]]
         lines.append(f"{vp:8} taşma={len(ov)} {ov[:4]}  kenar-kaydırma={len(sb)}  "
-                     f"iç-kaydırma={sum(len(a['nestedScroll']) for a in pages.values())}  "
+                     f"iç-kaydırma={sum(len(a['nestedScroll']) for a in pages.values())} (+izinli {sum(len(a.get('allowedScroll', [])) for a in pages.values())})  "
                      f"kesik-ipucusuz={sum(a['truncatedCount'] for a in pages.values())}  "
                      f"çakışma={sum(a['overlapCount'] for a in pages.values())}  "
                      f"konsol-hatası={sum(len(a['consoleErrors']) for a in pages.values())}")

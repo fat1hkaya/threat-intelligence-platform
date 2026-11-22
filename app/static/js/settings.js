@@ -10,9 +10,9 @@
     ['Dosyadan içe aktarma, besleme senkronizasyonu', 1, 1, 0],
     ['MITRE ATT&CK verisini yeniden yükleme', 1, 0, 0],
     ['Kullanıcı ve rol yönetimi', 1, 0, 0],
-    ['Kaynak (Source) tablosunu değiştirme (veritabanı rolü)', 1, 0, 0],
-    ['Parola özetlerini okuma (kolon düzeyi DENY)', 0, 0, 0],
-    ['Denetim kaydını değiştirme/silme (INSTEAD OF tetikleyici)', 0, 0, 0],
+    ['Kaynak tablosunu değiştirme|(Source, veritabanı rolü)', 1, 0, 0],
+    ['Parola özetlerini okuma|(kolon düzeyi DENY)', 0, 0, 0],
+    ['Denetim kaydını değiştirme/silme|(INSTEAD OF tetikleyici)', 0, 0, 0],
   ];
   const yes = (v) => v ? '<span class="perm-yes" aria-label="Evet"><i data-lucide="circle-check"></i></span>' : '<span class="perm-no" aria-label="Hayır"><i data-lucide="minus"></i></span>';
 
@@ -66,7 +66,7 @@
       { label: 'IOC tipi', render: (p) => p.TypeCode ? TL.typeBadge(p.TypeCode) : '<span class="muted">Tüm tipler</span>' },
       { label: 'Süre (gün)', num: true, render: (p) => admin ? `<label class="sr-only" for="rp${p.PolicyID}">Süre</label><input class="input" id="rp${p.PolicyID}" data-policy="${p.PolicyID}" type="number" min="1" max="3650" value="${p.LifetimeDays}" style="width:86px;height:30px;text-align:right">` : p.LifetimeDays },
       { label: 'Uygulandığı IOC', num: true, render: (p) => fmtN(p.AppliesTo) },
-      { label: 'Not', render: (p) => `<span class="muted" style="font-size: 13px">${esc(p.Note || '')}</span>` },
+      { label: 'Not', cls: 'wrap', render: (p) => `<span class="muted" style="font-size: 13px">${esc(p.Note || '')}</span>` },
     ], d.policies, { caption: 'Yaşam döngüsü politikaları' });
     const TASK = { 'expire-indicators': "Süresi dolan IOC'ler", 'graph-maintenance': 'Graf bakımı' };
     document.getElementById('runs').innerHTML = d.runs.length ? d.runs.map((r) => `<li><div><span><b>${esc(TASK[r.Task] || r.Task)}</b><br><small>${fmtDT(r.StartedAt)} · ${esc(r.Message || '')}</small></span>
@@ -89,8 +89,25 @@
       catch (err) { e.target.querySelector('.err').textContent = err.message; } };
   }
 
+  // Geliştirici modu sekmeleri: Genel / Veritabanı (sorgu istatistikleri, nesneler, graf tutarlılığı)
+  function tabs() {
+    const bar = document.getElementById('settingsTabs'); if (!bar) return;
+    const show = (id) => {
+      bar.querySelectorAll('[data-tab]').forEach((b) => { const on = b.dataset.tab === id; b.setAttribute('aria-selected', String(on)); b.setAttribute('aria-pressed', String(on)); b.tabIndex = on ? 0 : -1; });
+      document.querySelectorAll('.tab-panel').forEach((p) => { p.hidden = p.id !== id; });
+      TL.qs.set({ tab: id === 'dbTab' ? 'db' : null });
+    };
+    bar.addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) show(b.dataset.tab); });
+    bar.addEventListener('keydown', (e) => { if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+      const bs = [...bar.querySelectorAll('[data-tab]')], i = bs.indexOf(document.activeElement); const n = bs[(i + (e.key === 'ArrowRight' ? 1 : bs.length - 1)) % bs.length]; n.focus(); show(n.dataset.tab); });
+    // geliştirici modu kapanınca Genel sekmesine dönülür
+    new MutationObserver(() => { if (!document.documentElement.classList.contains('dev')) show('generalTab'); }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    show(TL.qs.get('tab') === 'db' && document.documentElement.classList.contains('dev') ? 'dbTab' : 'generalTab');
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('perm').innerHTML = PERMS.map(([p, a, b, c]) => `<tr><td>${esc(p)}</td><td>${yes(a)}</td><td>${yes(b)}</td><td>${yes(c)}</td></tr>`).join('');
+    tabs();
+    document.getElementById('perm').innerHTML = PERMS.map(([p, a, b, c]) => { const [t, x] = p.split('|'); return [t, x, a, b, c]; }).map(([p, x, a, b, c]) => `<tr><td class="wrap">${esc(p)}${x ? `<span class="tech"> ${esc(x)}</span>` : ''}</td><td>${yes(a)}</td><td>${yes(b)}</td><td>${yes(c)}</td></tr>`).join('');
     if (can('admin')) { const b = document.getElementById('newUser'); b.hidden = false; b.onclick = newUser; }
     const box = document.getElementById('users');
     box.addEventListener('change', async (e) => { const s = e.target.closest('[data-role]'); if (!s) return;

@@ -110,16 +110,26 @@ def export_iocs(
     status: str = "", malware: int | None = None, tag: str = "",
     minConfidence: int = Query(0, ge=0, le=100), maxConfidence: int = Query(100, ge=0, le=100),
     dateFrom: date | None = None, dateTo: date | None = None,
+    minRisk: int = Query(0, ge=0, le=100), maxRisk: int = Query(100, ge=0, le=100),
+    ids: str = Query("", max_length=20000, description="Virgülle IOC kimlikleri: yalnızca seçili satırlar"),
     db: Db = Depends(get_db),
 ):
     """Ekrandaki filtrelerle eşleşen IOC'ler (en çok 50.000). csv: tüm sütunlar; txt: satır başına bir değer
-    (güvenlik duvarı / proxy engelleme listesi için)."""
+    (güvenlik duvarı / proxy engelleme listesi için). ids verilirse filtreler yerine yalnızca o kayıtlar."""
     import csv
     import io
 
     from fastapi.responses import Response
 
-    clause, params = _ioc_filter(q, type, severity, source, status, malware, tag, minConfidence, maxConfidence, dateFrom, dateTo)
+    if ids.strip():
+        try:
+            id_list = [int(x) for x in ids.split(",") if x.strip()][:1000]
+        except ValueError as exc:
+            raise HTTPException(400, "Kimlik listesi yalnızca sayı içermeli.") from exc
+        clause, params = "v.IndicatorID IN (SELECT CAST([value] AS BIGINT) FROM OPENJSON(?))", [json.dumps(id_list)]
+    else:
+        clause, params = _ioc_filter(q, type, severity, source, status, malware, tag, minConfidence, maxConfidence,
+                                     dateFrom, dateTo, minRisk, maxRisk)
     rows = db.query(
         f"""
         SELECT TOP ({EXPORT_LIMIT}) v.Value, v.TypeCode, v.SeverityCode, v.Confidence, v.RiskScore, v.Status, v.TLPCode,
@@ -170,6 +180,41 @@ def bulk_lookup(body: BulkLookup, db: Db = Depends(get_db)):
         """, (json.dumps(list(asked)),))
     found = {m["Asked"] for m in matches}
     return {"asked": len(asked), "matches": matches, "unknown": [asked[k] for k in asked if k not in found]}
+
+
+@router.get("/check")
+def check_value(value: str = Query(..., min_length=1, max_length=400), type: str = "", db: Db = Depends(get_db)):
+    """Yeni IOC formunun canlı önizlemesi: algılanan tip, kaydedilecek (normalleştirilmiş) değer, biçim hatası
+    ve aynı göstergenin zaten kayıtlı olup olmadığı. Kayıt yazmaz."""
+    type_code = type.strip().lower() or guess_type(value)
+    if not type_code:
+        return {"type": None, "normalized": None, "error": "Tip algılanamadı; tipi elle seçin.", "existing": None}
+    try:
+        normalized = normalize(type_code, value)
+    except InvalidIndicator as exc:
+        return {"type": type_code, "normalized": None, "error": str(exc), "existing": None}
+    existing = db.one(
+        """SELECT TOP (1) i.IndicatorID, i.Value FROM dbo.Indicator AS i JOIN dbo.IndicatorType AS t ON t.TypeID = i.TypeID
+           WHERE t.Code = ? AND i.NormalizedValue = ?;""", (type_code, normalized))
+    return {"type": type_code, "normalized": normalized, "error": None, "existing": existing}
+
+
+class BulkStatus(BaseModel):
+    ids: list[int] = Field(min_length=1, max_length=500)
+    status: str = Field(pattern="^(active|expired|revoked|false_positive)$")
+
+
+@router.post("/bulk-status")
+def bulk_status(body: BulkStatus, user: dict = Depends(require_analyst), db: Db = Depends(get_db)):
+    """Seçili IOC'lerin durumunu tek UPDATE ile değiştirir. Denetim tetikleyicisi her satırı ayrı kaydeder."""
+    n = db.execute(
+        """
+        UPDATE i SET Status = ?, UpdatedAt = SYSUTCDATETIME()
+        FROM dbo.Indicator AS i
+        JOIN OPENJSON(?) AS j ON CAST(j.[value] AS BIGINT) = i.IndicatorID
+        WHERE i.Status <> ?;
+        """, (body.status, json.dumps(body.ids), body.status))
+    return {"updated": max(n, 0)}
 
 
 @router.get("/examples")

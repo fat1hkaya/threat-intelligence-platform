@@ -147,6 +147,28 @@ def add_item(case_id: int, body: ItemIn, user: dict = Depends(require_analyst), 
     return {"ok": True}
 
 
+class ItemsIn(BaseModel):
+    type: str
+    ids: list[int] = Field(min_length=1, max_length=200)
+    note: str | None = Field(None, max_length=400)
+
+
+@router.post("/{case_id}/items/batch", status_code=201)
+def add_items(case_id: int, body: ItemsIn, user: dict = Depends(require_analyst), db: Db = Depends(get_db)):
+    """Listeden seçilen birden çok öğeyi tek transaction içinde vakaya ekler (IOC listesindeki toplu işlem)."""
+    if body.type not in NODE_TYPES:
+        raise HTTPException(400, "Geçersiz tür.")
+    # Vakada zaten olanlar atlanır (yordam tekrarı hata sayar; toplu eklemede bu beklenen bir durum)
+    present = {r["NodeID"] for r in db.query(
+        "SELECT NodeID FROM dbo.vw_InvestigationItem WHERE InvestigationID = ? AND NodeType = ?;", (case_id, body.type))}
+    todo = [i for i in dict.fromkeys(body.ids) if i not in present]
+    with db.transaction():
+        for node_id in todo:
+            db.execute("EXEC dbo.sp_InvestigationAddItem @InvestigationID = ?, @NodeType = ?, @NodeID = ?, @Note = ?, @UserID = ?;",
+                       (case_id, body.type, node_id, body.note or None, user["UserID"]))
+    return {"ok": True, "added": len(todo), "skipped": len(set(body.ids)) - len(todo)}
+
+
 @router.delete("/{case_id}/items")
 def remove_item(case_id: int, type: str, id: int, user: dict = Depends(require_analyst), db: Db = Depends(get_db)):
     if type not in NODE_TYPES:

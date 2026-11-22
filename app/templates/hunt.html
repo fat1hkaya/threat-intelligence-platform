@@ -8,11 +8,11 @@
   <form class="card grid" id="huntForm" style="gap:12px;align-content:start" aria-label="Log avı">
     <div class="field">
       <label for="logText">Log satırları</label>
-      <textarea class="input mono" id="logText" name="text" rows="12" spellcheck="false" placeholder="2026-11-15T09:12:00 proxy01 GET hxxp://kotu-alan[.]example/a.bin 200 user=ws-014&#10;2026-11-15T09:13:40 fw01 ALLOW 10.10.4.12 -> 203.0.113.7:443"></textarea>
+      <textarea class="input mono drop-text" id="logText" name="text" rows="12" spellcheck="false" placeholder="2026-11-15T09:12:00 proxy01 GET hxxp://kotu-alan[.]example/a.bin 200 user=ws-014&#10;2026-11-15T09:13:40 fw01 ALLOW 10.10.4.12 -> 203.0.113.7:443"></textarea>
       <small class="faint">Güvenli yazımlar (hxxp, [.]) çözülür. Alt domainler üst domainle de eşleşir: cdn.kotu.example, kayıtlı kotu.example'ı yakalar.</small>
     </div>
     <div class="form-grid">
-      <div class="field"><label for="logFile">veya log dosyası (.log, .txt, .csv, en çok 5 MB)</label><input class="input" id="logFile" name="file" type="file" accept=".log,.txt,.csv,.json" style="padding:6px"></div>
+      <div class="field"><label for="logFile">veya log dosyası</label><input id="logFile" name="file" type="file" accept=".log,.txt,.csv,.json"></div>
       <div class="field"><label for="location">Logun geldiği yer</label><input class="input" id="location" name="location" maxlength="100" required placeholder="ör. Proxy / FW-01" value="Proxy / FW-01"></div>
     </div>
     <label class="check" id="recordWrap"><input type="checkbox" id="record" name="record">Eşleşmeleri kurum içi görülme olarak kaydet (IOC'nin son görülme tarihi ve geçerlilik süresi uzar)</label>

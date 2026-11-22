@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Denetim kayıtları</h1><p>Kullanıcı işlemleri ve veri değişiklikleri. Kayıtları veritabanı tetikleyicileri yazar; değiştirilemez ve silinemez.</p></div>
+  <div><h1>Denetim kayıtları</h1><p>Kullanıcı işlemleri ve veri değişiklikleri. Kayıtları veritabanı kendisi yazar; değiştirilemez ve silinemez.<span class="tech"> · AFTER tetikleyicileri yazar, INSTEAD OF tetikleyici değişikliği reddeder</span></p></div>
 </div>
 <section class="grid g-4" id="kpis" aria-label="Denetim özeti"></section>
 <article class="card">
@@ -9,14 +9,22 @@
   <div class="chart-box" style="height:200px"><canvas id="daily" role="img" aria-describedby="dailySummary"></canvas></div>
   <p class="sr-only" id="dailySummary"></p>
 </article>
-<form class="card filters" id="filters" role="search" aria-label="Denetim filtreleri">
-  <div class="field"><label for="table">Tablo</label><select class="input" id="table" name="table"><option value="">Tümü</option></select></div>
-  <div class="field"><label for="action">İşlem</label><select class="input" id="action" name="action"><option value="">Tümü</option><option value="I">Ekleme</option><option value="U">Güncelleme</option><option value="D">Silme</option></select></div>
-  <div class="field"><label for="user">Kullanıcı</label><select class="input" id="user" name="user"><option value="">Tümü</option></select></div>
-  <div class="field"><label for="dateFrom">Başlangıç</label><input class="input" id="dateFrom" name="dateFrom" type="date"></div>
-  <div class="field"><label for="dateTo">Bitiş</label><input class="input" id="dateTo" name="dateTo" type="date"></div>
-  <div class="field"><span>&nbsp;</span><label class="check" title="Testlerin canlı veritabanına yazdığı eski kayıtlar silinemez; yalnızca görünümden çıkarılır"><input type="checkbox" id="hideAutomation" checked><span id="hideAutoLabel">Otomasyon kayıtlarını gizle</span></label></div>
-  <div class="field" style="display:flex;flex-direction:row;gap:8px"><button class="btn primary" type="submit"><i data-lucide="search"></i>Ara</button><button class="btn" type="reset">Temizle</button></div>
+<form class="toolbar" id="filters" role="search" aria-label="Denetim filtreleri">
+  <div class="tb-row">
+    <button type="button" class="btn filter-toggle" aria-expanded="false" aria-controls="auditFilters"></button>
+    <div class="tb-filters" id="auditFilters">
+      <div class="sheet-head"><h2>Filtreler</h2><button type="button" class="btn icon ghost sheet-close" aria-label="Filtreleri kapat"><i data-lucide="x"></i></button></div>
+      <label class="tb-field"><span>Tablo</span><select class="input" id="table" name="table"><option value="">Tümü</option></select></label>
+      <label class="tb-field"><span>İşlem</span><select class="input" id="action" name="action"><option value="">Tümü</option><option value="I">Ekleme</option><option value="U">Güncelleme</option><option value="D">Silme</option></select></label>
+      <label class="tb-field"><span>Kullanıcı</span><select class="input" id="user" name="user"><option value="">Tümü</option></select></label>
+      <label class="tb-field"><span>Başlangıç</span><input class="input" id="dateFrom" name="dateFrom" type="date"></label>
+      <label class="tb-field"><span>Bitiş</span><input class="input" id="dateTo" name="dateTo" type="date"></label>
+      <label class="check tb-check" title="Testlerin canlı veritabanına yazdığı eski kayıtlar silinemez; yalnızca görünümden çıkarılır"><input type="checkbox" id="hideAutomation" name="hideAutomation" value="true" checked data-default><span id="hideAutoLabel">Otomasyon kayıtlarını gizle</span></label>
+      <div class="sheet-foot"><button type="reset" class="btn ghost">Tümünü temizle</button><button type="button" class="btn primary sheet-done">Sonuçları göster</button></div>
+    </div>
+    <button class="btn ghost tb-clear" type="reset" hidden><i data-lucide="filter-x"></i>Temizle</button>
+  </div>
+  <div class="chips tb-chips" aria-label="Etkin filtreler" hidden></div>
 </form>
 <article class="card flush" id="loginCard" hidden>
   <div class="card-head"><div><h2>Giriş denemeleri</h2><p id="loginNote">Yalnızca yönetici görür · 15 dakikada 5 hatalı deneme hesabı geçici olarak kilitler</p></div></div>

@@ -7,14 +7,22 @@
 
 <section aria-label="Taktikler"><div class="tactics" id="tactics"></div></section>
 
-<form class="card filters" id="filters" role="search" aria-label="Teknik filtreleri">
-  <div class="field wide"><label for="q">Teknik</label><input class="input" id="q" name="q" type="search" placeholder="ör. T1059 veya PowerShell"></div>
-  <input type="hidden" name="tactic" id="tactic">
-  <div class="field"><label for="actor">Aktör</label><select class="input" id="actor" name="actor"><option value="">Tümü</option></select></div>
-  <div class="field"><label for="campaign">Kampanya</label><select class="input" id="campaign" name="campaign"><option value="">Tümü</option></select></div>
-  <div class="field"><label for="sort">Sırala</label><select class="input" id="sort" name="sort"><option value="actors">Aktör sayısı</option><option value="campaigns">Kampanya sayısı</option><option value="malware">Zararlı sayısı</option><option value="id">Teknik kodu</option></select></div>
-  <div class="field"><span>&nbsp;</span><label class="check"><input type="checkbox" name="subtechniques" id="subtechniques" value="true">Alt teknikleri de listele</label></div>
-  <div class="field" style="display:flex;flex-direction:row;gap:8px"><button class="btn primary" type="submit"><i data-lucide="search"></i>Ara</button><button class="btn" type="reset">Temizle</button></div>
+<form class="toolbar" id="filters" role="search" aria-label="Teknik filtreleri">
+  <div class="tb-row">
+    <div class="tb-search"><i data-lucide="search" aria-hidden="true"></i><label for="q" class="sr-only">Teknik ara</label><input class="input" id="q" name="q" type="search" data-label="Arama" placeholder="Kod veya ad (ör. T1059, PowerShell)" autocomplete="off"></div>
+    <button type="button" class="btn filter-toggle" aria-expanded="false" aria-controls="techFilters"></button>
+    <div class="tb-filters" id="techFilters">
+      <div class="sheet-head"><h2>Filtreler</h2><button type="button" class="btn icon ghost sheet-close" aria-label="Filtreleri kapat"><i data-lucide="x"></i></button></div>
+      <input type="hidden" name="tactic" id="tactic">
+      <label class="tb-field"><span>Aktör</span><select class="input" id="actor" name="actor"><option value="">Tümü</option></select></label>
+      <label class="tb-field"><span>Kampanya</span><select class="input" id="campaign" name="campaign"><option value="">Tümü</option></select></label>
+      <label class="check tb-check"><input type="checkbox" id="subtechniques" name="subtechniques" value="true"><span>Alt teknikler</span></label>
+      <label class="tb-field tb-sort"><span>Sırala</span><select class="input" id="sort" name="sort" data-chip="off" data-default="actors"><option value="actors">Aktör sayısı</option><option value="campaigns">Kampanya sayısı</option><option value="malware">Zararlı sayısı</option><option value="id">Teknik kodu</option></select></label>
+      <div class="sheet-foot"><button type="reset" class="btn ghost">Tümünü temizle</button><button type="button" class="btn primary sheet-done">Sonuçları göster</button></div>
+    </div>
+    <button class="btn ghost tb-clear" type="reset" hidden><i data-lucide="filter-x"></i>Temizle</button>
+  </div>
+  <div class="chips tb-chips" aria-label="Etkin filtreler" hidden></div>
 </form>
 
 <section id="coverageView" hidden aria-label="Tespit kapsama haritası">
@@ -31,7 +39,7 @@
     <article class="card"><h2>Taktik bazında kapsama</h2><div class="bars" id="covTactics" style="margin-top:12px"></div></article>
     <article class="card"><h2>En zayıf kapsadığımız aktörler</h2><ul class="list" id="covWeak" style="margin-top:10px"></ul>
       <h3 style="margin-top:16px">Tüm tekniklerini tespit edebildiğimiz aktörler</h3>
-      <p class="faint" style="font-size:12px">İlişkisel bölme: kullandığı her tekniği en az kısmi tespit ettiğimiz aktörler (çift NOT EXISTS)</p>
+      <p class="faint" style="font-size:12px">Kullandığı her tekniği en az kısmen tespit edebildiğimiz aktörler<span class="tech"> · ilişkisel bölme (çift NOT EXISTS)</span></p>
       <div id="covFull" style="margin-top:8px"></div></article>
   </div>
 </section>

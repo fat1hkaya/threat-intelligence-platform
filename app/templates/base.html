@@ -8,10 +8,11 @@
   <meta name="theme-color" content="#0B1020" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#F4F6FB" media="(prefers-color-scheme: light)">
   <script nonce="{{ request.state.csp_nonce }}">/* tema, yoğunluk ve daraltılmış menü ilk çizimden önce uygulanır (yanıp sönme olmasın) */
-    try { const t = localStorage.getItem('tl-theme'); if (t) document.documentElement.dataset.theme = t;
-          if (localStorage.getItem('tl-dense')) document.documentElement.classList.add('dense');
-          if (localStorage.getItem('tl-nav-collapsed')) document.documentElement.classList.add('nav-collapsed');
-          if (localStorage.getItem('tl-dev')) document.documentElement.classList.add('dev'); } catch (e) {}</script>
+    try { const h = document.documentElement, t = localStorage.getItem('tl-theme'); if (t) h.dataset.theme = t;
+          if (localStorage.getItem('tl-comfortable')) h.classList.add('comfortable');
+          const nc = localStorage.getItem('tl-nav-collapsed');   // seçim yoksa 1024-1279 px arasında ikon şeridi varsayılan
+          if (nc === '1' || (nc === null && innerWidth >= 1024 && innerWidth < 1280)) h.classList.add('nav-collapsed');
+          if (localStorage.getItem('tl-dev')) h.classList.add('dev'); } catch (e) {}</script>
   <link rel="stylesheet" href="/static/css/app.css?v={{ v }}">
   {% block head %}{% endblock %}
 </head>
@@ -20,7 +21,7 @@
 <div class="shell">
   <aside class="sidebar" id="sidebar" aria-label="Ana menü">
     <div class="sidebar-head">
-      <a class="brand" href="/" title="ThreatLens: Genel Bakış">
+      <a class="brand" href="/" title="ThreatLens: Genel bakış">
         <img src="/static/img/logo.svg" alt="">
         <span><b>ThreatLens</b><small>Tehdit istihbaratı</small></span>
       </a>
@@ -64,15 +65,23 @@
             <span class="who">{{ user.FullName }}<small>{{ user.RoleName }}</small></span>
             <i data-lucide="chevron-down" aria-hidden="true"></i>
           </button>
-          <div class="menu" id="userMenu" role="menu" hidden>
-            <div class="muted" style="padding:6px 10px;font-size:12px">@{{ user.Username }} · {{ user.RoleName }}</div>
+          <div class="menu" id="userMenu" role="menu" aria-label="Kullanıcı menüsü" hidden>
+            <div class="menu-who"><b>{{ user.FullName }}</b><small>@{{ user.Username }} · {{ user.RoleName }}</small></div>
+            <div class="menu-sep" role="separator"></div>
             <a href="/settings" role="menuitem"><i data-lucide="settings"></i>Ayarlar</a>
-            <button role="menuitem" id="themeBtn"><i data-lucide="monitor"></i>Sistem teması</button>
-            <button role="menuitem" id="denseBtn"><i data-lucide="rows-3"></i>Sıkı tablo görünümü</button>
-            <button role="menuitem" id="devBtn" aria-pressed="false"><i data-lucide="code-xml"></i>Geliştirici modu: kapalı</button>
-            <button role="menuitem" id="pwBtn"><i data-lucide="key-round"></i>Parolamı değiştir</button>
-            <a href="/api/docs" role="menuitem" target="_blank" rel="noopener"><i data-lucide="file-code-2"></i>API belgeleri</a>
-            <button role="menuitem" id="logoutBtn"><i data-lucide="log-out"></i>Çıkış yap</button>
+            <button type="button" role="menuitem" id="pwBtn"><i data-lucide="key-round"></i>Parolamı değiştir</button>
+            <div class="menu-sep" role="separator"></div>
+            <div class="menu-row" role="group" aria-labelledby="themeLbl"><span id="themeLbl"><i data-lucide="palette"></i>Tema</span>
+              <span class="seg seg-sm" id="themeSeg">
+                <button type="button" data-theme-set="system" aria-pressed="false" aria-label="Sistem teması" title="Sistem teması"><i data-lucide="monitor"></i></button>
+                <button type="button" data-theme-set="dark" aria-pressed="false" aria-label="Koyu tema" title="Koyu tema"><i data-lucide="moon"></i></button>
+                <button type="button" data-theme-set="light" aria-pressed="false" aria-label="Açık tema" title="Açık tema"><i data-lucide="sun"></i></button></span></div>
+            <button type="button" role="menuitemcheckbox" aria-checked="false" id="denseBtn" class="menu-switch"><i data-lucide="rows-3"></i><span>Rahat tablo görünümü</span><span class="switch" aria-hidden="true"></span></button>
+            <button type="button" role="menuitemcheckbox" aria-checked="false" id="devBtn" class="menu-switch"><i data-lucide="code-xml"></i><span>Geliştirici modu</span><span class="switch" aria-hidden="true"></span></button>
+            <div class="menu-sep" role="separator"></div>
+            <a href="/api/docs" role="menuitem" target="_blank" rel="noopener"><i data-lucide="file-code-2"></i>API belgeleri<i data-lucide="external-link" class="menu-ext"></i></a>
+            <div class="menu-sep" role="separator"></div>
+            <button type="button" role="menuitem" id="logoutBtn"><i data-lucide="log-out"></i>Çıkış yap</button>
           </div>
         </div>
       </div>

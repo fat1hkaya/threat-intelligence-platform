@@ -20,11 +20,11 @@
   </article>
   <article class="card" id="uploadCard">
     <h2>Dosyadan IOC içe aktar</h2>
-    <p class="muted" style="font-size:13px;margin:6px 0 14px">CSV (başlık satırında en az <code>value</code>) veya JSON. Satırlar normalleştirilir, doğrulanır ve sp_BulkImportIndicators ile tek transaction içinde yazılır.</p>
+    <p class="muted" style="font-size:13px;margin:6px 0 14px">CSV (başlık satırında en az <code>value</code>) veya JSON. Satırlar normalleştirilir, doğrulanır ve tek seferde yazılır.<span class="tech"> · sp_BulkImportIndicators, tek transaction</span></p>
     <form id="upForm" class="grid" style="gap:12px">
-      <div class="field"><label for="file">Dosya (.csv, .json, en çok 5 MB)</label><input class="input" id="file" name="file" type="file" accept=".csv,.json,.txt" required style="padding:6px"></div>
+      <div class="field"><label for="file">Dosya</label><input id="file" name="file" type="file" accept=".csv,.json,.txt" required></div>
       <div class="field"><label for="upSrc">Kaynak</label><select class="input" id="upSrc" name="sourceId"></select></div>
-      <label class="check"><input type="checkbox" name="strict" value="true">Katı mod: tek hatalı satır varsa hiçbir satırı kaydetme (ROLLBACK)</label>
+      <label class="check"><input type="checkbox" name="strict" value="true"><span>Katı mod: tek hatalı satır varsa hiçbir satırı kaydetme<span class="tech"> (ROLLBACK)</span></span></label>
       <button class="btn primary" type="submit"><i data-lucide="upload"></i>İçe aktar</button>
       <p class="faint" style="font-size: 13px">Örnek dosyalar: <a href="/static/samples/ornek_gecerli.csv" download>geçerli CSV</a>, <a href="/static/samples/ornek_hatali.csv" download>hatalı CSV</a>, <a href="/static/samples/ornek.json" download>JSON</a></p>
     </form>

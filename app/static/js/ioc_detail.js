@@ -82,7 +82,7 @@
         </div>
         <div class="grid" style="align-content:start">
           <article class="card"><h2 style="margin-bottom:12px">Özellikler</h2><dl class="kv">
-            <dt>Güven skoru</dt><dd>${conf(i.Confidence)}</dd><dt>Risk skoru</dt><dd><b>${i.RiskScore}</b> / 100 <span class="faint">(fn_RiskScore)</span></dd>
+            <dt>Güven skoru</dt><dd>${conf(i.Confidence)}</dd><dt>Risk skoru</dt><dd><b>${i.RiskScore}</b> / 100<span class="faint tech"> (fn_RiskScore)</span></dd>
             <dt>Kaynak</dt><dd>${esc(i.SourceName)} <span class="faint">(${esc(i.Reliability)})</span></dd>
             <dt>İlk görülme</dt><dd>${fmtDT(i.FirstSeen)}</dd><dt>Son görülme</dt><dd>${fmtDT(i.LastSeen)}</dd>
             <dt>Bitiş</dt><dd>${i.ExpiresAt ? fmtDT(i.ExpiresAt) : '—'}</dd><dt>Eklendi</dt><dd>${fmtDT(i.CreatedAt)}</dd><dt>Güncellendi</dt><dd>${fmtDT(i.UpdatedAt)}</dd>
@@ -131,7 +131,7 @@
 
   function linkDialog() {
     const dl = dialog(`<form><div class="dlg-head"><h2>İlişki ekle</h2><button type="button" class="btn icon ghost" data-dismiss aria-label="Kapat"><i data-lucide="x"></i></button></div>
-      <p class="notice"><i data-lucide="info"></i>Kanıtsız ilişki kurulamaz. Önce Evidence satırı, sonra ara tablo satırı yazılır; tetikleyici aynı transaction içinde graf kenarını oluşturur.</p>
+      <p class="notice"><i data-lucide="info"></i><span>Kanıtsız ilişki kurulamaz: ilişkinin dayanağını yazmanız gerekir.<span class="tech"> Önce Evidence satırı, sonra ara tablo satırı yazılır; tetikleyici aynı transaction içinde graf kenarını oluşturur.</span></span></p>
       <div class="form-grid">
         <div class="field"><label for="lk-kind">Bağlanacak varlık</label><select class="input" id="lk-kind" name="kind"><option value="malware-indicator">Zararlı yazılım</option><option value="campaign-indicator">Kampanya</option></select></div>
         <div class="field"><label for="lk-role">Rol (zararlı için)</label><select class="input" id="lk-role" name="role">${Object.entries(ROLE).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></div>

@@ -259,7 +259,7 @@
     const ids = Object.fromEntries([...document.querySelectorAll('#actorList option')].map((o) => [o.value.toLowerCase(), o.dataset.id]));
     const a = ids[document.getElementById('pa').value.trim().toLowerCase()], b = ids[document.getElementById('pb').value.trim().toLowerCase()];
     if (!a || !b) { out.innerHTML = '<p class="err">Listeden iki aktör seçin.</p>'; return; }
-    out.innerHTML = loading('SHORTEST_PATH çalışıyor');
+    out.innerHTML = loading('En kısa yol aranıyor');
     try {
       const r = await api('/api/graph/path', { params: { fromActor: a, toActor: b } });
       if (!r.found) { out.innerHTML = '<p class="notice warn"><i data-lucide="info"></i>En çok 5 adımda bağlantı bulunamadı: bu aktörler arasında ortak araç zinciri yok.</p>'; icons(); return; }

@@ -3,13 +3,21 @@
 <div class="page-head">
   <div><h1>Tehdit aktörleri</h1><p>MITRE ATT&amp;CK gruplarının profilleri, kullandıkları araçlar, teknikler ve atfedilen IOC'ler.</p></div>
 </div>
-<form class="card filters" id="filters" role="search" aria-label="Aktör filtreleri">
-  <div class="field wide"><label for="q">Aktör</label><input class="input" id="q" name="q" type="search" placeholder="Ad, takma ad veya G kodu (ör. Cozy Bear, G0016)"></div>
-  <div class="field"><label for="country">Köken ülke</label><select class="input" id="country" name="country"><option value="">Tümü</option></select></div>
-  <div class="field"><label for="motivation">Motivasyon</label><select class="input" id="motivation" name="motivation"><option value="">Tümü</option></select></div>
-  <div class="field"><label for="sector">Hedef sektör</label><select class="input" id="sector" name="sector"><option value="">Tümü</option></select></div>
-  <div class="field"><label for="sort">Sırala</label><select class="input" id="sort" name="sort"><option value="techniques">Teknik sayısı</option><option value="iocs">IOC sayısı</option><option value="malware">Araç sayısı</option><option value="campaigns">Kampanya sayısı</option><option value="name">Ad</option></select></div>
-  <div class="field" style="display:flex;flex-direction:row;gap:8px"><button class="btn primary" type="submit"><i data-lucide="search"></i>Ara</button><button class="btn" type="reset">Temizle</button></div>
+<form class="toolbar" id="filters" role="search" aria-label="Aktör filtreleri">
+  <div class="tb-row">
+    <div class="tb-search"><i data-lucide="search" aria-hidden="true"></i><label for="q" class="sr-only">Aktör ara</label><input class="input" id="q" name="q" type="search" data-label="Arama" placeholder="Ad, takma ad veya G kodu" autocomplete="off"></div>
+    <button type="button" class="btn filter-toggle" aria-expanded="false" aria-controls="actorFilters"></button>
+    <div class="tb-filters" id="actorFilters">
+      <div class="sheet-head"><h2>Filtreler</h2><button type="button" class="btn icon ghost sheet-close" aria-label="Filtreleri kapat"><i data-lucide="x"></i></button></div>
+      <label class="tb-field"><span>Köken</span><select class="input" id="country" name="country"><option value="">Tümü</option></select></label>
+      <label class="tb-field"><span>Motivasyon</span><select class="input" id="motivation" name="motivation"><option value="">Tümü</option></select></label>
+      <label class="tb-field"><span>Hedef sektör</span><select class="input" id="sector" name="sector"><option value="">Tümü</option></select></label>
+      <label class="tb-field tb-sort"><span>Sırala</span><select class="input" id="sort" name="sort" data-chip="off" data-default="techniques"><option value="techniques">Teknik sayısı</option><option value="iocs">IOC sayısı</option><option value="malware">Araç sayısı</option><option value="campaigns">Kampanya sayısı</option><option value="name">Ad</option></select></label>
+      <div class="sheet-foot"><button type="reset" class="btn ghost">Tümünü temizle</button><button type="button" class="btn primary sheet-done">Sonuçları göster</button></div>
+    </div>
+    <button class="btn ghost tb-clear" type="reset" hidden><i data-lucide="filter-x"></i>Temizle</button>
+  </div>
+  <div class="chips tb-chips" aria-label="Etkin filtreler" hidden></div>
 </form>
 <div class="split no-panel" id="split">
   <section class="card flush" aria-label="Aktör listesi"><div id="tbl"></div><div class="pager" id="pager"></div></section>

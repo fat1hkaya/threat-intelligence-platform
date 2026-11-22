@@ -594,8 +594,12 @@ def test_login_page_redirects_when_signed_in(viewer):
 
 def test_sidebar_is_grouped(viewer):
     html = viewer.get("/iocs").text
-    for group in ("Analiz", "İstihbarat", "Yönetim"):
+    for group in ("Araştırma", "Bilgi tabanı", "Yönetim"):
         assert f">{group}</h2>" in html
+    # menüdeki ad sayfa başlığıyla birebir aynı (cümle düzeni)
+    for path, label in (("/iocs", "IOC araştırma"), ("/infrastructure", "Altyapı örtüşmesi"), ("/sources", "Veri kaynakları")):
+        page = viewer.get(path).text
+        assert f'<span class="label">{label}</span>' in html and f"<h1>{label}</h1>" in page
     assert 'id="navCollapse"' in html and 'id="navClose"' in html and "VTYS projesi" not in html
 
 
@@ -700,3 +704,38 @@ def test_source_units(admin):
 
 def test_login_hint_off_by_default():
     assert 'class="hint"' not in _fresh_client().get("/login").text
+
+
+def test_ioc_check_bulk_status_export_and_case_batch(analyst, viewer, unique):
+    """Aşama 2 toplu işlemleri: canlı önizleme, toplu durum, seçili kayıtları dışa aktarma, vakaya toplu ekleme."""
+    ids = [_ioc(analyst, f"bulk{i}-{unique}.example", tags=["pytest"]).json()["IndicatorID"] for i in range(2)]
+    cid = None
+    try:
+        c = viewer.get("/api/iocs/check", params={"value": f"hxxp://BULK0-{unique}[.]example"}).json()
+        assert c["type"] == "url" and c["normalized"] == f"http://bulk0-{unique}.example/" and c["existing"] is None
+        c = viewer.get("/api/iocs/check", params={"value": f"bulk0-{unique}.example"}).json()
+        assert c["type"] == "domain" and c["existing"]["IndicatorID"] == ids[0]
+        assert viewer.get("/api/iocs/check", params={"value": "300.1.2.3", "type": "ipv4"}).json()["error"]
+
+        assert viewer.post("/api/iocs/bulk-status", json={"ids": ids, "status": "revoked"}).status_code == 403
+        assert analyst.post("/api/iocs/bulk-status", json={"ids": ids, "status": "nope"}).status_code == 422
+        assert analyst.post("/api/iocs/bulk-status", json={"ids": ids, "status": "revoked"}).json()["updated"] == 2
+        assert analyst.post("/api/iocs/bulk-status", json={"ids": ids, "status": "revoked"}).json()["updated"] == 0
+        assert {analyst.get(f"/api/iocs/{i}").json()["indicator"]["Status"] for i in ids} == {"revoked"}
+
+        txt = viewer.get("/api/iocs/export", params={"format": "txt", "ids": ",".join(map(str, ids))}).text.split()
+        assert sorted(txt) == sorted([f"bulk0-{unique}.example", f"bulk1-{unique}.example"])
+        assert viewer.get("/api/iocs/export", params={"ids": "1,x"}).status_code == 400
+
+        cid = analyst.post("/api/cases", json={"title": f"pytest toplu {unique}"}).json()["InvestigationID"]
+        assert viewer.post(f"/api/cases/{cid}/items/batch", json={"type": "indicator", "ids": ids}).status_code == 403
+        r = analyst.post(f"/api/cases/{cid}/items/batch", json={"type": "indicator", "ids": ids + [ids[0]]}).json()
+        assert r["added"] == 2 and r["skipped"] == 0
+        r = analyst.post(f"/api/cases/{cid}/items/batch", json={"type": "indicator", "ids": ids}).json()
+        assert r["added"] == 0 and r["skipped"] == 2
+        assert len(viewer.get(f"/api/cases/{cid}").json()["items"]) == 2
+    finally:
+        if cid:
+            analyst.delete(f"/api/cases/{cid}")
+        for i in ids:
+            analyst.delete(f"/api/iocs/{i}")

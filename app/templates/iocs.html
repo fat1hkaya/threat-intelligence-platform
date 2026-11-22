@@ -16,23 +16,40 @@
   </div>
 </div>
 
-<form class="card filters" id="filters" role="search" aria-label="IOC filtreleri">
-  <div class="field wide"><label for="q">IOC değeri</label><input class="input mono" id="q" name="q" type="search" placeholder="Değerin tamamı veya bir parçası"></div>
-  <div class="field"><label for="type">Tip</label><select class="input" id="type" name="type"><option value="">Tümü</option></select></div>
-  <div class="field"><label for="severity">Önem</label><select class="input" id="severity" name="severity"><option value="">Tümü</option><option value="high,critical">Yüksek ve kritik</option>
-    <option value="critical">Kritik</option><option value="high">Yüksek</option><option value="critical,high">Yüksek ve üstü</option><option value="medium">Orta</option><option value="low">Düşük</option><option value="info">Bilgi</option></select></div>
-  <div class="field"><label for="source">Kaynak</label><select class="input" id="source" name="source"><option value="">Tümü</option></select></div>
-  <div class="field"><label for="status">Durum</label><select class="input" id="status" name="status"><option value="">Tümü</option>
-    <option value="active">Aktif</option><option value="expired">Süresi doldu</option><option value="revoked">İptal edildi</option><option value="false_positive">Yanlış pozitif</option></select></div>
-  <div class="field"><label for="minConfidence">En az güven</label><input class="input" id="minConfidence" name="minConfidence" type="number" min="0" max="100" placeholder="0"></div>
-  <div class="field"><label for="maxConfidence">En çok güven</label><input class="input" id="maxConfidence" name="maxConfidence" type="number" min="0" max="100" placeholder="100"></div>
-  <div class="field"><label for="dateFrom">Son görülme (başlangıç)</label><input class="input" id="dateFrom" name="dateFrom" type="date"></div>
-  <div class="field"><label for="dateTo">Son görülme (bitiş)</label><input class="input" id="dateTo" name="dateTo" type="date"></div>
-  <div class="field" style="display:flex;flex-direction:row;gap:8px"><button class="btn primary" type="submit"><i data-lucide="search"></i>Ara</button><button class="btn" type="reset">Temizle</button></div>
+<form class="toolbar" id="filters" role="search" aria-label="IOC filtreleri">
+  <div class="tb-row">
+    <div class="tb-search"><i data-lucide="search" aria-hidden="true"></i><label for="q" class="sr-only">IOC değeri ara</label><input class="input mono" id="q" name="q" type="search" data-label="Arama" placeholder="IOC değeri ya da bir parçası" autocomplete="off"></div>
+    <button type="button" class="btn filter-toggle" aria-expanded="false" aria-controls="iocFilters"></button>
+    <div class="tb-filters" id="iocFilters">
+      <div class="sheet-head"><h2>Filtreler</h2><button type="button" class="btn icon ghost sheet-close" aria-label="Filtreleri kapat"><i data-lucide="x"></i></button></div>
+      <label class="tb-field"><span>Tip</span><select class="input" id="type" name="type"><option value="">Tümü</option></select></label>
+      <label class="tb-field"><span>Önem</span><select class="input" id="severity" name="severity"><option value="">Tümü</option><option value="critical">Kritik</option><option value="critical,high">Yüksek ve kritik</option><option value="high">Yüksek</option><option value="medium">Orta</option><option value="low">Düşük</option><option value="info">Bilgi</option></select></label>
+      <label class="tb-field"><span>Kaynak</span><select class="input" id="source" name="source"><option value="">Tümü</option></select></label>
+      <label class="tb-field"><span>Durum</span><select class="input" id="status" name="status"><option value="">Tümü</option><option value="active">Aktif</option><option value="expired">Süresi doldu</option><option value="revoked">İptal edildi</option><option value="false_positive">Yanlış pozitif</option></select></label>
+      <details class="more-filters">
+        <summary class="btn"><i data-lucide="sliders-horizontal"></i>Diğer filtreler <span class="count" hidden></span></summary>
+        <div class="menu-pop more-pop">
+          <div class="range2" data-label="Güven"><span class="r2-label">Güven skoru <output>0–100</output></span>
+            <div class="r2-track"><input type="range" name="minConfidence" min="0" max="100" step="5" value="0" data-default="0" aria-label="En az güven skoru"><input type="range" name="maxConfidence" min="0" max="100" step="5" value="100" data-default="100" aria-label="En çok güven skoru"></div></div>
+          <div class="range2" data-label="Risk"><span class="r2-label">Risk skoru <output>0–100</output></span>
+            <div class="r2-track"><input type="range" name="minRisk" min="0" max="100" step="5" value="0" data-default="0" aria-label="En az risk skoru"><input type="range" name="maxRisk" min="0" max="100" step="5" value="100" data-default="100" aria-label="En çok risk skoru"></div></div>
+          <div class="form-grid">
+            <label class="field"><span>Son görülme: başlangıç</span><input class="input" id="dateFrom" name="dateFrom" type="date" data-label="Son görülme ≥"></label>
+            <label class="field"><span>Son görülme: bitiş</span><input class="input" id="dateTo" name="dateTo" type="date" data-label="Son görülme ≤"></label>
+          </div>
+        </div>
+      </details>
+      <input type="hidden" name="malware" id="malware" data-label="Zararlı ailesi"><input type="hidden" name="tag" id="tag" data-label="Etiket">
+      <div class="sheet-foot"><button type="reset" class="btn ghost">Tümünü temizle</button><button type="button" class="btn primary sheet-done">Sonuçları göster</button></div>
+    </div>
+    <button class="btn ghost tb-clear" type="reset" hidden><i data-lucide="filter-x"></i>Temizle</button>
+  </div>
+  <div class="chips tb-chips" aria-label="Etkin filtreler" hidden></div>
 </form>
 
 <div class="split no-panel" id="split">
   <section class="card flush" aria-label="IOC listesi">
+    <div class="table-bar" id="tblBar"></div>
     <div id="tbl"></div>
     <div class="pager" id="pager"></div>
   </section>

@@ -97,24 +97,25 @@ templates = Jinja2Templates(directory=config.TEMPLATES_DIR)
 templates.env.globals["v"] = str(int(__import__("time").time()))
 
 # Kenar çubuğu grupları: (grup başlığı, [(rota, sayfa anahtarı, başlık, Lucide ikon adı)])
+# Menüdeki ad sayfa başlığıyla (h1) birebir aynıdır, cümle düzeninde yazılır.
 NAV_GROUPS = [
-    ("Analiz", [
-        ("/", "overview", "Genel Bakış", "layout-dashboard"),
-        ("/iocs", "iocs", "IOC Araştırma", "search"),
-        ("/hunt", "hunt", "Log Avı", "radar"),
+    ("Araştırma", [
+        ("/", "overview", "Genel bakış", "layout-dashboard"),
+        ("/iocs", "iocs", "IOC araştırma", "search"),
+        ("/hunt", "hunt", "Log avı", "radar"),
+        ("/graph", "graph", "İlişki grafı", "share-2"),
         ("/cases", "cases", "Vakalar", "briefcase"),
     ]),
-    ("İstihbarat", [
-        ("/graph", "graph", "İlişki Grafı", "share-2"),
-        ("/infrastructure", "infrastructure", "Altyapı", "network"),
-        ("/actors", "actors", "Tehdit Aktörleri", "users"),
+    ("Bilgi tabanı", [
+        ("/actors", "actors", "Tehdit aktörleri", "users"),
         ("/campaigns", "campaigns", "Kampanyalar", "target"),
-        ("/malware", "malware", "Zararlı Yazılımlar", "bug"),
+        ("/malware", "malware", "Zararlı yazılımlar", "bug"),
         ("/attack", "attack", "MITRE ATT&CK", "grid-3x3"),
+        ("/infrastructure", "infrastructure", "Altyapı örtüşmesi", "network"),
     ]),
     ("Yönetim", [
-        ("/sources", "sources", "Veri Kaynakları", "database"),
-        ("/audit", "audit", "Denetim Kayıtları", "file-clock"),
+        ("/sources", "sources", "Veri kaynakları", "database"),
+        ("/audit", "audit", "Denetim kayıtları", "file-clock"),
         ("/settings", "settings", "Ayarlar", "settings"),
     ]),
 ]

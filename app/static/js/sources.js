@@ -94,6 +94,7 @@
       } catch (er) { toast(er.message, 'err'); }
       await loadSources(); st.page = 1; loadJobs();
     });
+    TL.dropzone(document.getElementById('file'), { hint: '.csv, .json · en çok 5 MB' });
     document.getElementById('upForm')?.addEventListener('submit', async (e) => {
       e.preventDefault(); const f = e.target, out = document.getElementById('upOut');
       const fd = new FormData(); fd.append('file', f.file.files[0]); fd.append('sourceId', f.sourceId.value); fd.append('strict', f.strict.checked ? 'true' : 'false');

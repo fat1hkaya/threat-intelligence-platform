@@ -11,14 +11,14 @@
   const page = TL.listPage({
     endpoint: '/api/audit-logs', title: 'Olay detayı', unit: 'kayıt', size: 25, rowId: (r) => r.AuditID,
     // işaretsiz onay kutusu formda hiç gönderilmez: açıkça false gönderilir (API varsayılanı gizlemek)
-    extra: () => ({ hideAutomation: document.getElementById('hideAutomation')?.checked ? 'true' : 'false' }),
+    extra: () => ({ hideAutomation: hideAuto() === 'false' ? 'false' : null }),
     onData: (d) => { rows = d.items; },   // detay paneli satırı yeniden sorgulamadan gösterir
     columns: [
-      { label: 'Zaman', render: (r) => `<span class="mono" style="font-size: 13px">${fmtDT(r.ChangedAt)}</span>` },
-      { label: 'Kullanıcı', primary: true, render: (r) => r.ChangedBy ? `${esc(r.ChangedBy)}<br><small class="muted">${esc(r.RoleName || '')}</small>` : '<span class="faint">Sistem (SSMS / betik)</span>' },
-      { label: 'İşlem', render: (r) => badge(r.Action) },
-      { label: 'Tablo', render: (r) => `<span class="badge b-muted">${esc(TABLE[r.TableName] || r.TableName)}</span>` },
-      { label: 'Kayıt', render: (r) => `<span class="mono">#${r.RecordID}</span> <span class="muted value" style="max-width:220px">${esc(label(r))}</span>` },
+      { id: 'time', label: 'Zaman', render: (r) => `<span class="tabular">${fmtDT(r.ChangedAt)}</span>` },
+      { id: 'user', label: 'Kullanıcı', primary: true, render: (r) => r.ChangedBy ? `${esc(r.ChangedBy)} <small class="muted">${esc(r.RoleName || '')}</small>` : '<span class="faint">Sistem (SSMS / betik)</span>' },
+      { id: 'action', label: 'İşlem', render: (r) => badge(r.Action) },
+      { id: 'table', label: 'Tablo', priority: 2, render: (r) => `<span class="badge b-muted">${esc(TABLE[r.TableName] || r.TableName)}</span>` },
+      { id: 'record', label: 'Kayıt', priority: 2, render: (r) => `<span class="mono">#${r.RecordID}</span> <span class="muted" title="${esc(label(r))}">${esc(TL.midTruncate(label(r), 24, 10))}</span>` },
     ],
     async detail(id) {
       const r = rows.find((x) => String(x.AuditID) === String(id)) || (await api('/api/audit-logs', { params: { size: 200 } })).items.find((x) => String(x.AuditID) === String(id));
@@ -86,9 +86,10 @@
 
   document.addEventListener('DOMContentLoaded', async () => {
     if (TL.qs.get('hideAutomation') === 'false') document.getElementById('hideAutomation').checked = false;
-    await stats();
+    try { await stats(); } catch (e) { TL.failed(document.getElementById('kpis'), e, stats); }
     TL.icons(); page.start();
-    await logins();
-    document.getElementById('hideAutomation')?.addEventListener('change', () => { stats(); logins(); page.load(); });
+    logins().catch((e) => TL.toast(e.message, 'err'));
+    // filtre çubuğu sayfayı yeniler; bu kutu ayrıca özet ve giriş denemelerini de etkiler
+    document.getElementById('hideAutomation')?.addEventListener('change', () => { stats(); logins(); });
   });
 })();

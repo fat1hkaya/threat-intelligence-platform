@@ -14,7 +14,7 @@
       ['user-round-x', 'a', 'İlişkili tehdit aktörü', s.Actors, s.Recorded ? 'Görülme olarak kaydedildi' : 'Kaydedilmedi (yalnızca arama)'],
     ].map(([i, c, l, v, sub]) => `<article class="card kpi"><span class="ic ${c}"><i data-lucide="${i}"></i></span><div><div class="lbl">${l}</div><div class="val">${fmtN(v || 0)}</div><div class="sub">${sub}</div></div></article>`).join('');
     document.getElementById('resultTitle').textContent = `Av #${s.HuntID}: ${fmtN(s.Matches || 0)} eşleşme`;
-    document.getElementById('resultNote').textContent = `${fmtDT(s.StartedAt)} · ${s.StartedBy || ''} · eşleme sp_RetroHunt ile tek set tabanlı sorguda yapıldı`
+    document.getElementById('resultNote').innerHTML = `${esc(fmtDT(s.StartedAt))} · ${esc(s.StartedBy || '')}<span class="tech"> · eşleme sp_RetroHunt ile tek set tabanlı sorguda yapıldı</span>`
       + (d.truncated ? ' · aday sınırına (20.000) ulaşıldı, logun bir kısmı taranmadı' : '');
     document.getElementById('matches').innerHTML = d.matches.length ? table([
       { label: 'IOC', primary: true, render: (m) => `<a class="mono value" style="max-width:280px" href="/iocs/${m.IndicatorID}" title="${esc(m.Value)}">${esc(m.Value)}</a>` },
@@ -50,6 +50,8 @@
       else if (can('analyst')) rec.disabled = false;
     };
     document.getElementById('logText').addEventListener('input', () => usingSample && setSample(false));
+    TL.dropzone(document.getElementById('logFile'), { hint: '.log, .txt, .csv, .json · en çok 5 MB' });
+    TL.dropText(document.getElementById('logText'));
     form.addEventListener('reset', () => setTimeout(() => { setSample(false); document.getElementById('result').hidden = true; }));
     document.getElementById('sampleBtn').onclick = async () => {
       try { const s = await api('/api/hunt/sample'); document.getElementById('logText').value = s.text; setSample(true, s.note); }
@@ -64,7 +66,7 @@
       fd.append('record', rec.checked && !usingSample ? 'true' : 'false');
       const box = document.getElementById('matches'); document.getElementById('result').hidden = false; box.innerHTML = loading('Log taranıyor');
       try { show(await api('/api/hunt', { method: 'POST', body: fd })); history(); if (rec.checked) toast('Eşleşmeler görülme olarak kaydedildi.'); }
-      catch (err) { box.innerHTML = empty(err.message, 'circle-alert'); icons(); }
+      catch (err) { TL.failed(box, err, () => form.requestSubmit()); }
     });
     document.getElementById('history').addEventListener('click', async (e) => {
       const a = e.target.closest('[data-hunt]'); if (!a) return; e.preventDefault();

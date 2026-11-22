@@ -58,7 +58,7 @@
   }
 
   async function actorCoverage(id) {
-    const out = document.getElementById('covActorOut'); if (!id) return; out.innerHTML = loading('sp_ActorCoverage');
+    const out = document.getElementById('covActorOut'); if (!id) return; out.innerHTML = loading('Kapsama hesaplanıyor');
     const d = await api(`/api/coverage/actor/${id}`); const s = d.summary;
     const blind = d.techniques.filter((t) => t.Level === 0);
     out.innerHTML = `<p style="font-size:28px;font-weight:700">%${Number(s.CoveragePct ?? 0).toLocaleString('tr-TR')}</p>
@@ -89,12 +89,12 @@
     endpoint: '/api/techniques', title: 'Teknik detayı', unit: 'teknik', rowId: (r) => r.TechniqueID, size: 20,
     extra: () => ({ malware: qs.get('malware') }),
     columns: [
-      { label: 'Teknik', render: (r) => `<span class="badge b-purple mono">${esc(r.ExternalID)}</span>` },
-      { label: 'Ad', primary: true, render: (r) => `<b>${esc(r.Name)}</b>${r.SubCount ? ` <span class="faint" style="font-size:12px">+${r.SubCount} alt teknik</span>` : ''}` },
-      { label: 'Taktik', render: (r) => `<span class="muted" style="font-size: 13px">${esc(r.Tactics || '—')}</span>` },
-      { label: 'Aktör', num: true, render: (r) => fmtN(r.ActorCount) },
-      { label: 'Kampanya', num: true, render: (r) => fmtN(r.CampaignCount) },
-      { label: 'Zararlı', num: true, render: (r) => fmtN(r.MalwareCount) },
+      { id: 'code', label: 'Teknik', render: (r) => `<span class="badge b-purple mono">${esc(r.ExternalID)}</span>` },
+      { id: 'name', label: 'Ad', primary: true, render: (r) => `<span class="name-id"><b>${esc(r.Name)}</b>${r.SubCount ? ` <span class="faint">+${r.SubCount} alt teknik</span>` : ''}</span>` },
+      { id: 'tactic', label: 'Taktik', priority: 2, render: (r) => `<span class="muted">${TL.clipList(r.Tactics, 2)}</span>` },
+      { id: 'actors', label: 'Aktör', num: true, render: (r) => TL.num(r.ActorCount) },
+      { id: 'campaigns', label: 'Kampanya', num: true, priority: 3, render: (r) => TL.num(r.CampaignCount) },
+      { id: 'malware', label: 'Zararlı', num: true, priority: 2, render: (r) => TL.num(r.MalwareCount) },
     ],
     detail,
   });
@@ -108,7 +108,7 @@
   async function matrix() {
     const f = TL.formData(document.getElementById('filters'));
     const p = { actor: f.actor, campaign: f.campaign, malware: qs.get('malware') };
-    const box = document.getElementById('matrix'); box.innerHTML = loading('sp_AttackMatrix');
+    const box = document.getElementById('matrix'); box.innerHTML = loading('Matris hazırlanıyor');
     try {
       const [cols, covRows] = await Promise.all([api('/api/attack/matrix', { params: p }), api('/api/coverage/levels')]);
       const cov = Object.fromEntries(covRows.map((c) => [c.TechniqueID, c.Level]));

@@ -1,8 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Ayarlar</h1><p>Kullanıcılar ve roller, yetki matrisi, risk puanlaması, veritabanı ve entegrasyon durumu.</p></div>
+  <div><h1>Ayarlar</h1><p>Kullanıcılar ve roller, yetki matrisi, risk puanlaması ve entegrasyon durumu.<span class="tech"> Geliştirici modunda veritabanı sekmesi de görünür.</span></p></div>
+  <div class="seg dev-only" role="tablist" aria-label="Ayar bölümleri" id="settingsTabs">
+    <button type="button" role="tab" id="tab-general" aria-controls="generalTab" aria-selected="true" aria-pressed="true" data-tab="generalTab">Genel</button>
+    <button type="button" role="tab" id="tab-db" aria-controls="dbTab" aria-selected="false" aria-pressed="false" data-tab="dbTab">Veritabanı</button>
+  </div>
 </div>
+<div id="generalTab" role="tabpanel" aria-labelledby="tab-general" class="tab-panel">
 
 <div class="grid g-main-side">
   <article class="card flush">
@@ -13,7 +18,7 @@
   </article>
   <article class="card">
     <h2>Rol yetki matrisi</h2>
-    <p class="muted" style="font-size: 13px;margin:4px 0 12px">Uygulamada (FastAPI bağımlılıkları) ve veritabanında (tip_reader ⊂ tip_analyst ⊂ tip_admin rolleri, GRANT/DENY) aynı sınırlar uygulanır.</p>
+    <p class="muted" style="font-size: 13px;margin:4px 0 12px"><span class="user-only">Aynı sınırlar hem uygulamada hem veritabanında uygulanır: izleyici yalnızca okur, analist kayıt ekler, yönetici her şeyi yönetir.</span><span class="tech">Uygulamada (FastAPI bağımlılıkları) ve veritabanında (tip_reader ⊂ tip_analyst ⊂ tip_admin rolleri, GRANT/DENY) aynı sınırlar uygulanır.</span></p>
     <div class="table-wrap"><table class="data"><caption class="sr-only">Rol yetkileri</caption>
       <thead><tr><th scope="col">Yetki</th><th scope="col">Yönetici</th><th scope="col">Analist</th><th scope="col">İzleyici</th></tr></thead>
       <tbody id="perm"></tbody></table></div>
@@ -23,14 +28,14 @@
 <div class="grid g-2">
   <article class="card">
     <h2>Risk skoru nasıl hesaplanıyor?</h2>
-    <p class="muted" style="font-size: 13px;margin:4px 0 12px">dbo.fn_RiskScore skaler fonksiyonu (türetilmiş nitelik: saklanmaz, vw_Indicator içinde her okumada hesaplanır)</p>
+    <p class="muted" style="font-size: 13px;margin:4px 0 12px"><span class="user-only">Skor saklanmaz; IOC her okunduğunda güncel verilerle yeniden hesaplanır.</span><span class="tech">dbo.fn_RiskScore skaler fonksiyonu (türetilmiş nitelik: saklanmaz, vw_Indicator içinde her okumada hesaplanır)</span></p>
     <ol class="timeline">
       <li><span class="dot done"></span><div><b>Taban puan</b><br><small class="muted">güven × 0,45 + önem ağırlığı × 0,35 + görülme sayısı × 2 (en çok 20)</small></div></li>
       <li><span class="dot done"></span><div><b>Kaynak güvenilirliği çarpanı</b><br><small class="muted">Admiralty ölçeği: A 1,00 · B 0,95 · C 0,88 · D 0,78 · E 0,68 · F 0,60</small></div></li>
       <li><span class="dot done"></span><div><b>Tazelik çarpanı</b><br><small class="muted">son görülme ≤30 gün 1,00 · ≤90 gün 0,85 · ≤180 gün 0,65 · daha eski 0,45</small></div></li>
       <li><span class="dot"></span><div><b>Durum</b><br><small class="muted">aktif değilse puan yarıya iner; sonuç 0–100 arasına sınırlanır</small></div></li>
     </ol>
-    <p class="faint" style="font-size:12px">Önem ağırlıkları SeverityLevel tablosunda: Bilgi 10, Düşük 30, Orta 55, Yüksek 80, Kritik 100.</p>
+    <p class="faint" style="font-size:12px">Önem ağırlıkları<span class="tech"> (SeverityLevel tablosu)</span>: Bilgi 10, Düşük 30, Orta 55, Yüksek 80, Kritik 100.</p>
     <h3 style="margin-top:14px">Risk bantları</h3>
     <p class="muted" style="font-size: 13px;margin:2px 0 8px">"Yüksek riskli" skoru bu eşiklerin üstündeki IOC'dir; "yüksek önemli" ise önem düzeyi yüksek ya da kritik olan IOC'dir. İkisi farklı ölçülerdir.</p>
     <ul class="legend" id="riskBands"></ul>
@@ -43,17 +48,20 @@
 
 <div class="grid g-main-side">
   <article class="card flush">
-    <div class="card-head"><div><h2>IOC yaşam döngüsü</h2><p>RetentionPolicy: bitiş = son görülme + süre. En özel politika kazanır (kaynak + tip &gt; kaynak &gt; tip &gt; genel).</p></div></div>
+    <div class="card-head"><div><h2>IOC yaşam döngüsü</h2><p>Geçerlilik sonu = son görülme + süre. En özel kural kazanır (kaynak + tip &gt; kaynak &gt; tip &gt; genel).<span class="tech"> · RetentionPolicy tablosu</span></p></div></div>
     <div id="retention"></div>
   </article>
   <article class="card">
     <h2>Zamanlanmış bakım işleri</h2>
-    <p class="muted" style="font-size: 13px;margin:4px 0 10px">SQL Server Agent: her gece 02:00 süresi dolan IOC'ler, her pazar 03:00 graf bakımı. Beslemeler Windows Görev Zamanlayıcı ile 6 saatte bir çekilir.</p>
+    <p class="muted" style="font-size: 13px;margin:4px 0 10px">Her gece 02:00 süresi dolan IOC'ler kapatılır, her pazar 03:00 graf bakımı yapılır. Beslemeler 6 saatte bir çekilir.<span class="tech"> · SQL Server Agent işleri ve Windows Görev Zamanlayıcı</span></p>
     <ul class="list" id="runs"></ul>
     <p class="muted" style="font-size: 13px;margin-top:10px" id="upcoming"></p>
   </article>
 </div>
 
+</div>
+
+<div id="dbTab" role="tabpanel" aria-labelledby="tab-db" class="tab-panel dev-only" hidden>
 <article class="card flush" id="qsCard" hidden>
   <div class="card-head"><div><h2>En pahalı sorgular</h2><p>Veritabanında ortalama en uzun süren sorgular<span class="tech"> · Query Store (sys.query_store_*)</span></p></div></div>
   <div id="qsTbl"></div>
@@ -72,6 +80,7 @@
     <div class="card-head"><div><h2>Graf tutarlılığı</h2><p>Graf ile ilişkisel tabloların aynı kayıtları tuttuğunun denetimi<span class="tech"> · sp_CheckGraphConsistency</span></p></div></div>
     <div id="graph"></div>
   </article>
+</div>
 </div>
 {% endblock %}
 {% block scripts %}<script src="/static/js/settings.js?v={{ v }}"></script>{% endblock %}
