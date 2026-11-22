@@ -9,7 +9,8 @@ from . import config
 from .api import admin, attack, auth, cases, coverage, dashboard, entities, exports, graph, hunt, infrastructure, iocs, search
 from .security import page_user
 
-app = FastAPI(title="ThreatLens API", version="1.0.0", docs_url="/api/docs", openapi_url="/api/openapi.json",
+# Belgeler herkese açık değildir: /api/docs ve /api/openapi.json aşağıda oturum denetimiyle tanımlanır
+app = FastAPI(title="ThreatLens API", version="1.0.0", docs_url=None, redoc_url=None, openapi_url=None,
               description="ThreatLens Tehdit İstihbaratı Platformu - MSSQL Graph + FastAPI (ORM yok, parametreli T-SQL)")
 
 for module in (auth, dashboard, search, iocs, hunt, cases, graph, infrastructure, entities, attack, coverage, exports, admin):
@@ -56,6 +57,21 @@ def render(request: Request, page: str, template: str, **ctx):
         return templates.TemplateResponse(request, "error.html", {"message": user["_db_error"]}, status_code=503)
     title = PAGES.get(page, (ctx.get("title", "ThreatLens"), ""))[0]
     return templates.TemplateResponse(request, template, {"user": user, "nav": NAV, "page": page, "title": title, **ctx})
+
+
+@app.get("/api/openapi.json", include_in_schema=False)
+def openapi_schema(request: Request):
+    if page_user(request) is None:
+        return JSONResponse({"detail": "Oturum açmanız gerekiyor."}, status_code=401)
+    return JSONResponse(app.openapi())
+
+
+@app.get("/api/docs", include_in_schema=False)
+def api_docs(request: Request):
+    if page_user(request) is None:
+        return RedirectResponse("/login?next=/api/docs", status_code=303)
+    from fastapi.openapi.docs import get_swagger_ui_html
+    return get_swagger_ui_html(openapi_url="/api/openapi.json", title="ThreatLens API")
 
 
 @app.get("/login", response_class=HTMLResponse, include_in_schema=False)

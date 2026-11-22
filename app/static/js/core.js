@@ -214,7 +214,11 @@
   // ---------- iskelet ----------
   function initShell() {
     const sb = document.getElementById('sidebar'), scrim = document.getElementById('scrim'), mb = document.getElementById('menuBtn');
-    const setNav = (open) => { sb.classList.toggle('open', open); scrim.hidden = !open; mb.setAttribute('aria-expanded', String(open)); };
+    const setNav = (open) => {
+      if (open && !NARROW.matches) return;                  // geniş ekranda kenar çubuğu zaten görünür
+      sb.classList.toggle('open', open); scrim.hidden = !open; mb?.setAttribute('aria-expanded', String(open));
+    };
+    NARROW.addEventListener('change', () => { if (!NARROW.matches) setNav(false); });
     mb?.addEventListener('click', () => setNav(!sb.classList.contains('open')));
     scrim?.addEventListener('click', () => setNav(false));
     const ub = document.getElementById('userBtn'), um = document.getElementById('userMenu');

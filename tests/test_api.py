@@ -555,3 +555,26 @@ def test_case_edge_cascades_when_entity_deleted(analyst, conn, unique):
         assert conn.cursor().execute("SELECT COUNT(*) FROM dbo.InvestigationIncludes WHERE $from_id IS NULL OR $to_id IS NULL;").fetchone()[0] == 0
     finally:
         analyst.delete(f"/api/cases/{cid}")
+
+
+# ------------------------------------------------------------------ kritik düzeltmeler
+def test_api_docs_require_login(viewer):
+    anon = _fresh_client()
+    assert anon.get("/api/openapi.json").status_code == 401
+    r = anon.get("/api/docs", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"].startswith("/login")
+    assert viewer.get("/api/docs").status_code == 200 and "/api/iocs" in viewer.get("/api/openapi.json").json()["paths"]
+
+
+def test_db_error_message_does_not_leak_sql():
+    import pyodbc
+    from app.db import to_http_error
+    exc = pyodbc.ProgrammingError("42S22", "[42S22] [Microsoft][ODBC Driver 18 for SQL Server][SQL Server]Invalid column name 'Secret'. (207) (SQLExecDirectW)")
+    err = to_http_error(exc)
+    assert err.status_code == 500 and "Secret" not in err.detail and "kodu" in err.detail
+
+
+def test_upload_size_limit_is_enforced(analyst):
+    big = b"a" * (5 * 1024 * 1024 + 1)
+    assert analyst.post("/api/hunt", data={"location": "pytest"}, files={"file": ("big.log", big)}).status_code == 400
+    assert analyst.post("/api/imports", files={"file": ("big.csv", big)}).status_code == 400

@@ -85,13 +85,13 @@ def get_import(job_id: int, db: Db = Depends(get_db)):
 
 
 @router.post("/imports", status_code=201)
-async def upload_import(file: UploadFile = File(...), sourceId: int | None = Form(None), strict: bool = Form(False),
+def upload_import(file: UploadFile = File(...), sourceId: int | None = Form(None), strict: bool = Form(False),
                         user: dict = Depends(require_analyst), db: Db = Depends(get_db)):
     """CSV/JSON dosyasından gösterge içe aktarma. Katı modda (strict) tek hatalı satır tüm dosyayı geri alır."""
     name = file.filename or "upload"
     if not name.lower().endswith((".csv", ".json", ".txt")):
         raise HTTPException(400, "Yalnızca .csv, .json veya .txt dosyası yüklenebilir.")
-    content = await file.read()
+    content = file.file.read(MAX_UPLOAD + 1)
     if len(content) > MAX_UPLOAD:
         raise HTTPException(400, "Dosya 5 MB sınırını aşıyor.")
     try:

@@ -14,14 +14,14 @@ MAX_BYTES = 5 * 1024 * 1024
 
 
 @router.post("")
-async def run_hunt(text: str = Form(""), location: str = Form(..., max_length=100), record: bool = Form(False),
+def run_hunt(text: str = Form(""), location: str = Form(..., max_length=100), record: bool = Form(False),
                    file: UploadFile | None = File(None), user: dict = Depends(current_user), db: Db = Depends(get_db)):
     """Log metni veya dosyasındaki IOC'leri veritabanıyla eşleştirir. record=true: eşleşmeler görülme (Sighting) olur."""
     if record and user["Role"] not in ("analyst", "admin"):
         raise HTTPException(403, "Eşleşmeleri görülme olarak kaydetmek için analist yetkisi gerekir.")
     file_name = None
     if file is not None and file.filename:
-        raw = await file.read()
+        raw = file.file.read(MAX_BYTES + 1)        # en çok sınır + 1 bayt: büyük dosya belleğe alınmaz
         if len(raw) > MAX_BYTES:
             raise HTTPException(400, "Log dosyası 5 MB sınırını aşıyor.")
         text, file_name = raw.decode("utf-8", errors="replace"), file.filename[:200]

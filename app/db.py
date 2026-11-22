@@ -12,6 +12,8 @@ from collections import OrderedDict
 from contextlib import contextmanager
 from decimal import Decimal
 
+import logging
+
 import pyodbc
 from fastapi import HTTPException, Request, Response
 
@@ -19,6 +21,7 @@ from . import config
 
 # ODBC sürücü havuzu kapalı: sürücünün bağlantı sıfırlaması (sp_reset_connection) Application Role ile uyumsuz.
 pyodbc.pooling = False
+log = logging.getLogger("threatlens.db")
 
 # Uygulama rolü -> SQL Server Application Role. Her istekte kullanıcının rolü etkinleştirilir; bundan sonra
 # bağlantı, Windows hesabının (sysadmin) değil, yalnızca bu rolün (tip_reader/analyst/admin) yetkileriyle çalışır.
@@ -191,7 +194,9 @@ def to_http_error(exc: pyodbc.Error) -> HTTPException:
         return HTTPException(409, "Bu kayıt başka kayıtlarla ilişkili olduğu için işlem yapılamadı (yabancı anahtar kısıtı).")
     if code in (8152, 2628):
         return HTTPException(400, "Girilen metin bu alan için çok uzun.")
-    return HTTPException(500, f"Veritabanı hatası: {message}")
+    ref = uuid.uuid4().hex[:8]
+    log.error("Veritabanı hatası [%s] kod=%s: %s", ref, code, message)
+    return HTTPException(500, f"Beklenmeyen bir veritabanı hatası oluştu. Yöneticiye bu kodu iletin: {ref}")
 
 
 def _dedent(sql: str) -> str:
