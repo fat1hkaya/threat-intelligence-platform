@@ -21,22 +21,29 @@ templates = Jinja2Templates(directory=config.TEMPLATES_DIR)
 # Statik dosya sürümü: her başlatmada değişir, tarayıcı eski JS/CSS'i önbellekten kullanmaz
 templates.env.globals["v"] = str(int(__import__("time").time()))
 
-# Kenar çubuğu: (rota, sayfa anahtarı, başlık, Lucide ikon adı)
-NAV = [
-    ("/", "overview", "Genel Bakış", "layout-dashboard"),
-    ("/iocs", "iocs", "IOC Araştırma", "search"),
-    ("/hunt", "hunt", "Log Avı", "radar"),
-    ("/cases", "cases", "Vakalar", "briefcase"),
-    ("/graph", "graph", "İlişki Grafı", "share-2"),
-    ("/infrastructure", "infrastructure", "Altyapı", "network"),
-    ("/actors", "actors", "Tehdit Aktörleri", "users"),
-    ("/campaigns", "campaigns", "Kampanyalar", "target"),
-    ("/malware", "malware", "Zararlı Yazılımlar", "bug"),
-    ("/attack", "attack", "MITRE ATT&CK", "grid-3x3"),
-    ("/sources", "sources", "Veri Kaynakları", "database"),
-    ("/audit", "audit", "Denetim Kayıtları", "file-clock"),
-    ("/settings", "settings", "Ayarlar", "settings"),
+# Kenar çubuğu grupları: (grup başlığı, [(rota, sayfa anahtarı, başlık, Lucide ikon adı)])
+NAV_GROUPS = [
+    ("Analiz", [
+        ("/", "overview", "Genel Bakış", "layout-dashboard"),
+        ("/iocs", "iocs", "IOC Araştırma", "search"),
+        ("/hunt", "hunt", "Log Avı", "radar"),
+        ("/cases", "cases", "Vakalar", "briefcase"),
+    ]),
+    ("İstihbarat", [
+        ("/graph", "graph", "İlişki Grafı", "share-2"),
+        ("/infrastructure", "infrastructure", "Altyapı", "network"),
+        ("/actors", "actors", "Tehdit Aktörleri", "users"),
+        ("/campaigns", "campaigns", "Kampanyalar", "target"),
+        ("/malware", "malware", "Zararlı Yazılımlar", "bug"),
+        ("/attack", "attack", "MITRE ATT&CK", "grid-3x3"),
+    ]),
+    ("Yönetim", [
+        ("/sources", "sources", "Veri Kaynakları", "database"),
+        ("/audit", "audit", "Denetim Kayıtları", "file-clock"),
+        ("/settings", "settings", "Ayarlar", "settings"),
+    ]),
 ]
+NAV = [item for _, items in NAV_GROUPS for item in items]
 PAGES = {key: (title, path) for path, key, title, _ in NAV}
 
 
@@ -56,7 +63,8 @@ def render(request: Request, page: str, template: str, **ctx):
     if "_db_error" in user:
         return templates.TemplateResponse(request, "error.html", {"message": user["_db_error"]}, status_code=503)
     title = PAGES.get(page, (ctx.get("title", "ThreatLens"), ""))[0]
-    return templates.TemplateResponse(request, template, {"user": user, "nav": NAV, "page": page, "title": title, **ctx})
+    return templates.TemplateResponse(request, template, {"user": user, "nav": NAV, "nav_groups": NAV_GROUPS, "page": page,
+                                                          "title": title, **ctx})
 
 
 @app.get("/api/openapi.json", include_in_schema=False)
@@ -75,8 +83,13 @@ def api_docs(request: Request):
 
 
 @app.get("/login", response_class=HTMLResponse, include_in_schema=False)
-def login_page(request: Request):
-    return templates.TemplateResponse(request, "login.html", {})
+def login_page(request: Request, next: str = "/"):
+    # Oturumu açık kullanıcı giriş formunu yeniden görmez
+    user = page_user(request)
+    if user is not None and "_db_error" not in user:
+        target = next if next.startswith("/") and not next.startswith("//") else "/"
+        return RedirectResponse(target, status_code=303)
+    return templates.TemplateResponse(request, "login.html", {"login_hint": config.LOGIN_HINT})
 
 
 @app.get("/", include_in_schema=False)

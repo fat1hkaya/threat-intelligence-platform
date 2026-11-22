@@ -5,55 +5,98 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Giriş · ThreatLens</title>
   <link rel="icon" href="/static/img/logo.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#0B1020" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F4F6FB" media="(prefers-color-scheme: light)">
   <script>try { const t = localStorage.getItem('tl-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
   <link rel="stylesheet" href="/static/css/app.css?v={{ v }}">
 </head>
-<body>
+<body class="login-body">
 <main class="login">
-  <section class="login-art" aria-hidden="true">
-    <svg class="web" viewBox="0 0 600 700" preserveAspectRatio="xMidYMid slice">
-      <g stroke="#2E3F61" stroke-width="1.2">
-        <line x1="120" y1="420" x2="260" y2="330"/><line x1="260" y1="330" x2="420" y2="380"/><line x1="260" y1="330" x2="300" y2="200"/>
-        <line x1="420" y1="380" x2="500" y2="260"/><line x1="300" y1="200" x2="500" y2="260"/><line x1="420" y1="380" x2="470" y2="520"/>
-        <line x1="120" y1="420" x2="190" y2="560"/><line x1="300" y1="200" x2="180" y2="150"/>
-      </g>
-      <circle cx="260" cy="330" r="16" fill="#22D3EE"/><circle cx="420" cy="380" r="13" fill="#A78BFA"/>
-      <circle cx="300" cy="200" r="12" fill="#FBBF24"/><circle cx="500" cy="260" r="15" fill="#F87171"/>
-      <circle cx="120" cy="420" r="9" fill="#22D3EE" opacity=".6"/><circle cx="470" cy="520" r="10" fill="#34D399"/>
-      <circle cx="190" cy="560" r="7" fill="#22D3EE" opacity=".5"/><circle cx="180" cy="150" r="7" fill="#34D399" opacity=".7"/>
-    </svg>
-    <div class="copy" style="display:flex;align-items:center;gap:12px">
-      <img src="/static/img/logo.svg" alt="" width="44" height="44"><b style="font-size:20px">ThreatLens</b>
-    </div>
-    <div class="copy">
+  <!-- Sol panel: ürünün yaptığı iş, örnek veri değil. Kenar renkleri graf düğüm türlerinin renkleridir. -->
+  <section class="login-art" aria-label="ThreatLens hakkında">
+    <a class="login-mark" href="/login"><img src="/static/img/logo.svg" alt="" width="36" height="36"><span>ThreatLens</span></a>
+    <div class="login-pitch">
       <h1>Bir hash'ten tehdit aktörüne kadar izi sürün.</h1>
-      <p>IOC, zararlı yazılım, kampanya, aktör ve ATT&amp;CK teknikleri tek bir SQL Server Graph veritabanında, kanıtlarıyla birlikte.</p>
+      <p>Her ilişki, kanıtı ve kaynağıyla birlikte SQL Server Graph üzerinde saklanır.</p>
+      <ol class="trace" aria-label="İz zinciri">
+        <li style="--c: var(--n-ioc)"><span class="trace-dot" aria-hidden="true"></span><div><b>Gösterge (IOC)</b><span>IP, domain, URL, MD5, SHA-1, SHA-256</span></div></li>
+        <li style="--c: var(--n-malware)"><span class="trace-dot" aria-hidden="true"></span><div><b>Zararlı yazılım</b><span>Aile adı ve takma adlarıyla eşlenir</span></div></li>
+        <li style="--c: var(--n-actor)"><span class="trace-dot" aria-hidden="true"></span><div><b>Tehdit aktörü</b><span>Atıf, kaynağı gösterilen kanıtla kurulur</span></div></li>
+        <li style="--c: var(--n-technique)"><span class="trace-dot" aria-hidden="true"></span><div><b>ATT&amp;CK tekniği</b><span>Kurumunuzun tespit kapsamıyla karşılaştırılır</span></div></li>
+      </ol>
     </div>
+    <p class="login-sources">Kaynaklar: MITRE ATT&amp;CK, abuse.ch, CISA KEV, Malpedia</p>
   </section>
+
   <section class="login-form">
-    <form id="loginForm" novalidate>
-      <div style="display:flex;align-items:center;gap:10px"><img src="/static/img/logo.svg" alt="" width="36" height="36"><h2 style="font-size:20px">Oturum aç</h2></div>
-      <div class="field"><label for="u">Kullanıcı adı</label><input class="input" id="u" name="username" autocomplete="username" required value="fatih"></div>
-      <div class="field"><label for="p">Parola</label><input class="input" id="p" name="password" type="password" autocomplete="current-password" required></div>
+    <form id="loginForm" class="login-card" novalidate>
+      <div class="login-brand"><img src="/static/img/logo.svg" alt="" width="40" height="40"><span><b>ThreatLens</b><small>Tehdit istihbaratı</small></span></div>
+      <div>
+        <h2>Oturum açın</h2>
+        <p class="muted">Kurum hesabınızla devam edin.</p>
+      </div>
+      <div class="field">
+        <label for="u">Kullanıcı adı</label>
+        <div class="input-icon"><i data-lucide="user" aria-hidden="true"></i>
+          <input class="input" id="u" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus></div>
+      </div>
+      <div class="field">
+        <label for="p">Parola</label>
+        <div class="input-icon"><i data-lucide="lock" aria-hidden="true"></i>
+          <input class="input" id="p" name="password" type="password" autocomplete="current-password" required>
+          <button type="button" class="reveal" id="reveal" aria-label="Parolayı göster" aria-pressed="false"><i data-lucide="eye"></i></button></div>
+        <p class="caps" id="caps" hidden><i data-lucide="arrow-big-up" aria-hidden="true"></i>Caps Lock açık</p>
+      </div>
       <p class="err" id="err" role="alert"></p>
-      <button class="btn primary" type="submit" style="height:40px">Giriş yap</button>
-      <p class="hint">Yerel kullanıcılar: <b>fatih</b> (yönetici), <b>analist</b>, <b>izleyici</b>. Parolalar kurulum çıktısında ve README'de yazar.</p>
+      <button class="btn primary login-submit" id="submit" type="submit"><span>Giriş yap</span></button>
+      <p class="login-help">Parolanızı unuttuysanız yöneticinizden sıfırlamasını isteyin.</p>
+      {% if login_hint %}
+      <p class="hint"><b>Yerel kurulum:</b> kullanıcılar <span class="mono">fatih</span> (yönetici), <span class="mono">analist</span>, <span class="mono">izleyici</span>. Parolalar kurulum çıktısında yazar. Bu not <span class="mono">TL_LOGIN_HINT=0</span> ile kapanır.</p>
+      {% endif %}
     </form>
   </section>
 </main>
+<script src="/static/vendor/lucide.min.js"></script>
 <script>
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const err = document.getElementById('err'); err.textContent = '';
-  const body = { username: document.getElementById('u').value.trim(), password: document.getElementById('p').value };
-  if (!body.username || !body.password) { err.textContent = 'Kullanıcı adı ve parolayı girin.'; return; }
-  try {
-    const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (!r.ok) { err.textContent = (await r.json().catch(() => ({}))).detail || 'Giriş yapılamadı.'; return; }
-    const next = new URLSearchParams(location.search).get('next');
-    location.href = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
-  } catch { err.textContent = 'Sunucuya ulaşılamadı.'; }
-});
+(() => {
+  window.lucide && lucide.createIcons();
+  const form = document.getElementById('loginForm'), err = document.getElementById('err'), btn = document.getElementById('submit');
+  const pw = document.getElementById('p'), reveal = document.getElementById('reveal'), caps = document.getElementById('caps');
+
+  reveal.addEventListener('click', () => {
+    const show = pw.type === 'password';
+    pw.type = show ? 'text' : 'password';
+    reveal.setAttribute('aria-pressed', String(show));
+    reveal.setAttribute('aria-label', show ? 'Parolayı gizle' : 'Parolayı göster');
+    reveal.innerHTML = `<i data-lucide="${show ? 'eye-off' : 'eye'}"></i>`; lucide.createIcons();
+    pw.focus();
+  });
+  const capsCheck = (e) => { if (e.getModifierState) caps.hidden = !e.getModifierState('CapsLock'); };
+  pw.addEventListener('keydown', capsCheck); pw.addEventListener('keyup', capsCheck);
+  pw.addEventListener('blur', () => { caps.hidden = true; });
+
+  const busy = (on) => {
+    btn.disabled = on; btn.setAttribute('aria-busy', String(on));
+    btn.innerHTML = on ? '<span class="spinner" aria-hidden="true"></span><span>Giriş yapılıyor…</span>' : '<span>Giriş yap</span>';
+  };
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (btn.disabled) return;                               // çift gönderim yok
+    err.textContent = '';
+    const body = { username: document.getElementById('u').value.trim(), password: pw.value };
+    if (!body.username || !body.password) { err.textContent = 'Kullanıcı adı ve parolayı girin.'; (body.username ? pw : document.getElementById('u')).focus(); return; }
+    busy(true);
+    try {
+      const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) {
+        err.textContent = (await r.json().catch(() => ({}))).detail || 'Giriş yapılamadı.';
+        busy(false); pw.select(); return;
+      }
+      const next = new URLSearchParams(location.search).get('next');
+      location.href = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+    } catch { err.textContent = 'Sunucuya ulaşılamadı. Uygulamanın çalıştığını kontrol edin.'; busy(false); }
+  });
+})();
 </script>
 </body>
 </html>

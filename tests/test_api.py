@@ -578,3 +578,19 @@ def test_upload_size_limit_is_enforced(analyst):
     big = b"a" * (5 * 1024 * 1024 + 1)
     assert analyst.post("/api/hunt", data={"location": "pytest"}, files={"file": ("big.log", big)}).status_code == 400
     assert analyst.post("/api/imports", files={"file": ("big.csv", big)}).status_code == 400
+
+
+# ------------------------------------------------------------------ giriş sayfası ve gezinme
+def test_login_page_redirects_when_signed_in(viewer):
+    r = viewer.get("/login?next=/iocs", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "/iocs"
+    assert viewer.get("/login?next=//evil.example", follow_redirects=False).headers["location"] == "/"
+    anon = _fresh_client().get("/login")
+    assert anon.status_code == 200 and 'value="fatih"' not in anon.text and 'id="reveal"' in anon.text
+
+
+def test_sidebar_is_grouped(viewer):
+    html = viewer.get("/iocs").text
+    for group in ("Analiz", "İstihbarat", "Yönetim"):
+        assert f">{group}</h2>" in html
+    assert 'id="navCollapse"' in html and 'id="navClose"' in html and "VTYS projesi" not in html

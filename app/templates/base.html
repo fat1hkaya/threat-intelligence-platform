@@ -7,9 +7,10 @@
   <link rel="icon" href="/static/img/logo.svg" type="image/svg+xml">
   <meta name="theme-color" content="#0B1020" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#F4F6FB" media="(prefers-color-scheme: light)">
-  <script>/* tema ve yoğunluk ilk çizimden önce uygulanır (yanıp sönme olmasın) */
+  <script>/* tema, yoğunluk ve daraltılmış menü ilk çizimden önce uygulanır (yanıp sönme olmasın) */
     try { const t = localStorage.getItem('tl-theme'); if (t) document.documentElement.dataset.theme = t;
-          if (localStorage.getItem('tl-dense')) document.documentElement.classList.add('dense'); } catch (e) {}</script>
+          if (localStorage.getItem('tl-dense')) document.documentElement.classList.add('dense');
+          if (localStorage.getItem('tl-nav-collapsed')) document.documentElement.classList.add('nav-collapsed'); } catch (e) {}</script>
   <link rel="stylesheet" href="/static/css/app.css?v={{ v }}">
   {% block head %}{% endblock %}
 </head>
@@ -17,20 +18,28 @@
 <a class="skip-link" href="#content">İçeriğe geç</a>
 <div class="shell">
   <aside class="sidebar" id="sidebar" aria-label="Ana menü">
-    <a class="brand" href="/">
-      <img src="/static/img/logo.svg" alt="">
-      <span><b>ThreatLens</b><small>Tehdit istihbaratı platformu</small></span>
-    </a>
+    <div class="sidebar-head">
+      <a class="brand" href="/" title="ThreatLens: Genel Bakış">
+        <img src="/static/img/logo.svg" alt="">
+        <span><b>ThreatLens</b><small>Tehdit istihbaratı</small></span>
+      </a>
+      <button class="btn icon ghost nav-close" id="navClose" type="button" aria-label="Menüyü kapat"><i data-lucide="x"></i></button>
+    </div>
     <nav aria-label="Sayfalar">
-      <ul class="nav">
-        {% for path, key, label, icon in nav %}
-        <li><a href="{{ path }}" {% if key == page %}aria-current="page"{% endif %}><i data-lucide="{{ icon }}" aria-hidden="true"></i>{{ label }}</a></li>
-        {% endfor %}
-      </ul>
+      {% for group, items in nav_groups %}
+      <div class="nav-group">
+        <h2 class="nav-title" id="nav-g{{ loop.index }}">{{ group }}</h2>
+        <ul class="nav" aria-labelledby="nav-g{{ loop.index }}">
+          {% for path, key, label, icon in items %}
+          <li><a href="{{ path }}" title="{{ label }}" {% if key == page %}aria-current="page"{% endif %}><i data-lucide="{{ icon }}" aria-hidden="true"></i><span class="label">{{ label }}</span></a></li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
     </nav>
     <div class="sidebar-foot">
-      <span><span class="db-dot" aria-hidden="true"></span>SQL Server · ThreatLens</span>
-      <span class="faint">VTYS projesi · MSSQL Graph + FastAPI</span>
+      <span class="db-state" title="Veritabanı bağlantısı"><span class="db-dot" aria-hidden="true"></span><span class="label">SQL Server bağlı</span></span>
+      <button class="btn icon ghost nav-collapse" id="navCollapse" type="button" aria-label="Menüyü daralt" aria-pressed="false" title="Menüyü daralt"><i data-lucide="panel-left-close"></i></button>
     </div>
   </aside>
   <div class="scrim" id="scrim" hidden></div>

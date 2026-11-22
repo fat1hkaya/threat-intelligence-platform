@@ -28,6 +28,8 @@ DB_PASSWORD = os.getenv("TL_DB_PASSWORD", "")
 DB_DRIVER = os.getenv("TL_DB_DRIVER", "")      # boşsa kurulu en yeni ODBC sürücüsü seçilir
 SESSION_HOURS = int(os.getenv("TL_SESSION_HOURS", "12"))
 ABUSECH_AUTH_KEY = os.getenv("ABUSECH_AUTH_KEY", "")
+# Giriş sayfasında yerel kullanıcı adlarını gösteren not (yalnızca yerel/ders kurulumunda; üretimde 0)
+LOGIN_HINT = os.getenv("TL_LOGIN_HINT", "1") == "1"
 # Application Role parolalarının türetildiği sır. setup_db.py yoksa üretip .env'e yazar.
 APPROLE_SECRET = os.getenv("TL_APPROLE_SECRET", "")
 

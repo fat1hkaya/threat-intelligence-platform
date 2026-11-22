@@ -214,13 +214,51 @@
   // ---------- iskelet ----------
   function initShell() {
     const sb = document.getElementById('sidebar'), scrim = document.getElementById('scrim'), mb = document.getElementById('menuBtn');
-    const setNav = (open) => {
+    const isOpen = () => sb.classList.contains('open');
+    // Dar ekranda kapalı çekmece "inert": içindeki bağlantılar Tab ile odaklanmaz, ekran okuyucu okumaz
+    const syncInert = () => { sb.inert = NARROW.matches && !isOpen(); };
+    const setNav = (open, { restoreFocus = true } = {}) => {
       if (open && !NARROW.matches) return;                  // geniş ekranda kenar çubuğu zaten görünür
-      sb.classList.toggle('open', open); scrim.hidden = !open; mb?.setAttribute('aria-expanded', String(open));
+      sb.classList.toggle('open', open); scrim.hidden = !open;
+      document.documentElement.classList.toggle('nav-open', open);   // arka sayfa kaymaz
+      if (mb) {
+        mb.setAttribute('aria-expanded', String(open));
+        mb.setAttribute('aria-label', open ? 'Menüyü kapat' : 'Menüyü aç');
+        mb.innerHTML = `<i data-lucide="${open ? 'x' : 'menu'}"></i>`; icons();
+      }
+      syncInert();
+      if (open) (sb.querySelector('.nav a[aria-current="page"]') || sb.querySelector('.nav a'))?.focus();
+      else if (restoreFocus && mb && sb.contains(document.activeElement)) mb.focus();
     };
-    NARROW.addEventListener('change', () => { if (!NARROW.matches) setNav(false); });
-    mb?.addEventListener('click', () => setNav(!sb.classList.contains('open')));
+    syncInert();
+    NARROW.addEventListener('change', () => { setNav(false, { restoreFocus: false }); syncInert(); });
+    mb?.addEventListener('click', () => setNav(!isOpen()));
+    document.getElementById('navClose')?.addEventListener('click', () => setNav(false));
     scrim?.addEventListener('click', () => setNav(false));
+    sb.addEventListener('click', (e) => { if (e.target.closest('.nav a') && isOpen()) setNav(false, { restoreFocus: false }); });
+    // Odak tuzağı: çekmece açıkken Tab çekmecenin içinde döner
+    sb.addEventListener('keydown', (e) => {
+      if (e.key !== 'Tab' || !isOpen()) return;
+      const f = [...sb.querySelectorAll('a[href], button:not([disabled])')].filter((el) => el.offsetParent !== null);
+      if (!f.length) return;
+      if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+    });
+    // Masaüstü: kenar çubuğu ikon şeridine daraltılabilir (tercih bu tarayıcıda saklanır)
+    const nc = document.getElementById('navCollapse');
+    const showCollapse = () => {
+      const on = document.documentElement.classList.contains('nav-collapsed');
+      if (!nc) return;
+      nc.setAttribute('aria-pressed', String(on)); nc.setAttribute('aria-label', on ? 'Menüyü genişlet' : 'Menüyü daralt'); nc.title = nc.getAttribute('aria-label');
+      nc.innerHTML = `<i data-lucide="${on ? 'panel-left-open' : 'panel-left-close'}"></i>`; icons();
+    };
+    showCollapse();
+    nc?.addEventListener('click', () => {
+      const on = document.documentElement.classList.toggle('nav-collapsed');
+      try { on ? localStorage.setItem('tl-nav-collapsed', '1') : localStorage.removeItem('tl-nav-collapsed'); } catch { /* yok say */ }
+      showCollapse();
+      window.dispatchEvent(new Event('resize'));          // graf ve grafikler yeni genişliğe uysun
+    });
     const ub = document.getElementById('userBtn'), um = document.getElementById('userMenu');
     ub?.addEventListener('click', (e) => { e.stopPropagation(); um.hidden = !um.hidden; ub.setAttribute('aria-expanded', String(!um.hidden)); });
     document.addEventListener('click', (e) => { if (um && !e.target.closest('#userMenu')) { um.hidden = true; ub?.setAttribute('aria-expanded', 'false'); } });
