@@ -115,7 +115,8 @@ def test_backup_and_restore(conn):
 
 def test_demo6_dirty_read_and_blocking(conn, linked_ioc):
     """İki oturum: 1. oturum COMMIT etmeden günceller. READ UNCOMMITTED kirli değeri görür,
-    READ COMMITTED bekler (kilit zaman aşımı), ROLLBACK sonrası eski değer okunur."""
+    satır sürümlemeli READ COMMITTED beklemeden onaylı değeri okur, READCOMMITTEDLOCK ipucuyla
+    okuma kilidi bekler (zaman aşımı), ROLLBACK sonrası eski değer okunur."""
     from importers._db import connect
     iid = linked_ioc["IndicatorID"]
     original = conn.cursor().execute("SELECT Confidence FROM dbo.Indicator WHERE IndicatorID = ?;", iid).fetchone()[0]
@@ -127,8 +128,10 @@ def test_demo6_dirty_read_and_blocking(conn, linked_ioc):
         c2.execute("SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;")
         assert c2.execute("SELECT Confidence FROM dbo.Indicator WHERE IndicatorID = ?;", iid).fetchone()[0] == 11   # kirli okuma
         c2.execute("SET TRANSACTION ISOLATION LEVEL READ COMMITTED; SET LOCK_TIMEOUT 500;")
-        with pytest.raises(pyodbc.Error, match="1222"):      # Lock request time out period exceeded
-            c2.execute("SELECT Confidence FROM dbo.Indicator WHERE IndicatorID = ?;", iid).fetchone()
+        # READ_COMMITTED_SNAPSHOT: okuyucu yazarı beklemez, son onaylanmış sürümü görür
+        assert c2.execute("SELECT Confidence FROM dbo.Indicator WHERE IndicatorID = ?;", iid).fetchone()[0] == original
+        with pytest.raises(pyodbc.Error, match="1222"):      # klasik kilitli okuma: Lock request time out period exceeded
+            c2.execute("SELECT Confidence FROM dbo.Indicator WITH (READCOMMITTEDLOCK) WHERE IndicatorID = ?;", iid).fetchone()
         s1.rollback()
         assert c2.execute("SELECT Confidence FROM dbo.Indicator WHERE IndicatorID = ?;", iid).fetchone()[0] == original
     finally:
@@ -216,3 +219,20 @@ def test_demo8_advanced_features(conn):
     base = sorted(tuple(r) for r in cur.execute("SELECT Status, COUNT(*) FROM dbo.Indicator GROUP BY Status;").fetchall())
     view = sorted(tuple(r) for r in cur.execute("SELECT Status, SUM(Total) FROM dbo.vw_IndicatorCounts WITH (NOEXPAND) GROUP BY Status;").fetchall())
     assert base == view
+
+
+def test_maintenance_objects(conn):
+    """Bakım: SIMPLE kurtarma, satır sürümleme, yedek/bütünlük/temizlik işleri, yabancı anahtar indeksleri."""
+    cur = conn.cursor()
+    db = cur.execute("SELECT recovery_model_desc, is_read_committed_snapshot_on FROM sys.databases WHERE name = DB_NAME();").fetchone()
+    assert db[0] == "SIMPLE" and db[1]
+    for proc in ("sp_BackupDatabase", "sp_CheckIntegrity", "sp_PurgeHistory"):
+        assert cur.execute("SELECT OBJECT_ID(?);", f"dbo.{proc}").fetchone()[0]
+    unindexed = {tuple(r) for r in cur.execute("""
+        SELECT OBJECT_NAME(fk.parent_object_id), COL_NAME(fkc.parent_object_id, fkc.parent_column_id)
+        FROM sys.foreign_keys fk JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id AND fkc.constraint_column_id = 1
+        WHERE NOT EXISTS (SELECT 1 FROM sys.index_columns ic WHERE ic.object_id = fkc.parent_object_id
+                          AND ic.column_id = fkc.parent_column_id AND ic.key_ordinal = 1);""").fetchall()}
+    assert not any(col in ("EvidenceID", "AttributionEvidenceID", "AssignedTo", "ReportedBy") for _, col in unindexed)
+    r = cur.execute("EXEC dbo.sp_PurgeHistory @LoginDays = 3650, @JobDays = 3650, @HuntDays = 3650, @MaintenanceDays = 3650;").fetchone()
+    assert r.RowsDeleted >= 0 and "giriş denemesi" in r.Detail
