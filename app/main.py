@@ -1,4 +1,10 @@
 """ThreatLens - FastAPI uygulaması (Jinja2 sayfaları + JSON API). Çalıştırma: python run.py"""
+import logging
+import secrets
+import time
+import uuid
+from logging.handlers import RotatingFileHandler
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -7,7 +13,17 @@ from fastapi.templating import Jinja2Templates
 
 from . import config
 from .api import admin, attack, auth, cases, coverage, dashboard, entities, exports, graph, hunt, infrastructure, iocs, search
+from .db import Db
 from .security import page_user
+
+# ---- günlük: logs/app.log (2 MB x 5 dosya döner) + konsol. Uygulama hataları ve yavaş istekler buraya yazılır.
+config.LOG_DIR.mkdir(exist_ok=True)
+log = logging.getLogger("threatlens")
+if not log.handlers:
+    _fh = RotatingFileHandler(config.LOG_DIR / "app.log", maxBytes=2_000_000, backupCount=5, encoding="utf-8")
+    _fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    log.addHandler(_fh)
+    log.setLevel(logging.INFO)
 
 # Belgeler herkese açık değildir: /api/docs ve /api/openapi.json aşağıda oturum denetimiyle tanımlanır
 app = FastAPI(title="ThreatLens API", version="1.0.0", docs_url=None, redoc_url=None, openapi_url=None,
@@ -15,6 +31,65 @@ app = FastAPI(title="ThreatLens API", version="1.0.0", docs_url=None, redoc_url=
 
 for module in (auth, dashboard, search, iocs, hunt, cases, graph, infrastructure, entities, attack, coverage, exports, admin):
     app.include_router(module.router)
+
+SLOW_MS = 1500
+# İçerik güvenlik politikası: betikler yalnızca bu sunucudan ve isteğe özel nonce'lu satır içi bloklardan.
+# Satır içi stil özniteliklerine izin verilir (tasarım belirteçleri); kenar/çerçeveye gömülme yasak.
+CSP = ("default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+       "font-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'")
+# Swagger arayüzü dosyalarını jsDelivr'den yükler ve satır içi betik kullanır (yalnızca /api/docs)
+CSP_DOCS = ("default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+            "img-src 'self' data: https://fastapi.tiangolo.com; connect-src 'self'; frame-ancestors 'none'; object-src 'none'")
+
+
+@app.middleware("http")
+async def security_and_timing(request: Request, call_next):
+    nonce = secrets.token_urlsafe(16)
+    request.state.csp_nonce = nonce
+    started = time.perf_counter()
+    response = await call_next(request)
+    ms = (time.perf_counter() - started) * 1000
+    if ms > SLOW_MS:
+        log.warning("yavaş istek %s %s %d %.0f ms", request.method, request.url.path, response.status_code, ms)
+    h = response.headers
+    h["Content-Security-Policy"] = CSP_DOCS if request.url.path == "/api/docs" else CSP.format(nonce=nonce)
+    h["X-Content-Type-Options"] = "nosniff"
+    h["X-Frame-Options"] = "SAMEORIGIN"                # başka sitelerin çerçevesine gömülemez (clickjacking)
+    h["Referrer-Policy"] = "same-origin"
+    h["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"
+    h["Cross-Origin-Opener-Policy"] = "same-origin"
+    if config.COOKIE_SECURE:
+        h["Strict-Transport-Security"] = "max-age=31536000"
+    if request.url.path.startswith("/api/"):
+        h.setdefault("Cache-Control", "no-store")             # API yanıtları (IOC listeleri) önbellekte kalmasın
+    return response
+
+
+@app.exception_handler(Exception)
+async def unhandled_error(request: Request, exc: Exception):
+    """Beklenmeyen hata: ayrıntı günlüğe, kullanıcıya yalnızca kayıt kodu."""
+    ref = uuid.uuid4().hex[:8]
+    log.exception("işlenmeyen hata [%s] %s %s", ref, request.method, request.url.path)
+    message = f"Beklenmeyen bir hata oluştu. Yöneticiye bu kodu iletin: {ref}"
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": message}, status_code=500)
+    return templates.TemplateResponse(request, "error.html", {"message": message, "code": 500}, status_code=500)
+
+
+@app.get("/api/health", include_in_schema=False)
+def health():
+    """İzleme için: oturum gerekmez, ayrıntı vermez. Veritabanına ulaşılamazsa 503."""
+    db = None
+    try:
+        db = Db()
+        db.scalar("SELECT 1 AS ok;", trace=False)
+        return {"status": "ok", "database": "ok"}
+    except Exception:  # noqa: BLE001 - sağlık denetimi her hatada 503 döner
+        log.error("sağlık denetimi: veritabanına ulaşılamadı")
+        return JSONResponse({"status": "degraded", "database": "unreachable"}, status_code=503)
+    finally:
+        if db is not None:
+            db.close()
 
 app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=config.TEMPLATES_DIR)

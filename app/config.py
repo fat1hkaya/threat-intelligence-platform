@@ -30,6 +30,9 @@ SESSION_HOURS = int(os.getenv("TL_SESSION_HOURS", "12"))
 ABUSECH_AUTH_KEY = os.getenv("ABUSECH_AUTH_KEY", "")
 # Giriş sayfasında yerel kullanıcı adlarını gösteren not (yalnızca yerel/ders kurulumunda; üretimde 0)
 LOGIN_HINT = os.getenv("TL_LOGIN_HINT", "1") == "1"
+# HTTPS arkasında çalışırken 1 yapın: oturum çerezi yalnızca şifreli bağlantıda gönderilir (Secure)
+COOKIE_SECURE = os.getenv("TL_COOKIE_SECURE", "0") == "1"
+LOG_DIR = ROOT / "logs"
 # Application Role parolalarının türetildiği sır. setup_db.py yoksa üretip .env'e yazar.
 APPROLE_SECRET = os.getenv("TL_APPROLE_SECRET", "")
 

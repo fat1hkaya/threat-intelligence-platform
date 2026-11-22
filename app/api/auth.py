@@ -62,7 +62,8 @@ def login(body: Login, request: Request, response: Response, db: Db = Depends(ge
         db.execute("UPDATE dbo.AppUser SET LastLoginAt = SYSUTCDATETIME() WHERE UserID = ?;", (user["UserID"],), trace=False)
         _attempt(db, username, user["UserID"], True, ip, None)
     db.statements.clear()
-    response.set_cookie(COOKIE, token, httponly=True, samesite="lax", max_age=config.SESSION_HOURS * 3600)
+    response.set_cookie(COOKIE, token, httponly=True, samesite="lax", secure=config.COOKIE_SECURE,
+                        max_age=config.SESSION_HOURS * 3600)
     return user
 
 

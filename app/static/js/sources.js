@@ -79,8 +79,19 @@
     document.getElementById('srcTbl').addEventListener('click', async (e) => {
       const b = e.target.closest('[data-feed]'); if (!b) return;
       b.disabled = true; b.innerHTML = '<span class="spinner"></span>Çalışıyor';
-      try { const r = await api('/api/imports/feed', { method: 'POST', body: { feed: b.dataset.feed } }); toast(`Senkronizasyon bitti: ${r.status || 'tamam'}`); }
-      catch (er) { toast(er.message, 'err'); }
+      const feed = b.dataset.feed;
+      try {
+        await api('/api/imports/feed', { method: 'POST', body: { feed } });
+        toast('Senkronizasyon arka planda başladı. Bitince liste kendiliğinden yenilenir.');
+        // Arka plan işini yokla (3 sn aralıkla, en çok 10 dk)
+        for (let i = 0; i < 200; i += 1) {
+          await new Promise((r) => setTimeout(r, 3000));
+          const s = await api('/api/imports/feed/status');
+          if (!s.running.includes(feed)) break;
+          if (i % 5 === 4) { loadJobs(); }
+        }
+        toast('Senkronizasyon tamamlandı. Sonuç içe aktarma işleri listesinde.');
+      } catch (er) { toast(er.message, 'err'); }
       await loadSources(); st.page = 1; loadJobs();
     });
     document.getElementById('upForm')?.addEventListener('submit', async (e) => {

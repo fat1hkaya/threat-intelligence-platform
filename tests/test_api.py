@@ -602,3 +602,25 @@ def test_dashboard_attention_counts(viewer, conn):
     assert a["OpenCases"] == cur.execute("SELECT COUNT(*) FROM dbo.Investigation WHERE Status <> 'closed';").fetchone()[0]
     assert a["CoverageMarked"] == cur.execute("SELECT COUNT(*) FROM dbo.DetectionCoverage;").fetchone()[0]
     assert {"HighRisk24h", "Sighted7d", "FailedJobs7d", "BlindSpots", "LastSyncAt"} <= set(a)
+
+
+# ------------------------------------------------------------------ backend sertleştirme
+def test_security_headers_and_nonce():
+    r = _fresh_client().get("/login")
+    csp = r.headers["content-security-policy"]
+    nonce = csp.split("'nonce-")[1].split("'")[0]
+    assert "frame-ancestors 'self'" in csp and "object-src 'none'" in csp and "'unsafe-eval'" not in csp
+    assert r.headers["x-content-type-options"] == "nosniff" and r.headers["x-frame-options"] == "SAMEORIGIN"
+    assert r.text.count(f'<script nonce="{nonce}"') == 2 and "<script>" not in r.text
+
+
+def test_health_endpoint_needs_no_session():
+    r = _fresh_client().get("/api/health")
+    assert r.status_code == 200 and r.json() == {"status": "ok", "database": "ok"}
+
+
+def test_feed_sync_validation_and_status(analyst, viewer):
+    assert viewer.post("/api/imports/feed", json={"feed": "kev"}).status_code == 403
+    assert analyst.post("/api/imports/feed", json={"feed": "yok"}).status_code == 400
+    assert analyst.post("/api/imports/feed", json={"feed": "attack"}).status_code == 403
+    assert analyst.get("/api/imports/feed/status").json()["running"] == []

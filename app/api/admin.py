@@ -1,6 +1,8 @@
 """Veri kaynakları, içe aktarma işleri, denetim kayıtları, kullanıcılar ve sistem/şema durumu."""
 import json
+import logging
 import os
+import threading
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
@@ -112,35 +114,73 @@ class FeedRun(BaseModel):
     feed: str
 
 
-@router.post("/imports/feed")
-def run_feed(body: FeedRun, user: dict = Depends(require_analyst), db: Db = Depends(get_db)):
-    """Bir beslemeyi elle senkronize eder. abuse.ch anahtarı yoksa iş açılmaz, açık bir mesaj döner."""
+log = logging.getLogger("threatlens.feeds")
+_RUNNING: set[str] = set()
+_RUNNING_LOCK = threading.Lock()
+ADMIN_FEEDS = {"attack": "ATT&CK yeniden yüklemesi", "ip2asn": "IP aralığı verisini yüklemek"}
+
+
+def _execute_feed(feed: str, user: dict, db: Db) -> dict:
     from importers import abusech, cisa_kev, ip2asn, malpedia, mitre_attack
 
-    if body.feed == "attack":
-        if user["Role"] != "admin":
-            raise HTTPException(403, "ATT&CK yeniden yüklemesi için yönetici yetkisi gerekir.")
+    if feed == "attack":
         res = mitre_attack.run(db.conn)
         db.conn.cursor().execute("EXEC dbo.sp_RefreshActorSimilarity;")
         return res
-    if body.feed == "kev":
+    if feed == "kev":
         return cisa_kev.run(db.conn)
-    if body.feed == "malpedia":
+    if feed == "malpedia":
         return malpedia.run(db.conn)
-    if body.feed == "ip2asn":   # ~500 bin aralığın tamamı değiştirilir
-        if user["Role"] != "admin":
-            raise HTTPException(403, "IP aralığı verisini yüklemek için yönetici yetkisi gerekir.")
+    if feed == "ip2asn":                                        # ~500 bin aralığın tamamı değiştirilir
         return ip2asn.run(db.conn)
-    if body.feed not in abusech.FEEDS:
-        raise HTTPException(400, "Bilinmeyen besleme.")
-    try:
-        source, items = abusech.FEEDS[body.feed]()
-    except abusech.FeedError as exc:
-        raise HTTPException(400, f"Besleme alınamadı: {exc}") from exc
+    source, items = abusech.FEEDS[feed]()
     source_id = db.scalar("SELECT SourceID FROM dbo.Source WHERE Name = ?;", (source,))
     result = run_import(db.conn, source_id, items, job_type="feed", user_id=user["UserID"])
     db.conn.cursor().execute("EXEC dbo.sp_RefreshActorSimilarity;")
     return result.as_dict()
+
+
+def _feed_worker(feed: str, user: dict) -> None:
+    """Arka plan iş parçacığı: kendi bağlantısı, kullanıcının rolü ve kimliğiyle (denetim kaydı doğru kişiye yazılır)."""
+    db = Db()
+    try:
+        db.activate_role(user["Role"])
+        db.set_user(user["UserID"])
+        res = _execute_feed(feed, user, db)
+        log.info("besleme %s bitti (%s): %s", feed, user["Username"], {k: v for k, v in res.items() if k != "errors"})
+    except Exception as exc:  # noqa: BLE001 - besleme hatası iş parçacığını düşürmemeli
+        log.exception("besleme %s başarısız: %s", feed, exc)
+    finally:
+        db.close()
+        with _RUNNING_LOCK:
+            _RUNNING.discard(feed)
+
+
+@router.post("/imports/feed", status_code=202)
+def run_feed(body: FeedRun, user: dict = Depends(require_analyst)):
+    """Bir beslemeyi arka planda senkronize eder; istek hemen döner (202). Durum: GET /api/imports/feed/status
+    ve içe aktarma işleri listesi. Aynı besleme aynı anda iki kez çalıştırılamaz (409)."""
+    from importers import abusech
+
+    known = {"attack", "kev", "malpedia", "ip2asn", *abusech.FEEDS}
+    if body.feed not in known:
+        raise HTTPException(400, "Bilinmeyen besleme.")
+    if body.feed in ADMIN_FEEDS and user["Role"] != "admin":
+        raise HTTPException(403, f"{ADMIN_FEEDS[body.feed]} için yönetici yetkisi gerekir.")
+    if body.feed in ("threatfox", "malwarebazaar", "urlhaus") and not os.getenv("ABUSECH_AUTH_KEY", "").strip():
+        raise HTTPException(400, "Bu besleme için .env dosyasında ABUSECH_AUTH_KEY gerekir.")
+    with _RUNNING_LOCK:
+        if body.feed in _RUNNING:
+            raise HTTPException(409, "Bu besleme zaten çalışıyor.")
+        _RUNNING.add(body.feed)
+    threading.Thread(target=_feed_worker, args=(body.feed, dict(user)), name=f"feed-{body.feed}", daemon=True).start()
+    return {"started": True, "feed": body.feed}
+
+
+@router.get("/imports/feed/status")
+def feed_status():
+    with _RUNNING_LOCK:
+        return {"running": sorted(_RUNNING)}
 
 
 # ============================== Denetim ================================

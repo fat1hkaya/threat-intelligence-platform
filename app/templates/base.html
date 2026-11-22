@@ -7,7 +7,7 @@
   <link rel="icon" href="/static/img/logo.svg" type="image/svg+xml">
   <meta name="theme-color" content="#0B1020" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#F4F6FB" media="(prefers-color-scheme: light)">
-  <script>/* tema, yoğunluk ve daraltılmış menü ilk çizimden önce uygulanır (yanıp sönme olmasın) */
+  <script nonce="{{ request.state.csp_nonce }}">/* tema, yoğunluk ve daraltılmış menü ilk çizimden önce uygulanır (yanıp sönme olmasın) */
     try { const t = localStorage.getItem('tl-theme'); if (t) document.documentElement.dataset.theme = t;
           if (localStorage.getItem('tl-dense')) document.documentElement.classList.add('dense');
           if (localStorage.getItem('tl-nav-collapsed')) document.documentElement.classList.add('nav-collapsed');
@@ -93,7 +93,7 @@
 </aside>
 <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
-<script>window.TL = { user: {{ user|tojson }}, page: {{ page|tojson }} };</script>
+<script nonce="{{ request.state.csp_nonce }}">window.TL = { user: {{ user|tojson }}, page: {{ page|tojson }} };</script>
 <script src="/static/vendor/lucide.min.js"></script>
 <script src="/static/js/core.js?v={{ v }}"></script>
 <script src="/static/js/cases-shared.js?v={{ v }}"></script>

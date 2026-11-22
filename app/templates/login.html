@@ -7,7 +7,7 @@
   <link rel="icon" href="/static/img/logo.svg" type="image/svg+xml">
   <meta name="theme-color" content="#0B1020" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#F4F6FB" media="(prefers-color-scheme: light)">
-  <script>try { const t = localStorage.getItem('tl-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+  <script nonce="{{ request.state.csp_nonce }}">try { const t = localStorage.getItem('tl-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
   <link rel="stylesheet" href="/static/css/app.css?v={{ v }}">
 </head>
 <body class="login-body">
@@ -57,7 +57,7 @@
   </section>
 </main>
 <script src="/static/vendor/lucide.min.js"></script>
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 (() => {
   window.lucide && lucide.createIcons();
   const form = document.getElementById('loginForm'), err = document.getElementById('err'), btn = document.getElementById('submit');
