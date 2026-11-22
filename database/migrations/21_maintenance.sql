@@ -39,16 +39,17 @@ BEGIN
     DECLARE @run INT, @path NVARCHAR(400), @dir NVARCHAR(260) = COALESCE(@Folder, CAST(SERVERPROPERTY('InstanceDefaultBackupPath') AS NVARCHAR(260)));
     IF RIGHT(@dir, 1) NOT IN (N'\', N'/') SET @dir += N'\';
     -- DATEPART(WEEKDAY) DATEFIRST ayarına bağlıdır; sabit bir tarihten gün farkı dilden bağımsızdır (1 = pazartesi)
-    SET @path = CONCAT(@dir, N'ThreatLens_gun', DATEDIFF(DAY, '20000103', SYSDATETIME()) % 7 + 1, N'.bak');
+    SET @path = CONCAT(@dir, DB_NAME(), N'_gun', DATEDIFF(DAY, '20000103', SYSDATETIME()) % 7 + 1, N'.bak');
     INSERT INTO dbo.MaintenanceRun (Task) VALUES ('backup-full');
     SET @run = SCOPE_IDENTITY();
     BEGIN TRY
-        BACKUP DATABASE ThreatLens TO DISK = @path WITH INIT, FORMAT, CHECKSUM, COMPRESSION, STATS = 100,
+        DECLARE @db SYSNAME = DB_NAME();
+        BACKUP DATABASE @db TO DISK = @path WITH INIT, FORMAT, CHECKSUM, COMPRESSION, STATS = 100,
              NAME = N'ThreatLens gecelik tam yedek';
         RESTORE VERIFYONLY FROM DISK = @path WITH CHECKSUM;
         UPDATE dbo.MaintenanceRun SET FinishedAt = SYSUTCDATETIME(), Status = 'success',
                RowsAffected = (SELECT TOP (1) CAST(compressed_backup_size / 1048576 AS INT) FROM msdb.dbo.backupset
-                               WHERE database_name = N'ThreatLens' ORDER BY backup_finish_date DESC),
+                               WHERE database_name = DB_NAME() ORDER BY backup_finish_date DESC),
                Message = LEFT(CONCAT(N'Yedek doğrulandı (MB = RowsAffected): ', @path), 400)
         WHERE RunID = @run;
     END TRY
@@ -68,7 +69,7 @@ BEGIN
     INSERT INTO dbo.MaintenanceRun (Task) VALUES ('checkdb');
     SET @run = SCOPE_IDENTITY();
     BEGIN TRY
-        DBCC CHECKDB (ThreatLens) WITH NO_INFOMSGS, ALL_ERRORMSGS;   -- bozulma varsa hata fırlatır
+        DBCC CHECKDB (0) WITH NO_INFOMSGS, ALL_ERRORMSGS;   -- 0 = içinde bulunulan veritabanı; bozulma varsa hata fırlatır
         UPDATE dbo.MaintenanceRun SET FinishedAt = SYSUTCDATETIME(), Status = 'success', Message = N'DBCC CHECKDB: tutarsızlık yok'
         WHERE RunID = @run;
     END TRY

@@ -107,6 +107,11 @@
     box.addEventListener('click', async (e) => { const b = e.target.closest('[data-active]'); if (!b) return;
       try { await api(`/api/users/${b.dataset.active}`, { method: 'PATCH', body: { isActive: b.dataset.v === '1' } }); toast('Kullanıcı durumu güncellendi.'); users(); } catch (err) { toast(err.message, 'err'); } });
     document.getElementById('showInactive')?.addEventListener('change', () => users().catch((e) => toast(e.message, 'err')));
+    TL.meta().then((m) => {
+      const el = document.getElementById('riskBands'); if (!el) return;
+      const bands = m.riskBands || [];
+      el.innerHTML = bands.map((b, i) => `<li><i class="sev-dot sev-${b.Code}"></i><span>${esc(b.Name)}</span><b>${b.MinScore}${i ? `–${bands[i - 1].MinScore - 1}` : '–100'}</b></li>`).join('');
+    }).catch(() => {});
     users().catch((e) => toast(e.message, 'err')); system().catch((e) => toast(e.message, 'err')); retention().catch((e) => toast(e.message, 'err'));
     if (can('admin')) api('/api/system/queries').then((rows) => {
       document.getElementById('qsCard').hidden = false;

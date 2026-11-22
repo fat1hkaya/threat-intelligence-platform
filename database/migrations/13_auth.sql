@@ -56,18 +56,21 @@ GO
    ve sahiplik zinciri sayesinde yordam içindeki SELECT tablo DENY'ına takılmaz. */
 DENY SELECT, INSERT, UPDATE, DELETE ON dbo.LoginAttempt TO tip_reader;
 GO
-CREATE OR ALTER PROCEDURE dbo.sp_LoginAttempts @Top INT = 50
+CREATE OR ALTER PROCEDURE dbo.sp_LoginAttempts @Top INT = 50, @HideAutomation BIT = 1
 AS
 BEGIN
     SET NOCOUNT ON;
     -- Sahiplik zinciri: tablo DENY'ı yordam içinden okunurken denetlenmez; EXECUTE yetkisi yalnızca tip_admin'de
+    -- Otomasyon: test istemcisi (IP 'testclient') ve pytest kullanıcı adları; @HideAutomation = 1 iken listelenmez
     SELECT TOP (@Top) a.AttemptID, a.Username, u.FullName, a.AttemptedAt, a.Success, a.ClientIP, a.Reason
     FROM dbo.LoginAttempt AS a LEFT JOIN dbo.AppUser AS u ON u.UserID = a.UserID
+    WHERE @HideAutomation = 0 OR (ISNULL(a.ClientIP, '') <> 'testclient' AND a.Username NOT LIKE N'pytest-%')
     ORDER BY a.AttemptID DESC;
     SELECT COUNT(*) AS Total,
            SUM(CASE WHEN Success = 0 THEN 1 ELSE 0 END) AS Failed,
            SUM(CASE WHEN Success = 0 AND AttemptedAt >= DATEADD(HOUR, -24, SYSUTCDATETIME()) THEN 1 ELSE 0 END) AS Failed24h,
            SUM(CASE WHEN Reason = 'locked' THEN 1 ELSE 0 END) AS LockedAttempts
-    FROM dbo.LoginAttempt;
+    FROM dbo.LoginAttempt
+    WHERE @HideAutomation = 0 OR (ISNULL(ClientIP, '') <> 'testclient' AND Username NOT LIKE N'pytest-%');
 END;
 GO

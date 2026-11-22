@@ -21,6 +21,7 @@ def meta(db: Db = Depends(get_db)):
         "countries": db.query("SELECT CountryCode, Name FROM dbo.Country ORDER BY Name;", trace=False),
         "sectors": db.query("SELECT SectorID, Name FROM dbo.Sector ORDER BY Name;", trace=False),
         "tactics": db.query("SELECT TacticID, ExternalID, Name, ShortName FROM dbo.Tactic ORDER BY DisplayOrder;", trace=False),
+        "riskBands": db.query("SELECT Code, Name, MinScore FROM dbo.RiskBand ORDER BY SortOrder;", trace=False),
     }
 
 
@@ -32,7 +33,7 @@ def dashboard_attention(db: Db = Depends(get_db)):
         DECLARE @now DATETIME2(0) = SYSUTCDATETIME();
         SELECT
             (SELECT COUNT(*) FROM dbo.Indicator AS i JOIN dbo.SeverityLevel AS s ON s.SeverityID = i.SeverityID
-              WHERE i.Status = 'active' AND s.Code IN ('high', 'critical') AND i.LastSeen >= DATEADD(HOUR, -24, @now)) AS HighRisk24h,
+              WHERE i.Status = 'active' AND s.Code IN ('high', 'critical') AND i.LastSeen >= DATEADD(HOUR, -24, @now)) AS HighSeverity24h,
             (SELECT COUNT(DISTINCT IndicatorID) FROM dbo.Sighting WHERE SightedAt >= DATEADD(DAY, -7, @now))       AS Sighted7d,
             (SELECT COUNT(*) FROM dbo.Investigation WHERE Status <> 'closed')                                       AS OpenCases,
             (SELECT COUNT(*) FROM dbo.Investigation WHERE Status = 'investigating')                                 AS InvestigatingCases,
@@ -65,17 +66,31 @@ def dashboard_summary(days: int = Query(30, ge=7, le=180), db: Db = Depends(get_
               WHERE t.Code <> 'tool')                                                    AS MalwareFamilies,
             (SELECT COUNT(DISTINCT MalwareID) FROM dbo.MalwareIndicator)                 AS FamiliesWithIOCs,
             (SELECT COUNT(*) FROM dbo.Indicator AS i JOIN dbo.SeverityLevel AS s ON s.SeverityID = i.SeverityID
-              WHERE i.Status = 'active' AND s.Code IN ('high', 'critical'))              AS HighRiskIOCs,
+              WHERE i.Status = 'active' AND s.Code IN ('high', 'critical'))              AS HighSeverityIOCs,
             (SELECT COUNT(*) FROM dbo.Indicator AS i JOIN dbo.SeverityLevel AS s ON s.SeverityID = i.SeverityID
               WHERE i.Status = 'active' AND s.Code IN ('high', 'critical')
-                AND i.FirstSeen >= @start)                                               AS NewHighRiskIOCs,
+                AND i.FirstSeen >= @start)                                               AS NewHighSeverityIOCs,
             (SELECT COUNT(*) FROM dbo.Campaign)                                          AS Campaigns,
             (SELECT COUNT(*) FROM dbo.Technique)                                         AS Techniques,
             (SELECT ISNULL(SUM(Quantity), 0) FROM dbo.Sighting WHERE SightedAt >= DATEADD(DAY, -7, @now)) AS Sightings7d;
         """, (days,))
     # Sayaçlar ve dağılımlar indexed view'dan (vw_IndicatorCounts, WITH NOEXPAND): satır taramadan, önceden toplanmış
     fast, by_severity, by_type = (db.query_sets("EXEC dbo.sp_IndicatorCountsFast;") + [[{}], [], []])[:3]
-    kpi.update({k: v for k, v in (fast[0] if fast else {}).items() if v is not None})
+    kpi.update({k: v for k, v in (fast[0] if fast else {}).items() if v is not None and k != "HighRiskIOCs"})
+    # Risk skoru bantları (RiskBand eşikleri). Sıfır olan bantlar da döner: grafik dağılımın tamamını gösterir.
+    by_risk = db.query(
+        """
+        SELECT b.Code, b.Name, b.MinScore, b.SortOrder, COUNT(x.IndicatorID) AS Total
+        FROM dbo.RiskBand AS b
+        LEFT JOIN (SELECT v.IndicatorID, rb.Code
+                   FROM dbo.vw_Indicator AS v CROSS APPLY dbo.fn_RiskBandOf(v.RiskScore) AS rb
+                   WHERE v.Status = 'active') AS x ON x.Code = b.Code
+        GROUP BY b.Code, b.Name, b.MinScore, b.SortOrder
+        ORDER BY b.SortOrder;
+        """)
+    high_min = next((b["MinScore"] for b in by_risk if b["Code"] == "high"), 70)
+    kpi["HighRiskIOCs"] = sum(b["Total"] for b in by_risk if b["MinScore"] >= high_min)   # yüksek + kritik bant
+    kpi["HighRiskMin"] = high_min
     trend = db.query(
         """
         -- Son N gün: özyinelemeli CTE ile takvim üretilir, kayıt olmayan günler 0 görünür
@@ -108,10 +123,11 @@ def dashboard_summary(days: int = Query(30, ge=7, le=180), db: Db = Depends(get_
         """)
     sources = db.query(
         """
-        SELECT SourceID, Name, Reliability, IndicatorCount, EvidenceCount, LastJobID, LastRunAt, LastRunStatus,
-               LastRowsInserted, LastRowsUpdated, LastRowsFailed
-        FROM dbo.vw_SourceHealth
-        WHERE IsActive = 1
+        -- Birim: kaynak ne üretiyorsa o (IOC, zafiyet, teknik, IP aralığı, aile); "0 IOC" yanıltıcıydı
+        SELECT h.SourceID, h.Name, h.Reliability, h.IndicatorCount, h.EvidenceCount, h.LastJobID, h.LastRunAt, h.LastRunStatus,
+               h.LastRowsInserted, h.LastRowsUpdated, h.LastRowsFailed, u.UnitLabel, u.UnitCount, u.UnitDetail
+        FROM dbo.vw_SourceHealth AS h JOIN dbo.vw_SourceUnit AS u ON u.SourceID = h.SourceID
+        WHERE h.IsActive = 1
         ORDER BY CASE WHEN LastRunAt IS NULL THEN 1 ELSE 0 END, LastRunAt DESC, Name;
         """)
     top_techniques = db.query(
@@ -126,12 +142,13 @@ def dashboard_summary(days: int = Query(30, ge=7, le=180), db: Db = Depends(get_
         """)
     top_malware = db.query(
         """
+        -- yer tutucu aileler ("Unknown Loader") gerçek aile değildir: sıralamaya girmez
         SELECT TOP (6) m.MalwareID, m.Name, m.TypeName, m.IndicatorCount
         FROM dbo.vw_MalwareSummary AS m
-        WHERE m.IndicatorCount > 0
+        WHERE m.IndicatorCount > 0 AND m.IsPlaceholder = 0
         ORDER BY m.IndicatorCount DESC, m.Name;
         """)
-    return {"kpi": kpi, "bySeverity": by_severity, "byType": by_type, "trend": trend, "latest": latest,
+    return {"kpi": kpi, "bySeverity": by_severity, "byRisk": by_risk, "byType": by_type, "trend": trend, "latest": latest,
             "sources": sources, "topTechniques": top_techniques, "topMalware": top_malware, "days": days}
 
 

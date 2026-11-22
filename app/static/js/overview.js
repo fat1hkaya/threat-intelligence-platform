@@ -24,7 +24,7 @@
     try { a = await api('/api/dashboard/attention'); } catch (e) { box.innerHTML = empty(e.message, 'circle-alert'); icons(); return; }
     const since = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     const items = [
-      { icon: 'siren', tone: a.HighRisk24h ? 'bad' : 'ok', n: a.HighRisk24h, label: 'yüksek riskli IOC son 24 saatte görüldü',
+      { icon: 'siren', tone: a.HighSeverity24h ? 'bad' : 'ok', n: a.HighSeverity24h, label: 'yüksek önemli IOC son 24 saatte görüldü',
         href: `/iocs?severity=high,critical&status=active&dateFrom=${since}` },
       { icon: 'eye', tone: a.Sighted7d ? 'warn' : 'ok', n: a.Sighted7d, label: 'IOC son 7 günde kurum içinde görüldü', href: '/hunt' },
       { icon: 'briefcase', tone: a.OpenCases ? 'info' : 'ok', n: a.OpenCases, label: a.InvestigatingCases ? `açık vaka, ${fmtN(a.InvestigatingCases)} tanesi inceleniyor` : 'açık vaka', href: '/cases' },
@@ -50,18 +50,23 @@
       ['database', '', "Toplam IOC", k.TotalIOCs, `${fmtN(k.ActiveIOCs)} aktif · ${fmtN(k.NewIOCs)} yeni${k.PrevNewIOCs ? ` · ${delta(k.NewIOCs, k.PrevNewIOCs)}` : ''}`],
       ['users', 'r', 'Tehdit aktörü', k.Actors, `${fmtN(k.ActorsWithIOCs)} tanesi IOC'lerimizle ilişkili`],
       ['bug', 'c', 'Zararlı yazılım ailesi', k.MalwareFamilies, `${fmtN(k.FamiliesWithIOCs)} ailenin IOC'si var`],
-      ['triangle-alert', 'a', 'Yüksek riskli IOC', k.HighRiskIOCs, `aktif · son ${days} günde ${fmtN(k.NewHighRiskIOCs)} yeni`],
+      ['triangle-alert', 'a', 'Yüksek önemli IOC', k.HighSeverityIOCs, `önemi yüksek/kritik · yüksek riskli (skor ≥ ${k.HighRiskMin}): ${fmtN(k.HighRiskIOCs)}`],
     ].map(([icon, c, lbl, val, sub]) => `<article class="card kpi"><span class="ic ${c}"><i data-lucide="${icon}"></i></span>
       <div><div class="lbl">${lbl}</div><div class="val">${fmtN(val)}</div><div class="sub">${sub}</div></div></article>`).join('');
     if (!k.PrevNewIOCs) document.querySelector('#kpis .kpi .sub')?.setAttribute('title', 'Önceki dönemde kayıt olmadığı için karşılaştırma yapılmadı');
 
     // Önem halkası
-    const sevRows = d.bySeverity.filter((r) => r.Total > 0);
+    // Risk skoru bantları (Ayarlar > Risk eşikleri). Sıfır olan bantlar da listelenir.
+    const RISK_CLS = { critical: 'critical', high: 'high', medium: 'medium', low: 'low' };
+    const sevRows = d.byRisk.map((r) => ({ ...r, Code: RISK_CLS[r.Code] || 'info' }));
     const total = sevRows.reduce((a, r) => a + r.Total, 0);
-    document.getElementById('sevLegend').innerHTML = sevRows.map((r) => `<li><a href="/iocs?severity=${r.Code}&status=active"><i class="sev-dot sev-${r.Code}"></i><span>${esc(SEV[r.Code])}</span><b>${fmtN(r.Total)} <span class="faint">%${pct(r.Total, total).toLocaleString('tr-TR')}</span></b></a></li>`).join('');
-    document.getElementById('sevSummary').textContent = 'Önem dağılımı: ' + sevRows.map((r) => `${SEV[r.Code]} ${r.Total}`).join(', ');
+    const label = (r) => `${r.Name} (${r.MinScore}+)`;
+    document.getElementById('sevLegend').innerHTML = sevRows.map((r) => `<li><a href="/iocs?minRisk=${r.MinScore}&maxRisk=${(d.byRisk[d.byRisk.findIndex((b) => b.Code === r.Code) - 1] || { MinScore: 101 }).MinScore - 1}&status=active" class="${r.Total ? '' : 'is-zero'}"><i class="sev-dot sev-${r.Code}"></i><span>${esc(label(r))}</span><b>${fmtN(r.Total)} <span class="faint">%${pct(r.Total, total).toLocaleString('tr-TR')}</span></b></a></li>`).join('');
+    document.getElementById('sevSummary').textContent = 'Risk skoru dağılımı: ' + sevRows.map((r) => `${r.Name} ${r.Total}`).join(', ');
+    const top = sevRows.filter((r) => r.Code === 'critical' || r.Code === 'high').reduce((a, r) => a + r.Total, 0);
+    document.getElementById('riskNote').textContent = top ? '' : 'Yüksek ve kritik banda çıkmak için IOC\'nin kurum içinde görülmüş olması gerekir (görülme sayısı skora eklenir).';
     document.getElementById('sevTotal').textContent = `${fmtN(total)} aktif IOC`;
-    document.getElementById('sevStack').innerHTML = sevRows.map((r) => `<i class="sev-seg sev-${r.Code}" style="flex-grow:${r.Total}" title="${esc(SEV[r.Code])}: ${fmtN(r.Total)}"></i>`).join('');
+    document.getElementById('sevStack').innerHTML = sevRows.filter((r) => r.Total).map((r) => `<i class="sev-seg sev-${r.Code}" style="flex-grow:${r.Total}" title="${esc(label(r))}: ${fmtN(r.Total)}"></i>`).join('');
 
     bars(document.getElementById('typeBars'), d.byType, (r) => TYPE_LABEL[r.Code] || r.Name, (r) => r.Total, (r) => `/iocs?type=${r.Code}`);
 
@@ -89,7 +94,7 @@
     ], d.latest, { caption: 'Son istihbarat' }) : empty('Henüz IOC yok. Veri kaynaklarından içe aktarma yapın.', 'inbox');
 
     document.getElementById('sources').innerHTML = d.sources.map((s) => `<li><a href="/sources?source=${s.SourceID}">
-      <span><b>${esc(s.Name)}</b><br><small>${s.LastRunAt ? `Son iş: ${fmtDT(s.LastRunAt)}` : 'Henüz içe aktarma yapılmadı'} · ${fmtN(s.IndicatorCount)} IOC</small></span>
+      <span><b>${esc(s.Name)}</b><br><small>${s.LastRunAt ? `Son iş: ${fmtDT(s.LastRunAt)}` : 'Henüz içe aktarma yapılmadı'} · ${fmtN(s.UnitCount || 0)} ${esc(s.UnitLabel || 'IOC')}</small></span>
       ${s.LastRunStatus ? job(s.LastRunStatus) : '<span class="badge b-muted">Bekliyor</span>'}</a></li>`).join('');
 
     bars(document.getElementById('topTech'), d.topTechniques, (r) => `${r.ExternalID} ${r.Name}`, (r) => r.ActorCount, (r) => `/attack?id=${r.TechniqueID}`);

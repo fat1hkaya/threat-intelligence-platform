@@ -28,8 +28,9 @@ DB_PASSWORD = os.getenv("TL_DB_PASSWORD", "")
 DB_DRIVER = os.getenv("TL_DB_DRIVER", "")      # boşsa kurulu en yeni ODBC sürücüsü seçilir
 SESSION_HOURS = int(os.getenv("TL_SESSION_HOURS", "12"))
 ABUSECH_AUTH_KEY = os.getenv("ABUSECH_AUTH_KEY", "")
-# Giriş sayfasında yerel kullanıcı adlarını gösteren not (yalnızca yerel/ders kurulumunda; üretimde 0)
-LOGIN_HINT = os.getenv("TL_LOGIN_HINT", "1") == "1"
+# Giriş sayfasında yerel kullanıcı adlarını gösteren not. Varsayılan KAPALI: kullanıcı adlarını açığa vermez;
+# yalnızca TL_LOGIN_HINT=1 verilirse görünür (yerel/ders kurulumu)
+LOGIN_HINT = os.getenv("TL_LOGIN_HINT", "0") == "1"
 # HTTPS arkasında çalışırken 1 yapın: oturum çerezi yalnızca şifreli bağlantıda gönderilir (Secure)
 COOKIE_SECURE = os.getenv("TL_COOKIE_SECURE", "0") == "1"
 LOG_DIR = ROOT / "logs"

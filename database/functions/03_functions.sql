@@ -112,3 +112,23 @@ RETURN
     WHERE atq.ActorID = @ActorID;
 GO
 
+/* Yer tutucu zararlı ailesi: kaynağın "aile bilinmiyor" anlamında verdiği adlar (ThreatFox "Unknown Loader",
+   "Unknown Stealer" ...). ATT&CK kaydı olanlar hariç: "Unknown Logger" (S0130) gerçek bir araçtır.
+   Malware.IsPlaceholder hesaplanmış sütunu bu fonksiyona bağlıdır (migrations/23): ALTER edilemez, yalnızca yoksa oluşturulur. */
+IF OBJECT_ID(N'dbo.fn_IsPlaceholderMalware') IS NULL
+    EXEC(N'CREATE FUNCTION dbo.fn_IsPlaceholderMalware (@Name NVARCHAR(100), @ExternalID VARCHAR(12))
+RETURNS BIT WITH SCHEMABINDING
+AS
+BEGIN
+    RETURN CASE WHEN @ExternalID IS NULL AND @Name LIKE N''Unknown%'' THEN 1 ELSE 0 END;
+END;');
+GO
+
+/* Arayüzde gösterilecek aile adı: yer tutucular "Ailesi belirlenmemiş" olarak görünür (asıl ad kayıtta kalır) */
+CREATE OR ALTER FUNCTION dbo.fn_MalwareLabel (@Name NVARCHAR(100), @ExternalID VARCHAR(12))
+RETURNS NVARCHAR(100)
+AS
+BEGIN
+    RETURN CASE WHEN dbo.fn_IsPlaceholderMalware(@Name, @ExternalID) = 1 THEN N'Ailesi belirlenmemiş' ELSE @Name END;
+END;
+GO

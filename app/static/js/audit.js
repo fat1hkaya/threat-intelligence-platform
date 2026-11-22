@@ -10,6 +10,8 @@
 
   const page = TL.listPage({
     endpoint: '/api/audit-logs', title: 'Olay detayı', unit: 'kayıt', size: 25, rowId: (r) => r.AuditID,
+    // işaretsiz onay kutusu formda hiç gönderilmez: açıkça false gönderilir (API varsayılanı gizlemek)
+    extra: () => ({ hideAutomation: document.getElementById('hideAutomation')?.checked ? 'true' : 'false' }),
     onData: (d) => { rows = d.items; },   // detay paneli satırı yeniden sorgulamadan gösterir
     columns: [
       { label: 'Zaman', render: (r) => `<span class="mono" style="font-size: 13px">${fmtDT(r.ChangedAt)}</span>` },
@@ -37,24 +39,40 @@
   });
 
 
-  document.addEventListener('DOMContentLoaded', async () => {
-    const s = await api('/api/audit-logs/stats'); const t = s.totals;
+  const hideAuto = () => (document.getElementById('hideAutomation')?.checked ? 'true' : 'false');
+  let chart;
+
+  async function stats() {
+    const s = await api('/api/audit-logs/stats', { params: { hideAutomation: hideAuto() } }); const t = s.totals;
+    const lbl = document.getElementById('hideAutoLabel');
+    if (lbl) lbl.textContent = t.AutomationRows ? `Otomasyon kayıtlarını gizle (${fmtN(t.AutomationRows)})` : 'Otomasyon kayıtlarını gizle';
     document.getElementById('kpis').innerHTML = [
       ['file-clock', '', 'Toplam kayıt', t.Total, `${fmtN(t.Users)} farklı kullanıcı`], ['clock', 'c', 'Son 24 saat', t.Last24h, 'Tetikleyicilerin yazdığı olaylar'],
       ['pencil', 'a', 'Güncelleme', t.Updates, `${fmtN(t.Inserts)} ekleme`], ['trash-2', 'r', 'Silme', t.Deletes, 'Silinen kayıtların son hâli saklanır'],
     ].map(([i, c, l, v, sub]) => `<article class="card kpi"><span class="ic ${c}"><i data-lucide="${i}"></i></span><div><div class="lbl">${l}</div><div class="val">${fmtN(v)}</div><div class="sub">${sub}</div></div></article>`).join('');
-    document.getElementById('table').insertAdjacentHTML('beforeend', s.byTable.map((x) => `<option value="${esc(x.TableName)}">${esc(TABLE[x.TableName] || x.TableName)} (${x.Total})</option>`).join(''));
+    const tableSel = document.getElementById('table'), cur = tableSel.value;
+    tableSel.innerHTML = '<option value="">Tümü</option>';
+    tableSel.insertAdjacentHTML('beforeend', s.byTable.map((x) => `<option value="${esc(x.TableName)}">${esc(TABLE[x.TableName] || x.TableName)} (${x.Total})</option>`).join(''));
+    tableSel.value = cur;
+    if (!document.getElementById('user').dataset.filled) document.getElementById('user').dataset.filled = '1'; else return finishChart(s);
     document.getElementById('user').insertAdjacentHTML('beforeend', s.users.map((u) => `<option value="${u.UserID}">${esc(u.FullName)}</option>`).join(''));
+    finishChart(s);
+  }
+
+  function finishChart(s) {
     const total = s.daily.reduce((a, d) => a + d.Total, 0);
     document.getElementById('dailyNote').textContent = `${fmtN(total)} olay · toplu içe aktarmalar satır başına kayıt üretmez (özet ImportJob'da)`;
     document.getElementById('dailySummary').textContent = `Son 30 günde ${total} denetim olayı.`;
-    new Chart(document.getElementById('daily'), { type: 'bar',
+    chart?.destroy();
+    chart = new Chart(document.getElementById('daily'), { type: 'bar',
       data: { labels: s.daily.map((d) => new Date(d.Day + 'T00:00:00').toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })), datasets: [{ data: s.daily.map((d) => d.Total), backgroundColor: '#7C5CFC', borderRadius: 3, maxBarThickness: 16 }] },
       options: { maintainAspectRatio: false, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } }, y: { beginAtZero: true, ticks: { precision: 0 } } } } });
-    TL.icons(); page.start();
+  }
+
+  async function logins() {
     if (TL.can('admin')) {
       const REASON = { bad_password: 'Hatalı parola', unknown_user: 'Bilinmeyen kullanıcı', locked: 'Kilitli hesap', inactive: 'Devre dışı hesap' };
-      const L = await api('/api/audit-logs/logins'); const t = L.totals || {};
+      const L = await api('/api/audit-logs/logins', { params: { hideAutomation: hideAuto() } }); const t = L.totals || {};
       document.getElementById('loginCard').hidden = false;
       document.getElementById('loginNote').textContent = `Son 24 saatte ${fmtN(t.Failed24h || 0)} hatalı deneme · toplam ${fmtN(t.Total || 0)} deneme · kilit nedeniyle reddedilen ${fmtN(t.LockedAttempts || 0)} · 15 dakikada 5 hatalı deneme hesabı geçici olarak kilitler`;
       document.getElementById('loginTbl').innerHTML = L.items.length ? TL.table([
@@ -64,5 +82,13 @@
         { label: 'IP', render: (a) => `<span class="mono">${esc(a.ClientIP || '—')}</span>` },
       ], L.items.slice(0, 15), { caption: 'Giriş denemeleri' }) : empty('Kayıt yok.');
     }
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (TL.qs.get('hideAutomation') === 'false') document.getElementById('hideAutomation').checked = false;
+    await stats();
+    TL.icons(); page.start();
+    await logins();
+    document.getElementById('hideAutomation')?.addEventListener('change', () => { stats(); logins(); page.load(); });
   });
 })();

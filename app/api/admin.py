@@ -22,7 +22,9 @@ MAX_UPLOAD = 5 * 1024 * 1024   # 5 MB
 @router.get("/sources")
 def sources(db: Db = Depends(get_db)):
     """Kaynak sağlığı (vw_SourceHealth) ve son 7 günün iş özeti."""
-    items = db.query("SELECT * FROM dbo.vw_SourceHealth ORDER BY IndicatorCount DESC, Name;")
+    items = db.query("""SELECT h.*, u.UnitLabel, u.UnitCount, u.UnitDetail
+                        FROM dbo.vw_SourceHealth AS h JOIN dbo.vw_SourceUnit AS u ON u.SourceID = h.SourceID
+                        ORDER BY h.IndicatorCount DESC, h.Name;""")
     totals = db.one(
         """
         SELECT COUNT(*) AS Sources,
@@ -185,11 +187,31 @@ def feed_status():
 
 # ============================== Denetim ================================
 
+# Otomasyon (test) kayıtları: testler ayrı veritabanına taşınmadan önce canlı denetim kaydına yazılmış satırlar.
+# AuditLog silinemez (trg_AuditLog_Protect); bu kayıtlar varsayılan olarak yalnızca GÖRÜNÜMDEN çıkarılır.
+# Desenler test verisinin içeriğine göredir (l = AuditLog, u = AppUser).
+#   1) test verisi desenleri; RFC 5737 belgeleme IP blokları (192.0.2/24, 198.51.100/24, 203.0.113/24) yalnızca
+#      testlerde kullanılır, gerçek trafikte yönlendirilmez
+#   2) kısa ömürlü kayıt: 5 dakika içinde eklenip silinen kayıt (testler kaydı oluşturup hemen siler)
+_AUTOMATION_PATTERNS = ("pytest", '.example"', '.test"', "CVE-2099-", "namekey-", "Parola Testi", "UI kontrol vakas",
+                        '"192.0.2.', '"198.51.100.', '"203.0.113.', "demo4")
+AUTOMATION_AUDIT = "(" + " OR ".join(
+    # ISNULL: ekleme kaydında OldValues NULL'dır; NULL LIKE ... UNKNOWN döner ve NOT (...) satırı yanlışlıkla eler
+    f"ISNULL(l.NewValues, N'') LIKE N'%{p}%' OR ISNULL(l.OldValues, N'') LIKE N'%{p}%'" for p in _AUTOMATION_PATTERNS) \
+    + " OR ISNULL(u.Username, N'') LIKE N'pyt%'" \
+    + """ OR EXISTS (SELECT 1 FROM dbo.AuditLog AS ai JOIN dbo.AuditLog AS ad
+                      ON ad.TableName = ai.TableName AND ad.RecordID = ai.RecordID AND ad.Action = 'D'
+                     WHERE ai.TableName = l.TableName AND ai.RecordID = l.RecordID AND ai.Action = 'I'
+                       AND ad.ChangedAt >= ai.ChangedAt AND ad.ChangedAt < DATEADD(MINUTE, 5, ai.ChangedAt)))"""
+
+
 @router.get("/audit-logs")
 def audit_logs(table: str = "", action: str = "", user: int | None = None, record: int | None = None,
-               dateFrom: str | None = None, dateTo: str | None = None,
+               dateFrom: str | None = None, dateTo: str | None = None, hideAutomation: bool = True,
                page: int = Query(1, ge=1), size: int = Query(25, ge=5, le=200), db: Db = Depends(get_db)):
     where, params = ["1 = 1"], []
+    if hideAutomation:
+        where.append(f"NOT {AUTOMATION_AUDIT}")
     if table:
         where.append("l.TableName = ?"); params.append(table)
     if action in ("I", "U", "D"):
@@ -203,7 +225,8 @@ def audit_logs(table: str = "", action: str = "", user: int | None = None, recor
     if dateTo:
         where.append("l.ChangedAt < DATEADD(DAY, 1, CAST(? AS DATE))"); params.append(dateTo)
     clause = " AND ".join(where)
-    total = db.scalar(f"SELECT COUNT(*) AS Total FROM dbo.AuditLog AS l WHERE {clause};", tuple(params))
+    total = db.scalar(f"""SELECT COUNT(*) AS Total FROM dbo.AuditLog AS l LEFT JOIN dbo.AppUser AS u ON u.UserID = l.ChangedBy
+                          WHERE {clause};""", tuple(params))
     items = db.query(
         f"""
         SELECT l.AuditID, l.TableName, l.RecordID, l.Action, l.ChangedAt, l.OldValues, l.NewValues,
@@ -222,23 +245,28 @@ def audit_logs(table: str = "", action: str = "", user: int | None = None, recor
 
 
 @router.get("/audit-logs/logins", dependencies=[Depends(require_admin)])
-def login_attempts(db: Db = Depends(get_db)):
+def login_attempts(hideAutomation: bool = True, db: Db = Depends(get_db)):
     """Giriş denemeleri (yalnızca yönetici; tabloya doğrudan erişim kapalı, sp_LoginAttempts üzerinden)."""
-    items, totals = (db.query_sets("EXEC dbo.sp_LoginAttempts @Top = ?;", (50,)) + [[], [{}]])[:2]
+    items, totals = (db.query_sets("EXEC dbo.sp_LoginAttempts @Top = ?, @HideAutomation = ?;", (50, int(hideAutomation)))
+                     + [[], [{}]])[:2]
     return {"items": items, "totals": totals[0] if totals else {}}
 
 
 @router.get("/audit-logs/stats")
-def audit_stats(db: Db = Depends(get_db)):
+def audit_stats(hideAutomation: bool = True, db: Db = Depends(get_db)):
+    vis = f"NOT {AUTOMATION_AUDIT}" if hideAutomation else "1 = 1"
+    src = f"(SELECT l.* FROM dbo.AuditLog AS l LEFT JOIN dbo.AppUser AS u ON u.UserID = l.ChangedBy WHERE {vis})"
     totals = db.one(
-        """
+        f"""
         SELECT COUNT(*) AS Total,
                SUM(CASE WHEN ChangedAt >= DATEADD(HOUR, -24, SYSUTCDATETIME()) THEN 1 ELSE 0 END) AS Last24h,
                SUM(CASE WHEN Action = 'I' THEN 1 ELSE 0 END) AS Inserts,
                SUM(CASE WHEN Action = 'U' THEN 1 ELSE 0 END) AS Updates,
                SUM(CASE WHEN Action = 'D' THEN 1 ELSE 0 END) AS Deletes,
-               COUNT(DISTINCT ChangedBy) AS Users
-        FROM dbo.AuditLog;
+               COUNT(DISTINCT ChangedBy) AS Users,
+               (SELECT COUNT(*) FROM dbo.AuditLog AS l LEFT JOIN dbo.AppUser AS u ON u.UserID = l.ChangedBy
+                 WHERE {AUTOMATION_AUDIT}) AS AutomationRows
+        FROM {src} AS a;
         """)
     daily = db.query(
         """
@@ -248,11 +276,11 @@ def audit_stats(db: Db = Depends(get_db)):
         )
         SELECT d.[Day], COUNT(l.AuditID) AS Total
         FROM days AS d
-        LEFT JOIN dbo.AuditLog AS l ON l.ChangedAt >= d.[Day] AND l.ChangedAt < DATEADD(DAY, 1, d.[Day])
+        LEFT JOIN """ + src + """ AS l ON l.ChangedAt >= d.[Day] AND l.ChangedAt < DATEADD(DAY, 1, d.[Day])
         GROUP BY d.[Day] ORDER BY d.[Day]
         OPTION (MAXRECURSION 40);
         """)
-    by_table = db.query("SELECT TableName, COUNT(*) AS Total FROM dbo.AuditLog GROUP BY TableName ORDER BY Total DESC;")
+    by_table = db.query(f"SELECT TableName, COUNT(*) AS Total FROM {src} AS a GROUP BY TableName ORDER BY Total DESC;")
     users = db.query(
         """SELECT DISTINCT u.UserID, u.FullName FROM dbo.AuditLog AS l JOIN dbo.AppUser AS u ON u.UserID = l.ChangedBy
            ORDER BY u.FullName;""")

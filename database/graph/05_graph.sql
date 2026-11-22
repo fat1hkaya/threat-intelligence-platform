@@ -216,7 +216,7 @@ campaign_actor AS (
     FROM dbo.CampaignNode AS c, dbo.CampaignAttributedToActor AS e, dbo.ActorNode AS a
     WHERE MATCH(c-(e)->a)
 )
-SELECT v.IndicatorID, 'malware' AS ViaType, v.MalwareID AS ViaID, m.Name AS ViaName, v.Role, v.Confidence, v.EvidenceID,
+SELECT v.IndicatorID, 'malware' AS ViaType, v.MalwareID AS ViaID, dbo.fn_MalwareLabel(m.Name, m.ExternalID) AS ViaName, v.Role, v.Confidence, v.EvidenceID,
        a.ActorID, a.Name AS ActorName
 FROM via_malware AS v
 JOIN dbo.Malware AS m ON m.MalwareID = v.MalwareID

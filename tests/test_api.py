@@ -1,5 +1,7 @@
 """API ve veritabanı davranış testleri (gerçek SQL Server üzerinde).
 Oluşturulan test IOC'leri test sonunda silinir; AuditLog ve ImportJob satırları tasarım gereği kalır (yalnızca eklenebilir)."""
+import json
+
 import pytest
 
 from conftest import needs_db
@@ -53,7 +55,7 @@ def test_ioc_create_normalizes_audits_and_deletes(analyst, admin, unique):
     iid = new["IndicatorID"]
     try:
         # Denetim kaydı tetikleyiciyle yazıldı ve kullanıcıyı (SESSION_CONTEXT) taşıyor
-        logs = admin.get("/api/audit-logs", params={"table": "Indicator", "record": iid}).json()["items"]
+        logs = admin.get("/api/audit-logs", params={"table": "Indicator", "record": iid, "hideAutomation": "false"}).json()["items"]
         assert [l["Action"] for l in logs] == ["I"] and logs[0]["Username"] == "analist"
         # Graf düğümü aynı transaction'da oluştu
         assert analyst.get(f"/api/graph/node?type=indicator&id={iid}").status_code == 200
@@ -64,7 +66,7 @@ def test_ioc_create_normalizes_audits_and_deletes(analyst, admin, unique):
         assert analyst.delete(f"/api/iocs/{iid}").status_code == 200
     assert analyst.get(f"/api/iocs/{iid}").status_code == 404
     assert analyst.get(f"/api/graph/node?type=indicator&id={iid}").status_code == 404   # düğüm de silindi
-    assert [l["Action"] for l in admin.get("/api/audit-logs", params={"table": "Indicator", "record": iid}).json()["items"]] == ["D", "I"]
+    assert [l["Action"] for l in admin.get("/api/audit-logs", params={"table": "Indicator", "record": iid, "hideAutomation": "false"}).json()["items"]] == ["D", "I"]
 
 
 @pytest.mark.parametrize("type_,value", [("sha256", "abc123"), ("md5", "z" * 32), ("ipv4", "300.1.2.3"), ("domain", "no_tld")])
@@ -236,7 +238,7 @@ def test_requests_run_under_application_role(viewer):
 def test_audit_records_user_under_application_role(analyst, admin, unique):
     iid = analyst.post("/api/iocs", json={"value": f"approle-{unique}.test", "sourceId": 7}).json()["IndicatorID"]
     try:
-        log = admin.get("/api/audit-logs", params={"table": "Indicator", "record": iid}).json()["items"][0]
+        log = admin.get("/api/audit-logs", params={"table": "Indicator", "record": iid, "hideAutomation": "false"}).json()["items"][0]
         assert log["Username"] == "analist"          # SESSION_CONTEXT rol bağlantısında ayarlandı
     finally:
         analyst.delete(f"/api/iocs/{iid}")
@@ -364,8 +366,9 @@ def test_password_change_and_admin_reset(admin, unique, conn):
 
 def test_login_attempts_visible_only_to_admin(admin, analyst):
     assert analyst.get("/api/audit-logs/logins").status_code == 403
-    d = admin.get("/api/audit-logs/logins").json()
+    d = admin.get("/api/audit-logs/logins", params={"hideAutomation": "false"}).json()   # testler 'testclient' IP'siyle girer
     assert d["items"] and d["totals"]["Total"] >= len(d["items"])
+    assert all(a["ClientIP"] != "testclient" for a in admin.get("/api/audit-logs/logins").json()["items"])
 
 
 def test_risk_breakdown_matches_score(admin, linked_ioc):
@@ -427,7 +430,7 @@ def test_coverage_actor_percentage_inheritance_and_division(analyst, viewer, adm
         assert after["FullCount"] >= 1 and float(after["CoveragePct"]) > 0
         ov = analyst.get("/api/coverage").json()
         assert ov["totals"]["Marked"] >= 1 and all(g["TechniqueID"] != parent["TechniqueID"] for g in ov["gaps"])
-        log = admin.get("/api/audit-logs", params={"table": "DetectionCoverage", "record": parent["TechniqueID"]}).json()["items"]
+        log = admin.get("/api/audit-logs", params={"table": "DetectionCoverage", "record": parent["TechniqueID"], "hideAutomation": "false"}).json()["items"]
         assert log and log[0]["Username"] == "analist"
     finally:
         analyst.delete(f"/api/coverage/technique/{parent['TechniqueID']}")
@@ -534,7 +537,7 @@ def test_case_lifecycle_graph_edges_and_roles(analyst, viewer, admin, linked_ioc
         assert analyst.post(f"/api/cases/{cid}/items", json={"type": "malware", "id": linked_ioc["MalwareID"]}).status_code in (400, 409)
         assert analyst.patch(f"/api/cases/{cid}", json={"status": "open"}).status_code == 200
         assert viewer.get(f"/api/cases/{cid}").json()["case"]["ClosedAt"] is None
-        log = admin.get("/api/audit-logs", params={"table": "Investigation", "record": cid}).json()["items"]
+        log = admin.get("/api/audit-logs", params={"table": "Investigation", "record": cid, "hideAutomation": "false"}).json()["items"]
         assert {x["Action"] for x in log} >= {"I", "U"} and log[0]["Username"] == "analist"
     finally:
         assert analyst.delete(f"/api/cases/{cid}").status_code == 200
@@ -601,7 +604,7 @@ def test_dashboard_attention_counts(viewer, conn):
     cur = conn.cursor()
     assert a["OpenCases"] == cur.execute("SELECT COUNT(*) FROM dbo.Investigation WHERE Status <> 'closed';").fetchone()[0]
     assert a["CoverageMarked"] == cur.execute("SELECT COUNT(*) FROM dbo.DetectionCoverage;").fetchone()[0]
-    assert {"HighRisk24h", "Sighted7d", "FailedJobs7d", "BlindSpots", "LastSyncAt"} <= set(a)
+    assert {"HighSeverity24h", "Sighted7d", "FailedJobs7d", "BlindSpots", "LastSyncAt"} <= set(a)
 
 
 # ------------------------------------------------------------------ backend sertleştirme
@@ -624,3 +627,76 @@ def test_feed_sync_validation_and_status(analyst, viewer):
     assert analyst.post("/api/imports/feed", json={"feed": "yok"}).status_code == 400
     assert analyst.post("/api/imports/feed", json={"feed": "attack"}).status_code == 403
     assert analyst.get("/api/imports/feed/status").json()["running"] == []
+
+
+# ------------------------------------------------------------------ veri doğruluğu (UI aşama 1)
+def test_automation_records_hidden_by_default(analyst, admin, unique):
+    iid = analyst.post("/api/iocs", json={"value": f"oto-{unique}.example", "sourceId": 7}).json()["IndicatorID"]
+    try:
+        shown = admin.get("/api/audit-logs", params={"table": "Indicator", "record": iid, "hideAutomation": "false"}).json()["items"]
+        hidden = admin.get("/api/audit-logs", params={"table": "Indicator", "record": iid}).json()["items"]
+        assert shown and not hidden                                  # .example test deseni: varsayılan görünümde yok
+        stats = admin.get("/api/audit-logs/stats").json()["totals"]
+        assert stats["AutomationRows"] >= 1
+        assert admin.get("/api/audit-logs/stats", params={"hideAutomation": "false"}).json()["totals"]["Total"] >= stats["Total"]
+    finally:
+        analyst.delete(f"/api/iocs/{iid}")
+
+
+def test_placeholder_families_and_labels(analyst, conn, unique):
+    cur = conn.cursor()
+    assert tuple(cur.execute("SELECT dbo.fn_IsPlaceholderMalware(N'Unknown Loader', NULL), dbo.fn_IsPlaceholderMalware(N'Unknown Logger', 'S0130'),"
+                             " dbo.fn_MalwareLabel(N'Unknown RAT', NULL), dbo.fn_MalwareLabel(N'Emotet', NULL);").fetchone()) \
+        == (True, False, "Ailesi belirlenmemiş", "Emotet")
+    name = f"Unknown Pytest {unique}"
+    r = analyst.post("/api/imports", files={"file": ("pytest-ph.json", f'[{{"value": "ph-{unique}.example", "malware": "{name}"}}]', "application/json")})
+    assert r.status_code == 201, r.text
+    mid = cur.execute("SELECT MalwareID FROM dbo.Malware WHERE Name = ?;", name).fetchone()[0]
+    try:
+        assert cur.execute("SELECT IsPlaceholder FROM dbo.Malware WHERE MalwareID = ?;", mid).fetchone()[0] is True
+        listed = analyst.get("/api/malware", params={"q": name}).json()["items"]
+        assert listed == []                                          # varsayılan listede yok
+        shown = analyst.get("/api/malware", params={"q": name, "placeholders": "true"}).json()["items"]
+        assert shown and shown[0]["IsPlaceholder"] and shown[0]["DisplayName"] == "Ailesi belirlenmemiş"
+        ioc = analyst.get("/api/iocs", params={"q": f"ph-{unique}.example"}).json()["items"][0]
+        assert ioc["MalwareName"] == "Ailesi belirlenmemiş"
+        top = analyst.get("/api/dashboard/summary").json()["topMalware"]
+        assert all(t["MalwareID"] != mid for t in top)
+    finally:
+        cur.execute("DELETE FROM dbo.Indicator WHERE NormalizedValue = ?;", f"ph-{unique}.example")
+        cur.execute("DELETE FROM dbo.Malware WHERE MalwareID = ?;", mid)
+
+
+def test_feed_alias_maps_family_to_existing_record(analyst, conn, unique):
+    """Kaynağın verdiği takma ad üzerinden mevcut aileye bağlama (ThreatFox malware_alias)."""
+    cur = conn.cursor()
+    item = {"value": f"alias-{unique}.example", "malware": f"Cobalt Strike Beacon X{unique}", "malware_aliases": ["Cobalt Strike"]}
+    r = analyst.post("/api/imports", files={"file": ("pytest-alias.json", json.dumps([item]), "application/json")})
+    assert r.status_code == 201, r.text
+    try:
+        row = cur.execute("""SELECT m.Name, e.Summary FROM dbo.Indicator i JOIN dbo.MalwareIndicator mi ON mi.IndicatorID = i.IndicatorID
+                             JOIN dbo.Malware m ON m.MalwareID = mi.MalwareID JOIN dbo.Evidence e ON e.EvidenceID = mi.EvidenceID
+                             WHERE i.NormalizedValue = ?;""", f"alias-{unique}.example").fetchone()
+        assert row.Name == "Cobalt Strike" and "takma adı" in row.Summary
+        assert cur.execute("SELECT COUNT(*) FROM dbo.Malware WHERE Name LIKE ?;", f"%X{unique}").fetchone()[0] == 0
+    finally:
+        cur.execute("DELETE FROM dbo.Indicator WHERE NormalizedValue = ?;", f"alias-{unique}.example")
+
+
+def test_risk_bands_and_terms(viewer):
+    s = viewer.get("/api/dashboard/summary").json()
+    bands = s["byRisk"]
+    assert [b["Code"] for b in bands] == ["critical", "high", "medium", "low"]
+    assert s["kpi"]["HighRiskIOCs"] == sum(b["Total"] for b in bands if b["MinScore"] >= s["kpi"]["HighRiskMin"])
+    assert "HighSeverityIOCs" in s["kpi"] and "HighSeverity24h" in viewer.get("/api/dashboard/attention").json()
+    assert [b["Code"] for b in viewer.get("/api/meta").json()["riskBands"]] == ["critical", "high", "medium", "low"]
+
+
+def test_source_units(admin):
+    units = {s["Name"]: (s["UnitLabel"], s["UnitCount"]) for s in admin.get("/api/sources").json()["sources"]}
+    assert units["CISA KEV"][0] == "zafiyet" and units["MITRE ATT&CK"][0] == "teknik" and units["MITRE ATT&CK"][1] > 0
+    assert units["iptoasn.com"][0] == "IP aralığı" and units["Malpedia"][0] == "aile"
+
+
+def test_login_hint_off_by_default():
+    assert 'class="hint"' not in _fresh_client().get("/login").text

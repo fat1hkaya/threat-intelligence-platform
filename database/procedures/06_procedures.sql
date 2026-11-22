@@ -160,6 +160,7 @@ BEGIN
         Role            VARCHAR(12) NULL,
         EvidenceText    NVARCHAR(1000) NULL,
         TagsJson        NVARCHAR(MAX) NULL,
+        AliasesJson     NVARCHAR(MAX) NULL,      -- kaynağın verdiği aile takma adları (ThreatFox malware_alias, Malpedia kimliği)
         IndicatorID     BIGINT NULL,
         IsDuplicate     BIT NOT NULL DEFAULT (0)
     );
@@ -169,7 +170,7 @@ BEGIN
     DECLARE @defTLP TINYINT      = (SELECT TLPID FROM dbo.TLPLevel WHERE Code = 'TLP:CLEAR');
 
     INSERT INTO @stage (RowNo, TypeID, TypeCode, Value, NormalizedValue, Error, Confidence, SeverityID, TLPID, Description,
-                        FirstSeen, LastSeen, ExpiresAt, Malware, Role, EvidenceText, TagsJson)
+                        FirstSeen, LastSeen, ExpiresAt, Malware, Role, EvidenceText, TagsJson, AliasesJson)
     SELECT ISNULL(j.[row], CAST(k.[key] AS INT) + 1), it.TypeID, j.[type], LEFT(j.[value], 400), LEFT(j.normalized, 400), j.error,
            CASE WHEN j.confidence BETWEEN 0 AND 100 THEN j.confidence ELSE 50 END,
            ISNULL(sv.SeverityID, @defSeverity), ISNULL(tl.TLPID, @defTLP), j.[description],
@@ -177,7 +178,7 @@ BEGIN
            CASE WHEN ISNULL(j.last_seen, @now) < ISNULL(j.first_seen, @now) THEN ISNULL(j.first_seen, @now) ELSE ISNULL(j.last_seen, @now) END,
            j.expires_at, NULLIF(LTRIM(RTRIM(j.malware)), N''),
            CASE WHEN j.[role] IN ('c2','payload','dropper','exfil','phishing') THEN j.[role] ELSE 'other' END,
-           j.evidence, j.tags
+           j.evidence, j.tags, j.malware_aliases
     FROM OPENJSON(@Json) AS k
     CROSS APPLY OPENJSON(k.[value]) WITH (
         [row]         INT            '$.row',
@@ -195,7 +196,8 @@ BEGIN
         malware       NVARCHAR(100)  '$.malware',
         [role]        VARCHAR(12)    '$.role',
         evidence      NVARCHAR(1000) '$.evidence',
-        tags          NVARCHAR(MAX)  '$.tags' AS JSON
+        tags          NVARCHAR(MAX)  '$.tags' AS JSON,
+        malware_aliases NVARCHAR(MAX) '$.malware_aliases' AS JSON
     ) AS j
     LEFT JOIN dbo.IndicatorType AS it ON it.Code = j.[type]
     LEFT JOIN dbo.SeverityLevel AS sv ON sv.Code = j.severity
@@ -275,8 +277,26 @@ BEGIN
         --    Kanıt: kaynağın bu göstergeyi bu aileyle ilişkilendirdiği beyan (ör. ThreatFox "malware_printable")
         --    Eşleme ad anahtarıyla yapılır (fn_FindMalware, 12_malware_names.sql): "QuasarRAT" mevcut "Quasar RAT" kaydına
         --    bağlanır; aynı yığında farklı yazılan aynı aile için tek kayıt açılır.
+        --    3a) Ad doğrudan eşleşmiyorsa kaynağın verdiği takma adlar denenir: ThreatFox "Vidar Stealer" -> takma adı
+        --        "Vidar" -> ATT&CK S9050. Eşleşme kanıt metnine yazılır (hangi takma ad üzerinden bağlandı).
+        UPDATE s
+        SET s.EvidenceText = LEFT(CONCAT(ISNULL(s.EvidenceText, N'Kaynak bu göstergeyi ' + s.Malware + N' ailesiyle ilişkilendiriyor.'),
+                                         N' Aile adı "', s.Malware, N'", kaynağın takma adı "', x.Alias, N'" üzerinden ', x.Target, N' ile eşlendi.'), 1000),
+            s.Malware = x.Alias
+        FROM @stage AS s
+        CROSS APPLY (SELECT TOP (1) LEFT(LTRIM(RTRIM(a.[value])), 100) AS Alias, f.Name AS Target
+                     FROM OPENJSON(s.AliasesJson) AS a
+                     CROSS APPLY dbo.fn_FindMalware(LEFT(LTRIM(RTRIM(a.[value])), 100)) AS fm
+                     JOIN dbo.Malware AS f ON f.MalwareID = fm.MalwareID
+                     WHERE LEN(LTRIM(RTRIM(a.[value]))) > 1
+                     ORDER BY CASE WHEN f.ExternalID IS NOT NULL THEN 0 ELSE 1 END) AS x
+        WHERE s.IndicatorID IS NOT NULL AND s.Malware IS NOT NULL AND s.AliasesJson IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM dbo.fn_FindMalware(s.Malware));
+
+        --    3b) Hâlâ eşleşmeyen aile yeni kayıt olarak açılır; türü bilinmediği için "Sınıflandırılmamış"
         INSERT INTO dbo.Malware (Name, MalwareTypeID)
-        SELECT MIN(s.Malware), (SELECT MalwareTypeID FROM dbo.MalwareType WHERE Code = 'malware')
+        SELECT MIN(s.Malware), ISNULL((SELECT MalwareTypeID FROM dbo.MalwareType WHERE Code = 'unclassified'),
+                                      (SELECT MalwareTypeID FROM dbo.MalwareType WHERE Code = 'malware'))
         FROM @stage AS s
         WHERE s.IndicatorID IS NOT NULL AND s.Malware IS NOT NULL
           AND NOT EXISTS (SELECT 1 FROM dbo.fn_FindMalware(s.Malware))

@@ -1,4 +1,14 @@
-"""Ortak test ayarları. Veritabanı testleri SQL Server'a ulaşılamazsa atlanır (skip), başarısız sayılmaz."""
+"""Ortak test ayarları.
+
+Testler CANLI veritabanına (ThreatLens) dokunmaz: ayrı bir test veritabanında çalışır.
+    TL_DB_NAME_TEST   test veritabanının adı (varsayılan ThreatLens_Test)
+    TL_DB_NAME_LIVE   korunan canlı veritabanı (varsayılan ThreatLens); oturum başında ve sonunda satır sayıları
+                      karşılaştırılır (tests/test_zz_live_guard.py)
+Test veritabanı oturum başında scripts/setup_db.py ile kurulur ya da güncellenir (beslemeler çekilmez, yalnızca
+ATT&CK anlık görüntüsü yüklenir). SQL Server'a ulaşılamazsa veritabanı testleri atlanır (skip).
+"""
+import os
+import subprocess
 import sys
 import uuid
 from pathlib import Path
@@ -8,28 +18,69 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+LIVE_DB = os.getenv("TL_DB_NAME_LIVE", "ThreatLens")
+TEST_DB = os.getenv("TL_DB_NAME_TEST", "ThreatLens_Test")
+if TEST_DB.lower() == LIVE_DB.lower():
+    raise SystemExit(f"TL_DB_NAME_TEST canlı veritabanıyla ({LIVE_DB}) aynı olamaz.")
+# app.config ve importers bu değişkeni içe aktarıldıkları anda okur: her şeyden önce ayarlanmalı
+os.environ["TL_DB_NAME"] = TEST_DB
+
 PASSWORD = "ThreatLens2026!"
+SETUP_ERROR = ""
+
+
+def _setup_test_db() -> None:
+    """Test veritabanını kurar ya da migration'ları uygular (tekrar çalıştırılabilir, ~10 sn)."""
+    global SETUP_ERROR
+    env = {**os.environ, "TL_DB_NAME": TEST_DB, "PYTHONUTF8": "1"}
+    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "setup_db.py"), "--no-feeds"], cwd=ROOT, env=env,
+                       capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=900)
+    if r.returncode != 0:
+        SETUP_ERROR = (r.stdout + r.stderr).strip().splitlines()[-1:] or ["bilinmeyen hata"]
+        SETUP_ERROR = SETUP_ERROR[0][:300]
 
 
 def _db_ok() -> bool:
     try:
         from importers._db import connect
         conn = connect()
-        ok = conn.cursor().execute("SELECT COUNT(*) FROM dbo.Technique;").fetchone()[0] > 0
+        ok = conn.cursor().execute("SELECT DB_NAME(), COUNT(*) FROM dbo.Technique;").fetchone()
         conn.close()
-        return ok
+        return ok[0] == TEST_DB and ok[1] > 0
     except Exception:
         return False
 
 
+def live_row_counts() -> dict[str, int] | None:
+    """Canlı veritabanındaki tabloların satır sayıları (sys.partitions; tablo taramadan). Yoksa None."""
+    try:
+        from importers._db import connect
+        c = connect("master")
+        if c.cursor().execute("SELECT DB_ID(?);", LIVE_DB).fetchone()[0] is None:
+            c.close()
+            return None
+        rows = c.cursor().execute(f"""
+            SELECT s.name + '.' + t.name, SUM(p.rows)
+            FROM [{LIVE_DB}].sys.tables AS t
+            JOIN [{LIVE_DB}].sys.schemas AS s ON s.schema_id = t.schema_id
+            JOIN [{LIVE_DB}].sys.partitions AS p ON p.object_id = t.object_id AND p.index_id IN (0, 1)
+            GROUP BY s.name, t.name;""").fetchall()
+        c.close()
+        return {name: int(n) for name, n in rows}
+    except Exception:
+        return None
+
+
+LIVE_BEFORE = live_row_counts()
+_setup_test_db()
 DB_OK = _db_ok()
-needs_db = pytest.mark.skipif(not DB_OK, reason="SQL Server/ThreatLens veritabanı yok (python scripts/setup_db.py)")
+needs_db = pytest.mark.skipif(not DB_OK, reason=f"Test veritabanı ({TEST_DB}) kurulamadı: {SETUP_ERROR or 'SQL Server yok'}")
 
 
 @pytest.fixture(scope="session", autouse=True)
 def _cleanup_test_import_jobs():
-    """Testlerin açtığı içe aktarma işleri (kasıtlı ROLLBACK senaryoları dahil) oturum sonunda silinir;
-    gösterge panelindeki "başarısız iş" sayısı test artığıyla şişmez."""
+    """Testlerin açtığı içe aktarma işleri (kasıtlı ROLLBACK senaryoları dahil) oturum sonunda silinir
+    (test veritabanında; canlı veritabanına zaten yazılmaz)."""
     yield
     if not DB_OK:
         return

@@ -34,7 +34,10 @@
       form.querySelectorAll('select').forEach((s) => s.addEventListener('change', () => { st.page = 1; load(); }));
     }
     const start = async () => {
-      if (form) [...form.elements].forEach((el) => { const v = el.name && qs.get(el.name); if (v) el.value = v; });
+      if (form) [...form.elements].forEach((el) => {
+        const v = el.name && qs.get(el.name); if (!v) return;
+        if (el.type === 'checkbox') el.checked = v === el.value; else el.value = v;
+      });
       await load(); if (st.selected) show(st.selected);
     };
     return { load, show, start, toast };

@@ -16,11 +16,11 @@ GO = re.compile(r"^\s*GO\s*;?\s*$", re.I | re.M)
 
 def run_script(_conn, path: Path) -> list[list[tuple]]:
     """Dosyayı GO'dan böler, her yığını AYRI bir oturumda (SSMS penceresi gibi) çalıştırır, sonuç kümelerini döndürür."""
-    from importers._db import connect
+    from importers._db import batches_for, connect
     conn = connect()
     sets = []
     cur = conn.cursor()
-    for batch in [b for b in GO.split(path.read_text(encoding="utf-8")) if b.strip()]:
+    for batch in batches_for(path.read_text(encoding="utf-8")):      # test veritabanına yönlendirilmiş
         cur.execute(batch)
         while True:
             if cur.description:
@@ -236,3 +236,17 @@ def test_maintenance_objects(conn):
     assert not any(col in ("EvidenceID", "AttributionEvidenceID", "AssignedTo", "ReportedBy") for _, col in unindexed)
     r = cur.execute("EXEC dbo.sp_PurgeHistory @LoginDays = 3650, @JobDays = 3650, @HuntDays = 3650, @MaintenanceDays = 3650;").fetchone()
     assert r.RowsDeleted >= 0 and "giriş denemesi" in r.Detail
+
+
+def test_purge_script_dry_run_reports_and_deletes_nothing(conn):
+    """Temizlik betiği varsayılan olarak yalnızca raporlar (test veritabanında, silmeden)."""
+    import os
+    import subprocess
+    import sys
+    from conftest import TEST_DB
+    before = conn.cursor().execute("SELECT COUNT(*) FROM dbo.LoginAttempt;").fetchone()[0]
+    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "purge_test_artifacts.py"), "--database", TEST_DB],
+                       capture_output=True, text=True, encoding="utf-8", errors="replace", env={**os.environ, "PYTHONUTF8": "1"}, timeout=120)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "yalnızca rapor" in r.stdout and "Hiçbir şey silinmedi" in r.stdout
+    assert conn.cursor().execute("SELECT COUNT(*) FROM dbo.LoginAttempt;").fetchone()[0] >= before

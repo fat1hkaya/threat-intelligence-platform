@@ -79,10 +79,16 @@ def threatfox(days: int = 1) -> tuple[str, list[dict]]:
             value = value.rsplit(":", 1)[0]
         malware = r.get("malware_printable")
         tags = r.get("tags") or []
+        # Eşleme adayları: Malpedia aile kimliği ("win.vidar") ve ThreatFox takma adları ("Vidar Stealer, VidarStealer").
+        # Ad doğrudan eşleşmezse veritabanı bunları sırayla dener (sp_BulkImportIndicators 3a).
+        aliases = [a.strip() for a in str(r.get("malware_alias") or "").split(",") if a.strip()]
+        if r.get("malware") and "." in str(r["malware"]):
+            aliases.append(str(r["malware"]).split(".", 1)[1])      # win.vidar -> vidar
         items.append({
             "type": kind, "value": value, "confidence": r.get("confidence_level"),
             "severity": "high" if r.get("threat_type") == "botnet_cc" else "medium", "tlp": "TLP:CLEAR",
             "malware": None if malware in (None, "", "Unknown malware") else malware,
+            "malware_aliases": aliases[:10] or None,
             "role": "c2" if r.get("threat_type") == "botnet_cc" else "payload",
             "description": r.get("threat_type_desc"), "first_seen": _ts(r.get("first_seen")),
             "last_seen": _ts(r.get("last_seen")) or _ts(r.get("first_seen")),

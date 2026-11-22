@@ -2,7 +2,7 @@
 (() => {
   const { api, esc, fmtDT, ago, sev, typeBadge, conf, sourceBadge, copyBtn, status, table, bindTable, markRow, pager, panel, panelHead, toast, empty, loading, icons, qs, can, dialog, kvRow } = TL;
   const FIELDS = ['q', 'type', 'severity', 'source', 'status', 'minConfidence', 'maxConfidence', 'dateFrom', 'dateTo'];
-  const st = { page: +(qs.get('page') || 1), size: 25, sort: qs.get('sort') || 'lastSeen', dir: qs.get('dir') || 'desc', malware: qs.get('malware'), tag: qs.get('tag'), selected: qs.get('id') };
+  const st = { page: +(qs.get('page') || 1), size: 25, sort: qs.get('sort') || 'lastSeen', dir: qs.get('dir') || 'desc', malware: qs.get('malware'), tag: qs.get('tag'), minRisk: qs.get('minRisk'), maxRisk: qs.get('maxRisk'), selected: qs.get('id') };
   const split = document.getElementById('split'), tbl = document.getElementById('tbl'), form = document.getElementById('filters');
 
   const cols = [
@@ -18,7 +18,7 @@
         <a class="btn sm icon ghost" href="${TL.graphUrl('indicator', r.IndicatorID)}" aria-label="İlişki grafında aç" title="İlişki grafında aç"><i data-lucide="share-2"></i></a>` },
   ];
 
-  const params = () => { const f = TL.formData(form); const p = { page: st.page, size: st.size, sort: st.sort, dir: st.dir, malware: st.malware, tag: st.tag };
+  const params = () => { const f = TL.formData(form); const p = { page: st.page, size: st.size, sort: st.sort, dir: st.dir, malware: st.malware, tag: st.tag, minRisk: st.minRisk, maxRisk: st.maxRisk };
     FIELDS.forEach((k) => { if (f[k]) p[k] = f[k]; }); return p; };
 
   async function load() {

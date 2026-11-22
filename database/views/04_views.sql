@@ -61,6 +61,8 @@ AS
 SELECT
     m.MalwareID, m.ExternalID, m.Name, m.Description, m.Platforms,
     mt.Code AS TypeCode, mt.Name AS TypeName,
+    dbo.fn_IsPlaceholderMalware(m.Name, m.ExternalID) AS IsPlaceholder,   -- yer tutucu aile ("Unknown Loader" ...)
+    dbo.fn_MalwareLabel(m.Name, m.ExternalID) AS DisplayName,
     (SELECT COUNT(*) FROM dbo.ActorMalware     AS x WHERE x.MalwareID = m.MalwareID) AS ActorCount,
     (SELECT COUNT(*) FROM dbo.MalwareTechnique AS x WHERE x.MalwareID = m.MalwareID) AS TechniqueCount,
     (SELECT COUNT(*) FROM dbo.MalwareIndicator AS x WHERE x.MalwareID = m.MalwareID) AS IndicatorCount

@@ -8,3 +8,9 @@ venv/
 node_modules/
 .claude/settings.local.json
 logs/
+
+# Arayüz denetimi: yalnızca birincil görünüm (1440x790) depoda; diğer görünüm alanları yerelde kalır
+docs/ui-audit/*/wide/
+docs/ui-audit/*/laptop/
+docs/ui-audit/*/tablet/
+docs/ui-audit/*/mobile/

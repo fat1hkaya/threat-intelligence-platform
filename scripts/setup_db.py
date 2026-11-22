@@ -21,7 +21,7 @@ import pyodbc  # noqa: E402
 
 from app import config  # noqa: E402
 from app.security import hash_password  # noqa: E402
-from importers._db import GO, ROOT, connect  # noqa: E402
+from importers._db import ROOT, batches_for, connect  # noqa: E402
 
 DEMO_PASSWORD = "ThreatLens2026!"
 USERS = [  # (kullanıcı adı, ad soyad, e-posta, rol)
@@ -40,7 +40,7 @@ def sql_files() -> list[Path]:
 
 
 def run_file(conn: pyodbc.Connection, path: Path, skip_schema: bool) -> tuple[int, int]:
-    batches = [b.strip() for b in GO.split(path.read_text(encoding="utf-8")) if b.strip()]
+    batches = batches_for(path.read_text(encoding="utf-8"))
     cur = conn.cursor()
     ran = skipped = 0
     for number, batch in enumerate(batches, start=1):

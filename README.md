@@ -137,7 +137,7 @@ Windows Görev Zamanlayıcı 6 saatte bir `pythonw.exe scripts\sync_feeds.py` ç
 .venv\Scripts\python -m pytest -q
 ```
 
-145 test vardır ve gerçek SQL Server'da çalışır; veritabanı yoksa atlanır. GitHub Actions her push'ta aynı testleri SQL Server 2025 Linux kapsayıcısında çalıştırır (`.github/workflows/ci.yml`; beslemeler indirilmez, tam metin arama kapsayıcıda kurulu olmadığı için LIKE yedeği sınanır). Kapsadıkları:
+157 test vardır ve gerçek SQL Server'da çalışır. **Testler canlı veritabanına dokunmaz:** ayrı bir test veritabanında (`ThreatLens_Test`, `TL_DB_NAME_TEST` ile değiştirilebilir) çalışırlar; bu veritabanı her test oturumunun başında `setup_db.py` ile kurulur ya da güncellenir (birkaç saniye). `tests/test_zz_live_guard.py` oturumun başında ve sonunda canlı veritabanındaki satır sayılarını karşılaştırır. Ayrımdan önce canlıda kalmış test kayıtları için `python scripts/purge_test_artifacts.py` (önce rapor, `--apply` ile siler; `AuditLog`'a dokunmaz). Sunum öncesi adımlar: [docs/sunum_oncesi_kontrol.md](docs/sunum_oncesi_kontrol.md). Arayüz ekran görüntüleri ve otomatik düzen denetimi: `pip install -r requirements-dev.txt`, `python -m playwright install chromium`, `python scripts/ui_screenshots.py <klasör>` (`docs/ui-audit/`). GitHub Actions her push'ta aynı testleri SQL Server 2025 Linux kapsayıcısında çalıştırır (`.github/workflows/ci.yml`; beslemeler indirilmez, tam metin arama kapsayıcıda kurulu olmadığı için LIKE yedeği sınanır). Kapsadıkları:
 - **Normalleştirme:** 34 test.
 - **Kimlik doğrulama ve rol yetkileri:** izleyici yazma denemesinde 403 alır.
 - **IOC işlemleri:**

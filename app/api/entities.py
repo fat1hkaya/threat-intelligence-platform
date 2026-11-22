@@ -177,9 +177,11 @@ def delete_actor(actor_id: int, user: dict = Depends(require_analyst), db: Db = 
 # =========================== Zararlı yazılım ==========================
 
 @router.get("/malware")
-def list_malware(q: str = "", type: str = "", linked: bool | None = None, sort: str = "indicators",
+def list_malware(q: str = "", type: str = "", linked: bool | None = None, placeholders: bool = False, sort: str = "indicators",
                  page: int = Query(1, ge=1), size: int = Query(30, ge=5, le=200), db: Db = Depends(get_db)):
     where, params = ["1 = 1"], []
+    if not placeholders:                       # yer tutucu aileler varsayılan olarak gizli ("Yer tutucuları göster")
+        where.append("v.IsPlaceholder = 0")
     if q.strip():
         where.append("""(v.Name LIKE ? OR v.ExternalID = ?
                OR EXISTS (SELECT 1 FROM dbo.MalwareAlias AS al WHERE al.MalwareID = v.MalwareID AND al.Alias LIKE ?))""")
@@ -194,7 +196,7 @@ def list_malware(q: str = "", type: str = "", linked: bool | None = None, sort: 
     total = db.scalar(f"SELECT COUNT(*) AS Total FROM dbo.vw_MalwareSummary AS v\n        WHERE {clause};", tuple(params))
     items = db.query(
         f"""
-        SELECT v.MalwareID, v.ExternalID, v.Name, v.TypeCode, v.TypeName, v.Platforms,
+        SELECT v.MalwareID, v.ExternalID, v.Name, v.DisplayName, v.IsPlaceholder, v.TypeCode, v.TypeName, v.Platforms,
                v.ActorCount, v.TechniqueCount, v.IndicatorCount, LEFT(v.Description, 200) AS Summary
         FROM dbo.vw_MalwareSummary AS v
         WHERE {clause}

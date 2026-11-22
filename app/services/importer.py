@@ -13,7 +13,7 @@ from .normalize import InvalidIndicator, guess_type, normalize
 
 BATCH_SIZE = 1000
 FIELDS = ("type", "value", "confidence", "severity", "tlp", "description", "first_seen", "last_seen",
-          "expires_at", "malware", "role", "evidence", "tags")
+          "expires_at", "malware", "malware_aliases", "role", "evidence", "tags")
 
 
 @dataclass

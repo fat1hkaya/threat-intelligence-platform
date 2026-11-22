@@ -1,0 +1,386 @@
+{
+  "primary": {
+    "login": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "truncatedNoTitle": [],
+      "truncatedCount": 0,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "overview": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [
+        "div.table-wrap \"Son istihbaratIOCTipÖnemİlişkili varlıkK\""
+      ],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "label.sr-only \"Dönem\"",
+        "p#sevSummary.sr-only \"Risk skoru dağılımı: Kritik 0, Yüksek 0,\"",
+        "p#trendSummary.sr-only \"Son 30 günde toplam 21945 IOC eklendi. E\"",
+        "caption.sr-only \"Son istihbarat\""
+      ],
+      "truncatedCount": 5,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "iocs": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [
+        "div.table-wrap \"IOC listesiGöstergeTipÖnemGüvenZararlı a\""
+      ],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "caption.sr-only \"IOC listesi\""
+      ],
+      "truncatedCount": 2,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "ioc-detail": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\""
+      ],
+      "truncatedCount": 1,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "ioc-new-dialog": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [
+        "div.table-wrap \"IOC listesiGöstergeTipÖnemGüvenZararlı a\""
+      ],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "caption.sr-only \"IOC listesi\""
+      ],
+      "truncatedCount": 2,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "ioc-lookup-dialog": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [
+        "div.table-wrap \"IOC listesiGöstergeTipÖnemGüvenZararlı a\""
+      ],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "caption.sr-only \"IOC listesi\""
+      ],
+      "truncatedCount": 2,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "hunt": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\""
+      ],
+      "truncatedCount": 1,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "cases": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\""
+      ],
+      "truncatedCount": 1,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "case-detail": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "label.sr-only \"Not\""
+      ],
+      "truncatedCount": 2,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "graph-empty": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\""
+      ],
+      "truncatedCount": 1,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "graph-hash": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "caption.sr-only \"Graf kenarları\""
+      ],
+      "truncatedCount": 2,
+      "overlaps": [
+        "a \"Transparent Tribe\"  ×  span.faint \"Tehdit aktörü\"",
+        "a \"Replication Through Removable Media\"  ×  span.faint \"ATT&CK tekniği\""
+      ],
+      "overlapCount": 3,
+      "consoleErrors": []
+    },
+    "infrastructure": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "caption.sr-only \"Paylaşılan alt ağlar\"",
+        "span \"Amerika Birleşik Devletleri US\"",
+        "span \"Birleşik Arap Emirlikleri AE\"",
+        "caption.sr-only \"ASN örtüşmesi\""
+      ],
+      "truncatedCount": 5,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "actors": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "caption.sr-only \"Aktör detayı\""
+      ],
+      "truncatedCount": 2,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "actors-panel": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [
+        "div.table-wrap \"Aktör detayıAktörTakma adlarKökenMotivas\"",
+        "aside.card.panel \"Aktör detayıKimsukyG0094 APT43Black Bans\"",
+        "p.desc \"Kimsuky is a Democratic People's Republi\""
+      ],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "caption.sr-only \"Aktör detayı\""
+      ],
+      "truncatedCount": 2,
+      "overlaps": [
+        "b \"Lazarus Group\"  ×  span.faint.mono \"G0032\"",
+        "b \"Mustang Panda\"  ×  span.faint.mono \"G0129\"",
+        "b \"Sandworm Team\"  ×  span.faint.mono \"G0034\"",
+        "b \"Gamaredon Group\"  ×  span.faint.mono \"G0047\"",
+        "b \"Scattered Spider\"  ×  span.faint.mono \"G1015\""
+      ],
+      "overlapCount": 5,
+      "consoleErrors": []
+    },
+    "campaigns": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "caption.sr-only \"Kampanya detayı\""
+      ],
+      "truncatedCount": 2,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "campaigns-panel": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [
+        "div.table-wrap \"Kampanya detayıKampanyaDurumBaşlangıçBit\"",
+        "aside.card.panel \"Kampanya detayıAI-Assisted Breach of Mex\"",
+        "p.desc \"The AI-Assisted Breach of Mexico's Gover\""
+      ],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "caption.sr-only \"Kampanya detayı\""
+      ],
+      "truncatedCount": 2,
+      "overlaps": [
+        "b \"Anthropic AI-orchestrated Campaign\"  ×  span.faint.mono \"C0062\"",
+        "b \"Operation AkaiRyū\"  ×  span.faint.mono \"C0060\"",
+        "b \"FrostyGoop Incident\"  ×  span.faint.mono \"C0041\""
+      ],
+      "overlapCount": 3,
+      "consoleErrors": []
+    },
+    "malware": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "caption.sr-only \"Zararlı yazılım detayı\""
+      ],
+      "truncatedCount": 2,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "malware-panel": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [
+        "aside.card.panel \"Zararlı yazılım detayıMiraiBeslemeden ek\""
+      ],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "caption.sr-only \"Zararlı yazılım detayı\""
+      ],
+      "truncatedCount": 2,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "attack-list": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "caption.sr-only \"Teknik detayı\""
+      ],
+      "truncatedCount": 2,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "attack-matrix": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [
+        "div#matrix.matrix \"Reconnaissance12 teknik T1589Gather Vict\""
+      ],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\""
+      ],
+      "truncatedCount": 1,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "attack-coverage": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "caption.sr-only \"Öncelikli kör noktalar\""
+      ],
+      "truncatedCount": 2,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "sources": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [
+        "div.table-wrap \"İçe aktarma işleriİşKaynakDurumBaşlangıç\""
+      ],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "caption.sr-only \"Kaynaklar\"",
+        "label.sr-only \"Kaynak\"",
+        "label.sr-only \"Durum\"",
+        "caption.sr-only \"İçe aktarma işleri\""
+      ],
+      "truncatedCount": 5,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "audit": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "p#dailySummary.sr-only \"Son 30 günde 189 denetim olayı.\"",
+        "caption.sr-only \"Giriş denemeleri\"",
+        "caption.sr-only \"Olay detayı\""
+      ],
+      "truncatedCount": 4,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "settings": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "truncatedNoTitle": [
+        "label.sr-only \"Genel arama\"",
+        "caption.sr-only \"Kullanıcılar\"",
+        "label.sr-only \"fatih rolü\"",
+        "label.sr-only \"analist rolü\"",
+        "label.sr-only \"izleyici rolü\"",
+        "caption.sr-only \"Rol yetkileri\"",
+        "caption.sr-only \"Yaşam döngüsü politikaları\"",
+        "label.sr-only \"Süre\"",
+        "caption.sr-only \"Query Store en pahalı sorgular\"",
+        "caption.sr-only \"Graf tutarlılığı\""
+      ],
+      "truncatedCount": 20,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    }
+  }
+}

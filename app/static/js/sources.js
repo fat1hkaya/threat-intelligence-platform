@@ -18,9 +18,9 @@
     document.getElementById('srcTbl').innerHTML = table([
       { label: 'Kaynak', primary: true, render: (s) => `<b>${esc(s.Name)}</b>${s.Url ? `<br><a href="${esc(s.Url)}" target="_blank" rel="noopener noreferrer" style="font-size:12px">${esc(s.Url.replace(/^https?:\/\//, ''))}</a>` : ''}` },
       { label: 'Güvenilirlik', render: (s) => `<span class="badge b-muted" title="${esc(REL[s.Reliability])}">${esc(s.Reliability)}</span>` },
-      { label: 'IOC', num: true, render: (s) => fmtN(s.IndicatorCount) },
+      { label: 'Kayıt', num: true, render: (s) => `<span style="white-space:nowrap" ${s.UnitDetail ? `title="${esc(s.UnitDetail)}"` : ''}>${fmtN(s.UnitCount || 0)} <span class="faint">${esc(s.UnitLabel || 'IOC')}</span></span>` },
       { label: 'Kanıt', num: true, render: (s) => fmtN(s.EvidenceCount) },
-      { label: 'Son iş', render: (s) => s.LastRunAt ? `${job(s.LastRunStatus)} <span class="muted" style="font-size:12px">${fmtDT(s.LastRunAt)}</span>` : '<span class="faint">Henüz yok</span>' },
+      { label: 'Son iş', render: (s) => s.LastRunAt ? `<span style="display:inline-flex;gap:6px;align-items:center;white-space:nowrap">${job(s.LastRunStatus)} <span class="muted" style="font-size:12px" title="${fmtDT(s.LastRunAt)}">${TL.ago(s.LastRunAt)}</span></span>` : '<span class="faint">Henüz yok</span>' },
       { label: 'Son işte', render: (s) => s.LastRunAt ? `<span style="font-size: 13px">+${fmtN(s.LastRowsInserted)} / ~${fmtN(s.LastRowsUpdated)} / <span class="${s.LastRowsFailed ? 'delta-down' : ''}">✕${fmtN(s.LastRowsFailed)}</span></span>` : '—' },
       { label: 'İşlemler', render: (s) => {
         if (!s.Feed) return '<span class="faint" style="font-size:12px">Elle / dosya</span>';

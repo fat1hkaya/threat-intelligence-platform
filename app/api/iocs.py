@@ -29,7 +29,8 @@ def _search_term(q: str) -> str:
 
 
 def _ioc_filter(q: str, type: str, severity: str, source: int | None, status: str, malware: int | None, tag: str,
-                minConfidence: int, maxConfidence: int, dateFrom: date | None, dateTo: date | None) -> tuple[str, list]:
+                minConfidence: int, maxConfidence: int, dateFrom: date | None, dateTo: date | None,
+                minRisk: int = 0, maxRisk: int = 100) -> tuple[str, list]:
     """IOC listesi ve dışa aktarma için ortak WHERE koşulu.
     Koşullar sabit parçalardan kurulur; kullanıcı girdisi yalnızca parametre (?) olarak geçer."""
     where, params = ["1 = 1"], []
@@ -48,6 +49,8 @@ def _ioc_filter(q: str, type: str, severity: str, source: int | None, status: st
         where.append("v.Status = ?"); params.append(status)
     if minConfidence > 0 or maxConfidence < 100:
         where.append("v.Confidence BETWEEN ? AND ?"); params += [minConfidence, maxConfidence]
+    if minRisk > 0 or maxRisk < 100:
+        where.append("v.RiskScore BETWEEN ? AND ?"); params += [minRisk, maxRisk]
     if dateFrom:
         where.append("v.LastSeen >= ?"); params.append(dateFrom)
     if dateTo:
@@ -68,10 +71,12 @@ def list_iocs(
     status: str = "", malware: int | None = None, tag: str = "",
     minConfidence: int = Query(0, ge=0, le=100), maxConfidence: int = Query(100, ge=0, le=100),
     dateFrom: date | None = None, dateTo: date | None = None,
+    minRisk: int = Query(0, ge=0, le=100), maxRisk: int = Query(100, ge=0, le=100),
     sort: str = "lastSeen", dir: str = "desc", page: int = Query(1, ge=1), size: int = Query(25, ge=5, le=200),
     db: Db = Depends(get_db),
 ):
-    clause, params = _ioc_filter(q, type, severity, source, status, malware, tag, minConfidence, maxConfidence, dateFrom, dateTo)
+    clause, params = _ioc_filter(q, type, severity, source, status, malware, tag, minConfidence, maxConfidence, dateFrom, dateTo,
+                                 minRisk, maxRisk)
     order = f"{SORTS.get(sort, 'v.LastSeen')} {'ASC' if dir == 'asc' else 'DESC'}, v.IndicatorID DESC"
 
     total = db.scalar(f"SELECT COUNT(*) AS Total FROM dbo.vw_Indicator AS v\n        WHERE {clause};", tuple(params))
@@ -79,8 +84,8 @@ def list_iocs(
         f"""
         SELECT v.IndicatorID, v.Value, v.TypeCode, v.TypeName, v.Confidence, v.SeverityCode, v.SeverityName, v.TLPCode,
                v.SourceID, v.SourceName, v.FirstSeen, v.LastSeen, v.Status, v.SightingCount, v.RiskScore,
-               (SELECT TOP (1) m.Name FROM dbo.MalwareIndicator AS mi JOIN dbo.Malware AS m ON m.MalwareID = mi.MalwareID
-                 WHERE mi.IndicatorID = v.IndicatorID ORDER BY mi.Confidence DESC, m.Name) AS MalwareName
+               (SELECT TOP (1) dbo.fn_MalwareLabel(m.Name, m.ExternalID) FROM dbo.MalwareIndicator AS mi JOIN dbo.Malware AS m ON m.MalwareID = mi.MalwareID
+                 WHERE mi.IndicatorID = v.IndicatorID ORDER BY m.IsPlaceholder, mi.Confidence DESC, m.Name) AS MalwareName
         FROM dbo.vw_Indicator AS v
         WHERE {clause}
         ORDER BY {order}
@@ -202,7 +207,7 @@ def get_ioc(indicator_id: int, db: Db = Depends(get_db)):
     related = db.query(
         """
         -- Aynı zararlı yazılıma bağlı diğer göstergeler (self join)
-        SELECT TOP (8) v.IndicatorID, v.Value, v.TypeCode, v.SeverityCode, v.RiskScore, m.Name AS MalwareName
+        SELECT TOP (8) v.IndicatorID, v.Value, v.TypeCode, v.SeverityCode, v.RiskScore, dbo.fn_MalwareLabel(m.Name, m.ExternalID) AS MalwareName
         FROM dbo.MalwareIndicator AS mine
         JOIN dbo.MalwareIndicator AS other ON other.MalwareID = mine.MalwareID AND other.IndicatorID <> mine.IndicatorID
         JOIN dbo.Malware AS m ON m.MalwareID = mine.MalwareID
