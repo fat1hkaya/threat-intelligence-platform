@@ -17,7 +17,7 @@
     const evs = d.evidence.length ? `<ul class="list">${d.evidence.map((e) => `<li><div style="display:block"><p style="font-size:13px">${esc(e.Summary)}</p>
         <small>${e.RelType ? `${esc(REL[e.RelType] || e.RelType)}: <a href="${entityUrl(e.RelType.split('-')[0], e.AID)}">${esc(e.AName)}</a> → <a href="${entityUrl(e.BType, e.BID)}">${esc(e.BName)}</a> · ` : ''}${esc(e.SourceName)} · alaka ${e.Rnk}</small></div></li>`).join('')}</ul>` : '';
     out.innerHTML = `<div class="grid g-2">
-      <article class="card"><h2>Ad, kimlik ve IOC eşleşmeleri</h2><p class="faint" style="font-size:12px;margin-bottom:8px">sp_GlobalSearch</p>${names}</article>
+      <article class="card"><h2>Ad, kimlik ve IOC eşleşmeleri</h2><p class="faint tech" style="font-size:12px;margin-bottom:8px">sp_GlobalSearch</p>${names}</article>
       <article class="card"><h2>Açıklamalarda geçenler</h2><p class="faint" style="font-size:12px;margin-bottom:8px">${esc(engine) || 'IOC değeri arandığı için metin araması yapılmadı'}</p>${ents}</article>
     </div>${evs ? `<article class="card" style="margin-top:18px"><h2>İlişki kanıtlarında geçenler</h2><p class="faint" style="font-size:12px;margin-bottom:8px">Evidence.Summary tam metin dizini: hangi ilişkiyi desteklediğiyle birlikte</p>${evs}</article>` : ''}`;
     icons();

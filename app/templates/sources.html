@@ -7,13 +7,13 @@
 <p class="notice" id="keyNotice" hidden><i data-lucide="key-round"></i><span>ThreatFox, MalwareBazaar ve URLhaus için ücretsiz abuse.ch anahtarı gerekir (<a href="https://auth.abuse.ch" target="_blank" rel="noopener noreferrer">auth.abuse.ch</a>). Anahtarı <code>.env</code> dosyasına <code>ABUSECH_AUTH_KEY=...</code> olarak yazıp uygulamayı yeniden başlatın. Anahtar yokken uygulama ATT&amp;CK, CISA KEV ve Feodo Tracker verisiyle çalışmaya devam eder.</span></p>
 
 <article class="card flush">
-  <div class="card-head"><div><h2>Kaynaklar</h2><p>vw_SourceHealth görünümü</p></div></div>
+  <div class="card-head"><div><h2>Kaynaklar</h2><p>Kaynakların son içe aktarma durumu<span class="tech"> · vw_SourceHealth</span></p></div></div>
   <div id="srcTbl"></div>
 </article>
 
 <div class="grid g-main-side">
   <article class="card flush">
-    <div class="card-head"><div><h2>İçe aktarma işleri</h2><p>ImportJob tablosu: eklenen, güncellenen, atlanan ve hatalı satırlar</p></div>
+    <div class="card-head"><div><h2>İçe aktarma işleri</h2><p>Eklenen, güncellenen, atlanan ve hatalı satırlar<span class="tech"> · ImportJob tablosu</span></p></div>
       <div style="display:flex;gap:8px"><label class="sr-only" for="jSrc">Kaynak</label><select class="input" id="jSrc" style="width:auto"><option value="">Tüm kaynaklar</option></select>
       <label class="sr-only" for="jStatus">Durum</label><select class="input" id="jStatus" style="width:auto"><option value="">Tüm durumlar</option><option value="success">Başarılı</option><option value="partial">Kısmi</option><option value="failed">Hatalı</option></select></div></div>
     <div id="jobTbl"></div><div class="pager" id="jobPager"></div>

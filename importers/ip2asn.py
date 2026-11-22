@@ -72,7 +72,7 @@ def run(conn) -> dict:
             raise Ip2AsnError(f"Beklenenden az aralık okundu ({len(rows)}); dosya bozuk olabilir.")
         cur.execute("""IF OBJECT_ID('tempdb..#ip2asn') IS NOT NULL DROP TABLE #ip2asn;
                        CREATE TABLE #ip2asn (StartIP BIGINT NOT NULL, EndIP BIGINT NOT NULL, ASN BIGINT NOT NULL,
-                                             CountryCode CHAR(2) NULL, Name NVARCHAR(200) NOT NULL);""")
+                                             CountryCode CHAR(2) COLLATE DATABASE_DEFAULT NULL, Name NVARCHAR(200) COLLATE DATABASE_DEFAULT NOT NULL);""")
         cur.fast_executemany = True
         for i in range(0, len(rows), 50000):
             cur.executemany("INSERT INTO #ip2asn (StartIP, EndIP, ASN, CountryCode, Name) VALUES (?, ?, ?, ?, ?);", rows[i:i + 50000])

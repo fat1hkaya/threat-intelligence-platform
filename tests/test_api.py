@@ -115,7 +115,7 @@ def test_sighting_moves_last_seen(analyst, unique):
 def test_strict_import_rolls_back_everything(analyst, unique):
     total = analyst.get("/api/iocs?size=5").json()["total"]
     csv = f"type,value\ndomain,strict-{unique}.example\nsha256,not-a-hash\nipv4,192.0.2.254\n".encode()
-    r = analyst.post("/api/imports", files={"file": ("bad.csv", csv, "text/csv")}, data={"strict": "true"}).json()
+    r = analyst.post("/api/imports", files={"file": ("pytest-bad.csv", csv, "text/csv")}, data={"strict": "true"}).json()
     assert r["status"] == "failed" and r["inserted"] == 0 and r["failed"] == 1
     assert analyst.get("/api/iocs?size=5").json()["total"] == total                     # ROLLBACK: sayı değişmedi
     job = analyst.get(f"/api/imports/{r['job_id']}").json()
@@ -124,7 +124,7 @@ def test_strict_import_rolls_back_everything(analyst, unique):
 
 def test_lenient_import_keeps_valid_rows(analyst, conn, unique):
     csv = f"type,value,malware\ndomain,lenient-{unique}.example,Emotet\nsha256,not-a-hash,\n".encode()
-    r = analyst.post("/api/imports", files={"file": ("mix.csv", csv, "text/csv")}, data={"strict": "false"}).json()
+    r = analyst.post("/api/imports", files={"file": ("pytest-mix.csv", csv, "text/csv")}, data={"strict": "false"}).json()
     assert r["status"] == "partial" and r["inserted"] == 1 and r["failed"] == 1
     hit = analyst.get("/api/iocs", params={"q": f"lenient-{unique}.example"}).json()["items"]
     assert hit and hit[0]["MalwareName"] == "Emotet"                                    # kanıtlı zararlı bağlantısı da yazıldı
@@ -276,7 +276,7 @@ def test_stale_import_is_stored_as_expired(analyst, unique):
     yeniden içe aktarıldığında etkinleşmez (aktif/pasif arasında gidip gelmez)."""
     csv = f"type,value,first_seen,last_seen\ndomain,stale-{unique}.test,2020-01-01T00:00:00,2020-01-02T00:00:00\n".encode()
     for _ in range(2):
-        r = analyst.post("/api/imports", files={"file": ("old.csv", csv, "text/csv")}, data={"strict": "false"}).json()
+        r = analyst.post("/api/imports", files={"file": ("pytest-old.csv", csv, "text/csv")}, data={"strict": "false"}).json()
         assert r["status"] == "success"
     hit = analyst.get("/api/iocs", params={"q": f"stale-{unique}.test"}).json()["items"][0]
     try:
@@ -577,7 +577,7 @@ def test_db_error_message_does_not_leak_sql():
 def test_upload_size_limit_is_enforced(analyst):
     big = b"a" * (5 * 1024 * 1024 + 1)
     assert analyst.post("/api/hunt", data={"location": "pytest"}, files={"file": ("big.log", big)}).status_code == 400
-    assert analyst.post("/api/imports", files={"file": ("big.csv", big)}).status_code == 400
+    assert analyst.post("/api/imports", files={"file": ("pytest-big.csv", big)}).status_code == 400
 
 
 # ------------------------------------------------------------------ giriş sayfası ve gezinme
@@ -594,3 +594,11 @@ def test_sidebar_is_grouped(viewer):
     for group in ("Analiz", "İstihbarat", "Yönetim"):
         assert f">{group}</h2>" in html
     assert 'id="navCollapse"' in html and 'id="navClose"' in html and "VTYS projesi" not in html
+
+
+def test_dashboard_attention_counts(viewer, conn):
+    a = viewer.get("/api/dashboard/attention").json()
+    cur = conn.cursor()
+    assert a["OpenCases"] == cur.execute("SELECT COUNT(*) FROM dbo.Investigation WHERE Status <> 'closed';").fetchone()[0]
+    assert a["CoverageMarked"] == cur.execute("SELECT COUNT(*) FROM dbo.DetectionCoverage;").fetchone()[0]
+    assert {"HighRisk24h", "Sighted7d", "FailedJobs7d", "BlindSpots", "LastSyncAt"} <= set(a)

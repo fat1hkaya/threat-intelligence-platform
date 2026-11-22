@@ -32,7 +32,7 @@
           <div class="diff"><div class="old" aria-label="Önceki değer"><small class="muted">Önceki değer</small>${r.Action === 'I' ? '<div class="faint">yeni kayıt</div>' : side(o)}</div>
           <div class="new" aria-label="Yeni değer"><small class="muted">Yeni değer</small>${r.Action === 'D' ? '<div class="faint">silindi</div>' : side(n)}</div></div>
           ${r.Action === 'U' ? `<p class="faint" style="font-size:12px">Değişen alanlar: ${keys.filter(changed).map(esc).join(', ') || '—'}</p>` : ''}</section>
-        <section><p class="faint" style="font-size:12px">Bu kayıt ${esc(`trg_${r.TableName}_Audit`)} tetikleyicisiyle yazıldı. trg_AuditLog_Protect (INSTEAD OF) güncelleme ve silmeyi reddeder.</p></section>`;
+        <section><p class="faint tech" style="font-size:12px">Bu kayıt ${esc(`trg_${r.TableName}_Audit`)} tetikleyicisiyle yazıldı. trg_AuditLog_Protect (INSTEAD OF) güncelleme ve silmeyi reddeder.</p></section>`;
     },
   });
 

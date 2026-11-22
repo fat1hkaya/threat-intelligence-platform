@@ -10,7 +10,8 @@
   <script>/* tema, yoğunluk ve daraltılmış menü ilk çizimden önce uygulanır (yanıp sönme olmasın) */
     try { const t = localStorage.getItem('tl-theme'); if (t) document.documentElement.dataset.theme = t;
           if (localStorage.getItem('tl-dense')) document.documentElement.classList.add('dense');
-          if (localStorage.getItem('tl-nav-collapsed')) document.documentElement.classList.add('nav-collapsed'); } catch (e) {}</script>
+          if (localStorage.getItem('tl-nav-collapsed')) document.documentElement.classList.add('nav-collapsed');
+          if (localStorage.getItem('tl-dev')) document.documentElement.classList.add('dev'); } catch (e) {}</script>
   <link rel="stylesheet" href="/static/css/app.css?v={{ v }}">
   {% block head %}{% endblock %}
 </head>
@@ -56,7 +57,7 @@
         <div class="omni-results" id="omniResults" role="listbox" hidden></div>
       </div>
       <div class="top-actions">
-        <button class="btn sm" id="sqlBtn" title="Bu sayfanın çalıştırdığı SQL sorguları" aria-controls="sqlDrawer"><i data-lucide="database-zap"></i><span>SQL</span></button>
+        <button class="btn sm dev-only" id="sqlBtn" title="Bu sayfanın çalıştırdığı SQL sorguları" aria-controls="sqlDrawer"><i data-lucide="database-zap"></i><span>SQL</span></button>
         <div style="position:relative">
           <button class="user-chip" id="userBtn" aria-haspopup="menu" aria-expanded="false">
             <span class="avatar" aria-hidden="true">{{ user.FullName.split()|map('first')|join('')|upper }}</span>
@@ -68,6 +69,7 @@
             <a href="/settings" role="menuitem"><i data-lucide="settings"></i>Ayarlar</a>
             <button role="menuitem" id="themeBtn"><i data-lucide="monitor"></i>Sistem teması</button>
             <button role="menuitem" id="denseBtn"><i data-lucide="rows-3"></i>Sıkı tablo görünümü</button>
+            <button role="menuitem" id="devBtn" aria-pressed="false"><i data-lucide="code-xml"></i>Geliştirici modu: kapalı</button>
             <button role="menuitem" id="pwBtn"><i data-lucide="key-round"></i>Parolamı değiştir</button>
             <a href="/api/docs" role="menuitem" target="_blank" rel="noopener"><i data-lucide="file-code-2"></i>API belgeleri</a>
             <button role="menuitem" id="logoutBtn"><i data-lucide="log-out"></i>Çıkış yap</button>

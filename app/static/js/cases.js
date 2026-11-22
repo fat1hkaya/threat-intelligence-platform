@@ -83,7 +83,7 @@
       <div class="grid g-main-side">
         <div class="grid" style="align-content:start">
           ${c.Summary ? `<article class="card"><h2 style="margin-bottom:8px">Özet</h2><p class="desc" style="white-space:pre-wrap">${esc(c.Summary)}</p></article>` : ''}
-          <article class="card flush"><div class="card-head"><div><h2>Vakadaki varlıklar (${d.items.length})</h2><p>InvestigationIncludes kenarları: MATCH(v-(e)->x), düğüm türü başına</p></div></div>
+          <article class="card flush"><div class="card-head"><div><h2>Vakadaki varlıklar (${d.items.length})</h2><p>Vakaya bağlanan göstergeler ve varlıklar<span class="tech"> · InvestigationIncludes kenarları, MATCH</span></p></div></div>
             ${d.items.length ? byType.map(([t, rows]) => `<div style="padding:4px 0 8px"><h3 style="padding:10px 16px 4px;font-size:13px" class="muted">${nodeIcon(t).replace('class="ic"', 'class="ic" style="display:inline-grid;width:22px;height:22px;border-radius:6px;vertical-align:middle;margin-right:6px"')}${esc(NODE[t].label)} (${rows.length})</h3>
               ${table([
                 { label: 'Varlık', primary: true, render: itemLink },

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-head">
-  <div><h1>İlişki grafı</h1><p>IOC, zararlı yazılım, kampanya, aktör ve ATT&amp;CK ilişkileri. Tüm kenarlar SQL Server Graph tablolarından MATCH ile okunur.</p></div>
+  <div><h1>İlişki grafı</h1><p>IOC, zararlı yazılım, kampanya, aktör ve ATT&amp;CK ilişkileri.<span class="tech"> Tüm kenarlar SQL Server Graph tablolarından MATCH ile okunur.</span></p></div>
 </div>
 
 <form class="card filters" id="gform" role="search" aria-label="Graf araması">
@@ -45,7 +45,7 @@
       <p class="muted" style="margin-top:8px;font-size:13px">Bir düğüme tıklayın: ayrıntıları burada görünür. Kenara tıklarsanız ilişkinin kanıtı ve kaynağı gösterilir. Düğüme çift tıklamak komşularını grafa ekler.</p>
     </aside>
     <article class="card">
-      <div class="card-head"><div><h2>Aktörler arası en kısa yol</h2><p>SHORTEST_PATH · en az 3 ortak araç kullanan aktörler bağlıdır</p></div></div>
+      <div class="card-head"><div><h2>Aktörler arası en kısa yol</h2><p>En az 3 ortak araç kullanan aktörler bağlı sayılır<span class="tech"> · SHORTEST_PATH</span></p></div></div>
       <form id="pathForm" class="grid" style="gap:10px">
         <div class="field"><label for="pa">Başlangıç aktörü</label><input class="input" id="pa" list="actorList" placeholder="ör. APT29" autocomplete="off"></div>
         <div class="field"><label for="pb">Hedef aktör</label><input class="input" id="pb" list="actorList" placeholder="ör. FIN7" autocomplete="off"></div>

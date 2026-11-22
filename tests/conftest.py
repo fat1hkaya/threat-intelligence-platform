@@ -26,6 +26,19 @@ DB_OK = _db_ok()
 needs_db = pytest.mark.skipif(not DB_OK, reason="SQL Server/ThreatLens veritabanı yok (python scripts/setup_db.py)")
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _cleanup_test_import_jobs():
+    """Testlerin açtığı içe aktarma işleri (kasıtlı ROLLBACK senaryoları dahil) oturum sonunda silinir;
+    gösterge panelindeki "başarısız iş" sayısı test artığıyla şişmez."""
+    yield
+    if not DB_OK:
+        return
+    from importers._db import connect
+    c = connect()
+    c.cursor().execute("DELETE FROM dbo.ImportJob WHERE FileName LIKE 'pytest-%' OR FileName = 'demo4.json';")
+    c.close()
+
+
 @pytest.fixture(scope="session")
 def conn():
     if not DB_OK:

@@ -13,7 +13,7 @@
       ['Görülme', r.SightingPart, `${i.SightingCount} × 2 (en çok 20)`, 'var(--medium)']];
     const factors = [['Kaynak güvenilirliği', r.ReliabilityFactor, `${i.Reliability} sınıfı`], ['Tazelik', r.FreshnessFactor, `${r.AgeDays} gün önce görüldü`],
       ['Durum', r.StatusFactor, i.Status === 'active' ? 'aktif' : 'aktif değil (yarıya iner)']];
-    return `<article class="card"><div class="card-head"><div><h2>Risk skoru: ${r.Score} / 100</h2><p>Nasıl hesaplandı? (fn_RiskBreakdown)</p></div></div>
+    return `<article class="card"><div class="card-head"><div><h2>Risk skoru: ${r.Score} / 100</h2><p>Nasıl hesaplandı?<span class="tech"> (fn_RiskBreakdown)</span></p></div></div>
       <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--elev-2)" role="img" aria-label="Taban puanın bileşenleri">
         ${parts.map(([, v, , c]) => `<i style="width:${v}%;background:${c}"></i>`).join('')}</div>
       <dl class="kv" style="margin-top:12px">${parts.map(([l, v, how, c]) => `<dt><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${c};margin-right:6px"></span>${l}</dt><dd><b>${n(v)}</b> <span class="faint">(${how})</span></dd>`).join('')}
@@ -68,12 +68,12 @@
       </div>
       <div class="grid g-main-side">
         <div class="grid" style="align-content:start">
-          <article class="card"><div class="card-head"><div><h2>Atıf zinciri</h2><p>SQL Graph: vw_IndicatorAttribution görünümü (MATCH)</p></div></div>${TL.chains(i, rel.attribution)}</article>
-          <article class="card flush"><div class="card-head"><div><h2>Çok adımlı MATCH: IOC → zararlı ← aktör → teknik</h2><p>sp_IndicatorKillChain sonucu (${rel.killchain.length} satır)</p></div></div>
+          <article class="card"><div class="card-head"><div><h2>Atıf zinciri</h2><p>Göstergenin bağlı olduğu zararlı yazılım ve aktör<span class="tech"> · vw_IndicatorAttribution (MATCH)</span></p></div></div>${TL.chains(i, rel.attribution)}</article>
+          <article class="card flush"><div class="card-head"><div><h2>Olası teknikler: IOC → zararlı → aktör → teknik</h2><p>Bağlı aktörlerin kullandığı teknikler (${rel.killchain.length})<span class="tech"> · sp_IndicatorKillChain</span></p></div></div>
             ${rel.killchain.length ? table([{ label: 'Zararlı', render: (r) => esc(r.Malware) }, { label: 'Aktör', render: (r) => esc(r.Actor) },
               { label: 'Teknik', primary: true, render: (r) => `<span class="mono">${esc(r.ExternalID)}</span> ${esc(r.Technique)}` }], rel.killchain.slice(0, 30), { caption: 'Kill chain' })
               + (rel.killchain.length > 30 ? `<p class="faint" style="padding:10px 16px;font-size: 13px">İlk 30 satır gösteriliyor.</p>` : '') : empty('Zararlı yazılımı kullanan bilinen bir aktör yok.', 'git-branch')}</article>
-          <article class="card flush"><div class="card-head"><h2>Değişiklik geçmişi</h2><p>AuditLog (tetikleyiciyle yazılır)</p></div>
+          <article class="card flush"><div class="card-head"><h2>Değişiklik geçmişi</h2><p>Kim neyi ne zaman değiştirdi<span class="tech"> · AuditLog, tetikleyiciyle yazılır</span></p></div>
             ${d.history.length ? table([{ label: 'Zaman', render: (h) => fmtDT(h.ChangedAt) }, { label: 'İşlem', render: (h) => `<span class="badge ${ACTION[h.Action][1]}">${ACTION[h.Action][0]}</span>` },
               { label: 'Kullanıcı', render: (h) => esc(h.ChangedBy || 'Sistem / toplu içe aktarma') },
               { label: 'Değişen alanlar', render: (h) => { const o = h.OldValues || {}, n = h.NewValues || {}; const keys = Object.keys({ ...o, ...n }).filter((k) => JSON.stringify(o[k]) !== JSON.stringify(n[k]));
@@ -120,7 +120,7 @@
         <div class="form-grid"><div class="field"><label for="sq">Adet</label><input class="input" id="sq" name="quantity" type="number" min="1" value="1"></div>
         <div class="field"><label for="sl">Nerede görüldü</label><input class="input" id="sl" name="location" maxlength="100" placeholder="EDR / WS-0142"></div>
         <div class="field full"><label for="sn">Not</label><textarea class="input" id="sn" name="note" maxlength="400"></textarea></div></div>
-        <p class="faint" style="font-size: 13px">trg_Sighting_AfterInsert tetikleyicisi IOC'nin son görülme zamanını ileri alır.</p>
+        <p class="faint tech" style="font-size: 13px">trg_Sighting_AfterInsert tetikleyicisi IOC'nin son görülme zamanını ileri alır.</p>
         <p class="err" role="alert"></p><div class="dlg-foot"><button type="button" class="btn" data-dismiss>Vazgeç</button><button class="btn primary">Görülme ekle</button></div></form>`);
       dl.querySelector('form').onsubmit = async (e) => { e.preventDefault(); const f = formData(e.target);
         try { await api(`/api/iocs/${id}/sightings`, { method: 'POST', body: { quantity: +f.quantity || 1, location: f.location || null, note: f.note || null } }); dl.close(); toast('Görülme eklendi.'); load(); }

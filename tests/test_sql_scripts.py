@@ -197,7 +197,7 @@ def test_import_matches_family_by_name_key(analyst, unique):
     """'quasar-rat' yazımı ATT&CK'teki 'QuasarRAT' kaydına bağlanmalı, yeni aile açılmamalı."""
     before = analyst.get("/api/malware", params={"q": "quasar", "size": 20}).json()["total"]
     csv = f"type,value,malware\ndomain,namekey-{unique}.test,quasar-rat\n".encode()
-    assert analyst.post("/api/imports", files={"file": ("k.csv", csv, "text/csv")}, data={"strict": "true"}).json()["status"] == "success"
+    assert analyst.post("/api/imports", files={"file": ("pytest-k.csv", csv, "text/csv")}, data={"strict": "true"}).json()["status"] == "success"
     hit = analyst.get("/api/iocs", params={"q": f"namekey-{unique}.test"}).json()["items"][0]
     try:
         assert hit["MalwareName"] == "QuasarRAT"

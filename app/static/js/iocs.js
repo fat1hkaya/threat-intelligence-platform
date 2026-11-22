@@ -55,7 +55,7 @@
         <section><h3><i data-lucide="git-branch"></i>Atıf zinciri</h3>${TL.chains(i, rel.attribution)}</section>
         <section><h3><i data-lucide="grid-3x3"></i>İlişkili ATT&amp;CK teknikleri</h3>
           ${rel.malwareTechniques.length ? `<div class="chips">${rel.malwareTechniques.slice(0, 14).map((t) => `<span class="chip" title="${esc(t.Technique)} (${esc(t.Malware)})"><span class="mono">${esc(t.ExternalID)}</span></span>`).join('')}</div>
-            <p class="faint" style="font-size:12px">${rel.malwareTechniques.length} teknik · IOC → zararlı → teknik MATCH deseni</p>` : '<p class="faint" style="font-size:13px">Teknik ilişkisi yok.</p>'}</section>`);
+            <p class="faint" style="font-size:12px">${rel.malwareTechniques.length} teknik <span class="tech">· IOC → zararlı → teknik MATCH deseni</span></p>` : '<p class="faint" style="font-size:13px">Teknik ilişkisi yok.</p>'}</section>`);
     } catch (e) { panel(split, panelHead('IOC detayı') + empty(e.message, 'circle-alert')); }
   }
 

@@ -463,6 +463,54 @@ dialog .dlg-foot { display: flex; justify-content: flex-end; gap: 8px; }
 }
 .force-dark { color: var(--text); }
 
+/* ---------- geliştirici modu ---------- */
+html:not(.dev) .tech, html:not(.dev) .dev-only { display: none !important; }
+.tech { color: var(--text-3); }
+
+/* ---------- dikkat gerektirenler ---------- */
+.attention { display: grid; gap: 10px; }
+.att-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.att-head h2 { font-size: var(--fs-lg); }
+.att-head .muted { font-size: var(--fs-sm); }
+.att-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.att-item { position: relative; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start; padding: 16px; color: var(--text);
+  border-left: 1px solid var(--line); min-height: 92px; }
+.att-item:first-child { border-left: 0; }
+.att-item:hover { background: var(--elev); text-decoration: none; }
+.att-item::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--tone, transparent); }
+.att-ic { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: color-mix(in srgb, var(--tone, var(--text-3)) 16%, transparent); color: var(--tone, var(--text-2)); }
+.att-ic svg { width: 17px; height: 17px; }
+.att-n { display: block; font-size: var(--fs-2xl); line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.att-label { display: block; margin-top: 2px; color: var(--text-2); font-size: var(--fs-sm); line-height: 1.35; }
+.att-go { color: var(--text-3); width: 16px; height: 16px; margin-top: 8px; }
+.tone-bad { --tone: var(--critical); } .tone-warn { --tone: var(--medium); } .tone-info { --tone: var(--cyan); }
+.tone-ok { --tone: transparent; } .tone-ok .att-n { color: var(--text-2); } .tone-ok .att-ic { color: var(--low); background: color-mix(in srgb, var(--low) 12%, transparent); }
+.tone-muted .att-label { color: var(--text-2); }
+@media (min-width: 721px) and (max-width: 1360px) { .att-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .att-item:nth-child(4) { border-left: 0; } .att-item:nth-child(n+4) { border-top: 1px solid var(--line); } }
+@media (max-width: 720px) {
+  .att-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .att-item { grid-template-columns: 1fr; gap: 8px; padding: 12px; min-height: 0; border-left: 0; border-top: 1px solid var(--line); }
+  .att-item:nth-child(-n+2) { border-top: 0; }
+  .att-item:nth-child(even) { border-left: 1px solid var(--line); }
+  .att-item:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .att-go { display: none; }
+  .att-ic { width: 28px; height: 28px; }
+  .att-n { font-size: var(--fs-xl); }
+}
+
+/* ---------- önem dağılımı: bölümlü çubuk ---------- */
+.sev-stack { display: flex; height: 14px; border-radius: 999px; overflow: hidden; gap: 2px; background: var(--elev); margin: 6px 0 14px; }
+.sev-seg { display: block; min-width: 4px; }
+.sev-seg.sev-critical, .sev-dot.sev-critical { background: var(--critical); }
+.sev-seg.sev-high, .sev-dot.sev-high { background: var(--high); }
+.sev-seg.sev-medium, .sev-dot.sev-medium { background: var(--medium); }
+.sev-seg.sev-low, .sev-dot.sev-low { background: var(--low); }
+.sev-seg.sev-info, .sev-dot.sev-info { background: var(--info); }
+.sev-legend li { display: block; }
+.sev-legend li a { display: grid; grid-template-columns: 12px 1fr auto; gap: 10px; align-items: center; padding: 6px 4px; border-radius: 6px; color: var(--text); }
+.sev-legend li a:hover { background: var(--elev); text-decoration: none; }
+.sev-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
 /* ---------- iskelet yükleme ---------- */
 .skeleton { display: grid; gap: 10px; padding: 16px 18px; }
 .skeleton i { display: block; height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--elev) 25%, var(--elev-2) 40%, var(--elev) 60%);

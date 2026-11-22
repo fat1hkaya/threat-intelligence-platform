@@ -294,6 +294,18 @@
       showTheme();
       if (window.Chart && Object.keys(Chart.instances || {}).length) location.reload();   // grafikler renkleri oluşturulurken alır
     });
+    // Geliştirici modu: SQL çekmecesi ve teknik açıklamalar (görünüm, yordam, tetikleyici adları). Sunumda açılır.
+    const devBtn = document.getElementById('devBtn');
+    const showDev = () => { const on = document.documentElement.classList.contains('dev');
+      if (devBtn) { devBtn.setAttribute('aria-pressed', String(on)); devBtn.innerHTML = `<i data-lucide="code-xml"></i>Geliştirici modu: ${on ? 'açık' : 'kapalı'}`; icons(); } };
+    showDev();
+    devBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const on = document.documentElement.classList.toggle('dev');
+      try { on ? localStorage.setItem('tl-dev', '1') : localStorage.removeItem('tl-dev'); } catch { /* yok say */ }
+      showDev();
+      if (!on) closeSql();
+    });
     const denseBtn = document.getElementById('denseBtn');
     const showDense = () => { const on = document.documentElement.classList.contains('dense');
       if (denseBtn) { denseBtn.innerHTML = `<i data-lucide="${on ? 'rows-4' : 'rows-3'}"></i>${on ? 'Rahat tablo görünümü' : 'Sıkı tablo görünümü'}`; icons(); } };

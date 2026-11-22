@@ -24,6 +24,27 @@ def meta(db: Db = Depends(get_db)):
     }
 
 
+@router.get("/dashboard/attention")
+def dashboard_attention(db: Db = Depends(get_db)):
+    """Şu an bakılması gerekenler: tek satırda skaler alt sorgular (her biri indeksli bir sayım)."""
+    return db.one(
+        """
+        DECLARE @now DATETIME2(0) = SYSUTCDATETIME();
+        SELECT
+            (SELECT COUNT(*) FROM dbo.Indicator AS i JOIN dbo.SeverityLevel AS s ON s.SeverityID = i.SeverityID
+              WHERE i.Status = 'active' AND s.Code IN ('high', 'critical') AND i.LastSeen >= DATEADD(HOUR, -24, @now)) AS HighRisk24h,
+            (SELECT COUNT(DISTINCT IndicatorID) FROM dbo.Sighting WHERE SightedAt >= DATEADD(DAY, -7, @now))       AS Sighted7d,
+            (SELECT COUNT(*) FROM dbo.Investigation WHERE Status <> 'closed')                                       AS OpenCases,
+            (SELECT COUNT(*) FROM dbo.Investigation WHERE Status = 'investigating')                                 AS InvestigatingCases,
+            (SELECT COUNT(*) FROM dbo.ImportJob WHERE StartedAt >= DATEADD(DAY, -7, @now) AND Status = 'failed')
+              + (SELECT COUNT(*) FROM dbo.MaintenanceRun WHERE StartedAt >= DATEADD(DAY, -7, @now) AND Status = 'failed') AS FailedJobs7d,
+            (SELECT COUNT(*) FROM dbo.DetectionCoverage)                                                            AS CoverageMarked,
+            (SELECT COUNT(*) FROM dbo.fn_EffectiveCoverage() AS ec
+              WHERE ec.Level = 0 AND (SELECT COUNT(*) FROM dbo.ActorTechnique AS x WHERE x.TechniqueID = ec.TechniqueID) >= 10) AS BlindSpots,
+            (SELECT MAX(FinishedAt) FROM dbo.ImportJob WHERE Status = 'success' AND JobType = 'feed')             AS LastSyncAt;
+        """)
+
+
 @router.get("/dashboard/summary")
 def dashboard_summary(days: int = Query(30, ge=7, le=180), db: Db = Depends(get_db)):
     kpi = db.one(
