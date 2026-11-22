@@ -132,6 +132,7 @@ Transaction örnekleri:
 
 - **Uygulama katmanı:** `require_analyst`, `require_admin` bağımlılıkları. İzleyici yazma denemesinde 403 alır.
 - **Application Role:** oturum doğrulandıktan sonra bağlantı `sp_setapprole` ile kullanıcının rolüne (`app_viewer`, `app_analyst`, `app_admin`) indirgenir. Uygulama katmanındaki bir hata bile rolün GRANT/DENY sınırını aşamaz. Rol parolaları `.env` dosyasındaki `TL_APPROLE_SECRET` sırrından türetilir. `sp_setapprole` her çağrıda yaklaşık 150 ms sürdüğü için rol başına ayrı bağlantı havuzu tutulur; ODBC havuzu kapalıdır, çünkü rol etkin bağlantıyı bozar.
+- **HTTP katmanı:** İçerik güvenlik politikası (betikler yalnızca sunucudan ve isteğe özel nonce'lu satır içi bloklardan), `X-Frame-Options: SAMEORIGIN`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`; API yanıtları `no-store`. Beklenmeyen hatalarda kullanıcı yalnızca kayıt kodu görür, ayrıntı `logs/app.log` dosyasındadır. `/api/docs` oturum ister.
 - **Oturum ve giriş:** oturum belirteci veritabanında SHA-256 özetiyle saklanır (sızan tablo belirteç vermez). `LoginAttempt` + `fn_LoginLock`: 15 dakikada 5 hatalı deneme hesabı kilitler (429). Parola değişince diğer oturumlar kapanır.
 - **Veritabanı katmanı** (`08_security.sql`):
   - `tip_reader` şemayı okur; `UserSession` ve `AppUser.PasswordHash` kolonu için DENY vardır.
@@ -178,6 +179,8 @@ Beslemeler Windows Görev Zamanlayıcı ile 6 saatte bir senkronize edilir (`scr
 | 17 | Performans | `vw_IndicatorCounts` indexed view (`WITH NOEXPAND`; Standard sürüm otomatik eşlemez), `AuditLog` columnstore, Query Store + `sp_TopQueries` | Gösterge paneli sayaçları birkaç önceden toplanmış satırdan okunur |
 | 18 | Tam metin arama | `FREETEXTTABLE` / `CONTAINS`, `sp_TextSearch`; kurulu değilse LIKE | Kelime biçimleri ve alaka sıralaması |
 | 19 | Vakalar | `Investigation`, `InvestigationNote`, `InvestigationNode` (AS NODE), `InvestigationIncludes` (AS EDGE, 6 bağlantı türü, ON DELETE CASCADE), `vw_InvestigationItem` (MATCH) | Çok biçimli ilişki ("vaka herhangi bir varlığı içerebilir") yabancı anahtarsız EntityType/EntityID anti-deseni yerine tür güvenli tek kenar tablosuyla çözülür |
+| 21 | Bakım | SIMPLE kurtarma modeli, `sp_BackupDatabase` (gecelik, sıkıştırılmış, `RESTORE VERIFYONLY` ile doğrulanmış, haftanın günü başına dönen 7 dosya), `sp_CheckIntegrity` (haftalık DBCC CHECKDB) | Log yedeği alınmayan FULL modelde log dosyası sınırsız büyüyordu (3,9 GB) |
+| 22 | Ayarlama | 22 yabancı anahtar indeksi (çoğu filtreli), `sp_PurgeHistory` (haftalık), READ_COMMITTED_SNAPSHOT | Kanıt silmek 9 tabloyu taramıyor; içe aktarma sürerken okumalar bloklanmıyor |
 | 20 | Ağ zenginleştirme | `AutonomousSystem`, `IpRange`, `IndicatorNetwork` (1:1), `fn_Ipv4ToBigint`, `sp_EnrichNetwork`, `trg_Indicator_Network`, `sp_InfrastructureOverlap` | Aralık araması `BETWEEN` yerine `TOP (1) ... WHERE StartIP <= ip ORDER BY StartIP DESC` ile tek indeks araması; /24 kümeleri paylaşılan altyapıyı gösterir |
 
 Dışa aktarma (`app/api/exports.py`): STIX 2.1 paketleri (IOC, aktör, vaka = `grouping`, notlar = `note`, graf kenarları = `relationship`, TLP işaretlemesi, belirlenimci `uuid5` kimlikleri) ve MITRE ATT&CK Navigator katmanları (aktör teknikleri, kapsama renkleri).

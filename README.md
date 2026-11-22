@@ -6,7 +6,7 @@ BLM3001 Veri Tabanı Yönetim Sistemleri dersi projesi. Microsoft SQL Server (il
 
 Bir IOC'nin (IP, domain, URL, MD5/SHA-1/SHA-256) yalnızca kaydını değil, **zararlı yazılım → kampanya → tehdit aktörü → MITRE ATT&CK tekniği** zincirindeki ilişkilerini, her ilişkinin **kanıtı ve kaynağıyla** gösterir. İlişkiler veritabanında `AS NODE` / `AS EDGE` tablolarında saklanır ve `MATCH` / `SHORTEST_PATH` ile sorgulanır.
 
-- **ORM yok:** Tüm veritabanı erişimi elle yazılmış, parametreli T-SQL (`pyodbc`). Arayüzdeki **SQL** düğmesi o ekranın çalıştırdığı gerçek sorguları gösterir.
+- **ORM yok:** Tüm veritabanı erişimi elle yazılmış, parametreli T-SQL (`pyodbc`). Kullanıcı menüsünden **Geliştirici modu** açıldığında üst çubuktaki **SQL** düğmesi o ekranın çalıştırdığı gerçek sorguları, kart açıklamaları da kullanılan görünüm/yordam/tetikleyici adlarını gösterir (sunumda açın).
 - **Uydurma veri yok:** Veritabanındaki her IOC gerçek bir kaynaktan (CISA KEV, abuse.ch Feodo Tracker / ThreatFox / MalwareBazaar / URLhaus, Malpedia) ya da bir analistin girişinden gelir. Gösterge paneli sayıları canlı sorgulardan hesaplanır; sentetik (demo) veri yoktur.
 
 ## Ekranlar
@@ -39,7 +39,8 @@ Bir IOC'nin (IP, domain, URL, MD5/SHA-1/SHA-256) yalnızca kaydını değil, **z
 | Satır içi tablo değerli fonksiyonla açıklanabilir risk skoru | `03_functions.sql` (`fn_RiskBreakdown`) |
 | İlişkisel bölme (çift `NOT EXISTS`): tüm teknikleri kapsanan aktörler | `15_coverage.sql` |
 | IP aralığı araması: `TOP (1) ... ORDER BY StartIP DESC` ile tek indeks araması | `20_network.sql` |
-| SQL Server Agent işleri: süresi dolan IOC'ler, graf bakımı | `10_lifecycle.sql`, `11_agent_jobs.sql` |
+| SQL Server Agent işleri: süresi dolan IOC'ler, graf bakımı, gecelik doğrulanmış yedek, haftalık DBCC CHECKDB, geçmiş temizliği | `10_lifecycle.sql`, `11_agent_jobs.sql`, `21_maintenance.sql`, `22_sql_tuning.sql` |
+| SIMPLE kurtarma modeli, READ_COMMITTED_SNAPSHOT, yabancı anahtar indeksleri (filtreli) | `21_maintenance.sql`, `22_sql_tuning.sql` |
 | Tetikleyicilerle denetim izi, graf senkronu, ağ zenginleştirme | `07_triggers.sql` ve migration'lar |
 
 Arayüz Türkçedir; 390 / 768 / 1024 / 1440 / 1920 / 2560 px genişliklerde ölçülerek test edilmiştir (yatay taşma yok, JavaScript hatası yok):
@@ -86,6 +87,17 @@ Betik sırasıyla şunları yapar:
 
 Süre yaklaşık 20 saniye. Tekrar çalıştırmak güvenlidir; var olan tablolara dokunmaz. Baştan kurmak için `--reset` ekleyin, ama bu veritabanını **siler**.
 
+### Ortam değişkenleri (`.env`)
+
+| Değişken | Varsayılan | Anlamı |
+|---|---|---|
+| `TL_DB_SERVER`, `TL_DB_NAME` | `localhost`, `ThreatLens` | SQL Server örneği ve veritabanı |
+| `TL_DB_USER`, `TL_DB_PASSWORD` | boş | Boşsa Windows kimlik doğrulaması |
+| `TL_APPROLE_SECRET` | kurulumda üretilir | Application Role parolalarının türetildiği sır |
+| `ABUSECH_AUTH_KEY` | boş | ThreatFox / MalwareBazaar / URLhaus |
+| `TL_LOGIN_HINT` | `1` | Giriş sayfasında yerel kullanıcı adlarını gösteren not; paylaşılan kurulumda `0` |
+| `TL_COOKIE_SECURE` | `0` | HTTPS arkasında `1`: oturum çerezi Secure olur, HSTS başlığı eklenir |
+
 ### 4. Çalıştırma
 
 ```powershell
@@ -125,7 +137,7 @@ Diğer kaynaklar:
 .venv\Scripts\python -m pytest -q
 ```
 
-133 test vardır ve gerçek SQL Server'da çalışır; veritabanı yoksa atlanır. GitHub Actions her push'ta aynı testleri SQL Server 2025 Linux kapsayıcısında çalıştırır (`.github/workflows/ci.yml`; beslemeler indirilmez, tam metin arama kapsayıcıda kurulu olmadığı için LIKE yedeği sınanır). Kapsadıkları:
+145 test vardır ve gerçek SQL Server'da çalışır; veritabanı yoksa atlanır. GitHub Actions her push'ta aynı testleri SQL Server 2025 Linux kapsayıcısında çalıştırır (`.github/workflows/ci.yml`; beslemeler indirilmez, tam metin arama kapsayıcıda kurulu olmadığı için LIKE yedeği sınanır). Kapsadıkları:
 - **Normalleştirme:** 34 test.
 - **Kimlik doğrulama ve rol yetkileri:** izleyici yazma denemesinde 403 alır.
 - **IOC işlemleri:**
@@ -164,8 +176,8 @@ app/            FastAPI uygulaması
   templates/    Jinja2 sayfaları
   static/       css, js (saf JavaScript), vendor (vis-network, Chart.js, Lucide, yazı tipleri; çevrimdışı çalışır), samples
 database/       T-SQL: schema, indexes, functions, views, graph, procedures, triggers, security, seed,
-                migrations (10-20: yaşam döngüsü, Agent işleri, kimlik doğrulama, log avı, kapsama,
-                temporal, performans, tam metin, vakalar, ağ), demos, backup
+                migrations (10-22: yaşam döngüsü, Agent işleri, kimlik doğrulama, log avı, kapsama,
+                temporal, performans, tam metin, vakalar, ağ, bakım, ayarlama), demos, backup
 importers/      MITRE ATT&CK, abuse.ch, CISA KEV, Malpedia, iptoasn.com içe aktarıcıları
 scripts/        setup_db.py (kurulum), gen_docs.py (belge üretimi), sync_feeds.cmd (zamanlanmış senkron)
 .github/        CI iş akışı (SQL Server kapsayıcısında pytest, JS sözdizimi)
@@ -187,6 +199,7 @@ _archive/       eski React prototipi ve eski betikler (yalnızca referans)
 - **MITRE ATT&CK** ilişkileri (aktör–yazılım, aktör–teknik, kampanya–aktör…) kaynaktaki açıklamalarıyla birlikte `Evidence` tablosuna yazılır.
 - **Aktör köken ülkesi, motivasyonu ve hedef sektörleri** ATT&CK açıklamasından anahtar sözcükle **sezgisel** olarak çıkarılır. Emin olunamayanlar boş bırakılır.
 - **Sentetik veri yoktur.** Eski sürümdeki DEMO DATA modülü kaldırıldı (`_archive/demo_data_kaldirildi.py` yalnızca referans olarak duruyor). Testler kendi IOC'lerini oluşturup test sonunda siler.
+- **Güvenlik:** İçerik güvenlik politikası (CSP, isteğe özel nonce), çerçeveye gömülme koruması, API yanıtlarında önbellek yok; API belgeleri (`/api/docs`) yalnızca oturum açmış kullanıcıya. Hatalarda kullanıcıya yalnızca kayıt kodu gösterilir, ayrıntı `logs/app.log` dosyasına yazılır. İzleme için `/api/health`.
 - `SHORTEST_PATH` **ağırlıksız** en kısa yolu bulur. Güven puanı yol ağırlığı olarak kullanılmaz.
 - **Tespit kapsamı** kurumun kendi beyanıdır; başlangıçta boştur, uydurma kapsama verisi yüklenmez.
 - IP aralığının **ülkesi barındırma yeridir**, saldırganın kökeni değildir.

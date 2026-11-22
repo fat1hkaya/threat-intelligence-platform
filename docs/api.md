@@ -19,6 +19,7 @@ Hatalar her zaman `{"detail": "..."}` biçimindedir: 400 iş kuralı (T-SQL THRO
 | Yöntem | Yol | Açıklama | Parametreler |
 |---|---|---|---|
 | GET | `/api/meta` | Form ve filtrelerde kullanılan sözlük tabloları. |  |
+| GET | `/api/dashboard/attention` | Şu an bakılması gerekenler: tek satırda skaler alt sorgular (her biri indeksli bir sayım). |  |
 | GET | `/api/dashboard/summary` | Dashboard Summary | `days` |
 | GET | `/api/search` | Üst bardaki global arama: sp_GlobalSearch (IOC, aktör, zararlı, kampanya, teknik, CVE). | `q` |
 | GET | `/api/trace/{trace_id}` | Arayüzdeki 'SQL' çekmecesi: bir isteğin çalıştırdığı gerçek T-SQL ifadeleri. | `trace_id` |
@@ -35,6 +36,7 @@ Hatalar her zaman `{"detail": "..."}` biçimindedir: 400 iş kuralı (T-SQL THRO
 |---|---|---|---|
 | GET | `/api/iocs` | List Iocs | `q`, `type`, `severity`, `source`, `status`, `malware`, `tag`, `minConfidence`, `maxConfidence`, `dateFrom`, `dateTo`, `sort`, `dir`, `page`, `size` |
 | POST | `/api/iocs` | Create Ioc | gövde (JSON / form) |
+| GET | `/api/iocs/export` | Ekrandaki filtrelerle eşleşen IOC'ler (en çok 50.000). csv: tüm sütunlar; txt: satır başına bir değer | `format`, `q`, `type`, `severity`, `source`, `status`, `malware`, `tag`, `minConfidence`, `maxConfidence`, `dateFrom`, `dateTo` |
 | POST | `/api/iocs/lookup` | Yapıştırılan IOC listesinden hangileri kayıtlı? Değerler önce Python'da normalleştirilir. | gövde (JSON / form) |
 | GET | `/api/iocs/examples` | İlişki grafı ekranındaki örnek düğmeleri: atıf zinciri bir aktöre ulaşan gerçek IOC'ler (tip başına en yenisi). |  |
 | GET | `/api/iocs/{indicator_id}` | Get Ioc | `indicator_id` |
@@ -153,7 +155,8 @@ Hatalar her zaman `{"detail": "..."}` biçimindedir: 400 iş kuralı (T-SQL THRO
 | GET | `/api/imports` | List Imports | `source`, `status`, `page`, `size` |
 | POST | `/api/imports` | CSV/JSON dosyasından gösterge içe aktarma. Katı modda (strict) tek hatalı satır tüm dosyayı geri alır. | gövde (JSON / form) |
 | GET | `/api/imports/{job_id}` | Get Import | `job_id` |
-| POST | `/api/imports/feed` | Bir beslemeyi elle senkronize eder. abuse.ch anahtarı yoksa iş açılmaz, açık bir mesaj döner. | gövde (JSON / form) |
+| POST | `/api/imports/feed` | Bir beslemeyi arka planda senkronize eder; istek hemen döner (202). Durum: GET /api/imports/feed/status | gövde (JSON / form) |
+| GET | `/api/imports/feed/status` | Feed Status |  |
 | GET | `/api/audit-logs` | Audit Logs | `table`, `action`, `user`, `record`, `dateFrom`, `dateTo`, `page`, `size` |
 | GET | `/api/audit-logs/logins` | Giriş denemeleri (yalnızca yönetici; tabloya doğrudan erişim kapalı, sp_LoginAttempts üzerinden). |  |
 | GET | `/api/audit-logs/stats` | Audit Stats |  |

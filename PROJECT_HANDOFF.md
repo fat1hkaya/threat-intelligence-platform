@@ -1,4 +1,24 @@
-# SON DURUM — 15 Kasım 2026, geliştirme turu 2 (önce bunu okuyun)
+# SON DURUM — 22 Kasım 2026, geliştirme turu 3 (önce bunu okuyun)
+
+Üçüncü turda tüm proje (arayüz, backend, SQL) gözden geçirildi ve bulgular 5 aşamada düzeltildi:
+
+| Aşama | Ne yapıldı |
+|---|---|
+| Kritik | Hamburger düğmesi masaüstünde görünüp sayfayı karartıyordu (CSS özgüllüğü). SQL log dosyası 3,9 GB'a çıkmıştı (FULL kurtarma, log yedeği yok): SIMPLE modele geçildi, 264 MB'a küçültüldü, gecelik doğrulanmış yedek + haftalık CHECKDB eklendi. `/api/docs` oturumsuz açıktı. 500 hataları ham SQL mesajı gösteriyordu. Dosya yüklemeleri tamamen belleğe okunuyor ve olay döngüsünü kilitliyordu. |
+| Giriş ve gezinme | Giriş sayfası yeniden tasarlandı (iz zinciri anlatımı, kart, parola göster, Caps Lock uyarısı, yükleniyor durumu, oturum açıksa yönlendirme). Menü üç grupta, masaüstünde ikon şeridine daralır, mobil çekmece erişilebilir (odak tuzağı, inert, kaydırma kilidi, ikon X'e döner). |
+| Genel bakış | "Dikkat gerektirenler" şeridi, geliştirici modu (SQL çekmecesi ve teknik açıklamalar yalnızca açıkken), bölümlü önem çubuğu. ip2asn senkronundaki harmanlama hatası düzeltildi. |
+| Backend | CSP (nonce), güvenlik başlıkları, `logs/app.log`, `/api/health`, besleme senkronu arka planda (202), sabit sürümler. |
+| SQL | 22 yabancı anahtar indeksi, haftalık geçmiş temizliği, READ_COMMITTED_SNAPSHOT (demo 6 güncellendi). |
+
+**Testler:** 145/145 geçti. 15 ekran 390 / 768 / 1024 / 1440 px'te ölçüldü: yatay taşma, JS veya CSP hatası, küçük dokunma hedefi, 12 px altı yazı yok.
+
+**Açık kalanlar:**
+1. Zamanlanmış besleme görevi (Windows) 22 Kasım 17:06'da 0xC000013A koduyla kesildi (konsol penceresi kapatıldı ya da bilgisayar uyudu). Görev penceresiz çalışacak şekilde değiştirilebilir.
+2. iptoasn.com aralık verisi hâlâ yüklü değil (önceki deneme harmanlama hatasıyla düşmüştü, düzeltildi): Veri Kaynakları → iptoasn.com → Senkronize et.
+3. Sunumda kullanıcı menüsünden **Geliştirici modu** açılmalı (SQL düğmesi ve teknik açıklamalar).
+4. Ekip işleri: draw.io Chen ER, normalizasyon raporu, ekran görüntüleri.
+
+# ÖNCEKİ DURUM — 15 Kasım 2026, geliştirme turu 2
 
 İkinci turda platform 12 adımda genişletildi. Her adım gerçek sunucuda test edildi, ayrı commit olarak GitHub'a gönderildi.
 
