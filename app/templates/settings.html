@@ -35,10 +35,11 @@
     <h2>Risk skoru nasıl hesaplanıyor?</h2>
     <p class="muted" style="font-size: 13px;margin:4px 0 12px"><span class="user-only">Skor saklanmaz; IOC her okunduğunda güncel verilerle yeniden hesaplanır.</span><span class="tech">dbo.fn_RiskScore skaler fonksiyonu (türetilmiş nitelik: saklanmaz, vw_Indicator içinde her okumada hesaplanır)</span></p>
     <ol class="timeline">
-      <li><span class="dot done"></span><div><b>Taban puan</b><br><small class="muted">güven × 0,45 + önem ağırlığı × 0,35 + görülme sayısı × 2 (en çok 20)</small></div></li>
+      <li><span class="dot done"></span><div><b>Taban puan</b><br><small class="muted">güven × 0,55 + önem ağırlığı × 0,45 (0–100)</small></div></li>
       <li><span class="dot done"></span><div><b>Kaynak güvenilirliği çarpanı</b><br><small class="muted">Admiralty ölçeği: A 1,00 · B 0,95 · C 0,88 · D 0,78 · E 0,68 · F 0,60</small></div></li>
       <li><span class="dot done"></span><div><b>Tazelik çarpanı</b><br><small class="muted">son görülme ≤30 gün 1,00 · ≤90 gün 0,85 · ≤180 gün 0,65 · daha eski 0,45</small></div></li>
-      <li><span class="dot"></span><div><b>Durum</b><br><small class="muted">aktif değilse puan yarıya iner; sonuç 0–100 arasına sınırlanır</small></div></li>
+      <li><span class="dot done"></span><div><b>Durum</b><br><small class="muted">aktif değilse taban puan yarıya iner</small></div></li>
+      <li><span class="dot"></span><div><b>Kurumda görülme bonusu</b><br><small class="muted">çarpanlardan sonra eklenir: görülme sayısı × 2 (en çok 20); sonuç 0–100 arasına sınırlanır</small></div></li>
     </ol>
     <p class="faint" style="font-size:12px">Önem ağırlıkları<span class="tech"> (SeverityLevel tablosu)</span>: Bilgi 10, Düşük 30, Orta 55, Yüksek 80, Kritik 100.</p>
   </article>

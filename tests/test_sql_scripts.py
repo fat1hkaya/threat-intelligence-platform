@@ -250,3 +250,24 @@ def test_purge_script_dry_run_reports_and_deletes_nothing(conn):
     assert r.returncode == 0, r.stdout + r.stderr
     assert "yalnızca rapor" in r.stdout and "Hiçbir şey silinmedi" in r.stdout
     assert conn.cursor().execute("SELECT COUNT(*) FROM dbo.LoginAttempt;").fetchone()[0] >= before
+
+
+# ------------------------------------------------------------------ risk ölçeği (Konsol aşama 8, seçenek a)
+@pytest.mark.parametrize("conf, weight, sightings, rel, active, expected", [
+    (90, 80, 0, "B", 1, 81),     # (90×0,55 + 80×0,45) × 0,95 = 81,2: kurumda görülmeden Yüksek banda çıkar
+    (90, 80, 5, "B", 1, 91),     # + görülme bonusu 5 × 2 = 10 (çarpanlardan geçmez)
+    (90, 80, 5, "B", 0, 51),     # aktif değil: taban yarıya iner, bonus aynı (40,6 + 10)
+    (100, 100, 30, "A", 1, 100),  # bonus en çok 20; sonuç 100 ile sınırlı
+    (50, 55, 0, "F", 1, 31),     # (27,5 + 24,75) × 0,60 = 31,35
+])
+def test_risk_breakdown_scale(conn, conf, weight, sightings, rel, active, expected):
+    row = conn.cursor().execute(
+        """DECLARE @now DATETIME2(0) = SYSUTCDATETIME();
+           SELECT b.Score, b.BasePoints, b.ConfidencePart, b.SeverityPart, b.SightingPart,
+                  dbo.fn_RiskScore(?, ?, @now, ?, ?, ?, @now) AS Scalar
+           FROM dbo.fn_RiskBreakdown(?, ?, @now, ?, ?, ?, @now) AS b;""",
+        conf, weight, sightings, rel, active, conf, weight, sightings, rel, active).fetchone()
+    assert row.Score == row.Scalar == expected
+    assert float(row.ConfidencePart) == pytest.approx(conf * 0.55) and float(row.SeverityPart) == pytest.approx(weight * 0.45)
+    assert float(row.BasePoints) == pytest.approx(conf * 0.55 + weight * 0.45)
+    assert float(row.SightingPart) == min(20, sightings * 2)

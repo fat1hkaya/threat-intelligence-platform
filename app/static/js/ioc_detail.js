@@ -25,15 +25,17 @@
   function riskCard(r, i) {
     if (!r) return '';
     const [code, band] = TL.riskBand(r.Score);
-    const parts = [['Güven', r.ConfidencePart, `${i.Confidence} × 0,45`, 'var(--accent)'], ['Önem', r.SeverityPart, `${esc(TL.SEV[i.SeverityCode] || '')} ${r.SeverityWeight} × 0,35`, 'color-mix(in srgb, var(--accent) 50%, transparent)'],
-      ['Kurumda görülme', r.SightingPart, `${i.SightingCount} × 2 (en çok 20)`, 'var(--text-3)']];
+    const parts = [['Güven', r.ConfidencePart, `${i.Confidence} × 0,55`, 'var(--accent)'], ['Önem', r.SeverityPart, `${esc(TL.SEV[i.SeverityCode] || '')} ${r.SeverityWeight} × 0,45`, 'color-mix(in srgb, var(--accent) 50%, transparent)']];
     const factors = [['kaynak', r.ReliabilityFactor, `${i.Reliability} sınıfı`], ['tazelik', r.FreshnessFactor, `${r.AgeDays} gün önce görüldü`],
       ['durum', r.StatusFactor, i.Status === 'active' ? 'aktif' : 'aktif değil']];
     return `<div class="gauge"><svg viewBox="0 0 112 62" role="img" aria-label="Risk ${r.Score} / 100, ${esc(band)} bant">
         <path d="M8 56 A48 48 0 0 1 104 56" pathLength="100" class="g-track"/><path d="M8 56 A48 48 0 0 1 104 56" pathLength="100" class="g-val band-stroke-${code}" style="stroke-dasharray:${r.Score} 100"/></svg>
       <div><div class="g-big">${r.Score}<small> / 100</small></div><div class="g-band"><i class="band-${code}" aria-hidden="true"></i>${esc(band)} bant</div></div></div>
       <div class="pk-legend" style="margin-top:12px">${parts.map(([l, v, how, c]) => `<i style="background:${c}"></i><span>${l} <span class="faint">${how}</span></span><b>${n(v)}</b>`).join('')}
-        <span class="eq">${factors.map(([l, v, how]) => `× ${l} ${n(v, 2)}`).join(' · ')} = <b>${r.Score}</b><span class="tech"> · fn_RiskBreakdown</span></span></div>`;
+        <i style="background:var(--line-strong)"></i><span>Taban puan</span><b>${n(r.BasePoints)}</b>
+        <span class="eq">${factors.map(([l, v, how]) => `<span title="${esc(how)}">× ${l} ${n(v, 2)}</span>`).join(' · ')}</span>
+        <i style="background:var(--text-3)"></i><span>+ kurumda görülme <span class="faint">${i.SightingCount} × 2 (en çok 20)</span></span><b>${n(r.SightingPart)}</b>
+        <span class="eq">= <b>${r.Score}</b> <span class="faint">(0–100, yuvarlanmış)</span><span class="tech"> · fn_RiskBreakdown</span></span></div>`;
   }
   /** Yatay atıf zinciri: IOC → zararlı → aktör düğüm kartları, aralarında oklar (ilk zincir; tümü İlişkiler sekmesinde) */
   function pathCard(i, attribution) {

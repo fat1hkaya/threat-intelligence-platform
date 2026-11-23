@@ -1,0 +1,106 @@
+{
+  "dark": {
+    "overview": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "iocs": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "iocs-panel": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "ioc-detail": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "settings-risk": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    }
+  },
+  "light": {
+    "overview": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "iocs": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "iocs-panel": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "ioc-detail": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "settings-risk": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    }
+  }
+}

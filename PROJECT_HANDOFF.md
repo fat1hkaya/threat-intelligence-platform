@@ -1,4 +1,12 @@
-# SON DURUM — 23 Kasım 2026, arayüz/UX turu (önce bunu okuyun)
+# SON DURUM — 23 Kasım 2026, Konsol tasarım turu (önce bunu okuyun)
+
+`docs/CLAUDE_CODE_TASARIM_KONSOL.md` görevi 8 aşamada uygulandı (A · Konsol yönü, B · Dosya'dan kayıtlı görünümler, IOC detay dosya düzeni, filtre oran çubukları). Madde madde durum, önizlemeyle karşılaştırma, iki temada denetim sonuçları ve önce/sonra görüntüleri: **[docs/ui-audit/KONSOL_RAPOR.md](docs/ui-audit/KONSOL_RAPOR.md)**.
+
+- Yeni belirteçler (Geist / Geist Mono yerel, üç yüzey, tek vurgu), 56 px ikon şeridi ve 46 px üst çubuk, araç çubuklarında yerel `<select>` yerine filtre düğmesi + panel (sayılar sunucudan: `/api/<liste>/facets`, `app/api/facets.py`), kart dışı tablolar, 384 px önizleme paneli, IOC detayında sekmeler.
+- **Risk ölçeği değişti (aşama 8, seçenek a):** taban = güven × 0,55 + önem × 0,45; × kaynak × tazelik × durum; + kurumda görülme bonusu (en çok 20). Yalnızca `fn_RiskBreakdown` değişti ve canlıya uygulandı; skor saklanmadığı için veri değişmedi.
+- Denetim betikleri: `ui_screenshots.py --themes dark,light`, `theme_audit.py`, `konsol_compare.py`, `a11y_audit.py`. 176 test.
+
+# ÖNCEKİ TUR — 23 Kasım 2026, arayüz/UX sağlamlaştırma
 
 `docs/CLAUDE_CODE_UI_PROMPT.md` görevi 5 aşamada uygulandı; madde madde durum, denetim sonuçları ve önce/sonra ekran görüntüleri: **[docs/ui-audit/RAPOR.md](docs/ui-audit/RAPOR.md)**.
 

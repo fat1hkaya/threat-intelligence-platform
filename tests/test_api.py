@@ -390,10 +390,12 @@ def test_login_attempts_visible_only_to_admin(admin, analyst):
 def test_risk_breakdown_matches_score(admin, linked_ioc):
     d = admin.get(f"/api/iocs/{linked_ioc['IndicatorID']}").json()
     r = d["risk"]
-    raw = float(r["BasePoints"]) * float(r["ReliabilityFactor"]) * float(r["FreshnessFactor"]) * float(r["StatusFactor"])
+    # taban × kaynak × tazelik × durum + kurumda görülme bonusu (çarpansız)
+    raw = float(r["BasePoints"]) * float(r["ReliabilityFactor"]) * float(r["FreshnessFactor"]) * float(r["StatusFactor"]) + float(r["SightingPart"])
     from decimal import ROUND_HALF_UP, Decimal                                         # SQL ROUND: yarımı yukarı
     assert r["Score"] == d["indicator"]["RiskScore"] == max(0, min(100, int(Decimal(str(raw)).quantize(Decimal("1"), ROUND_HALF_UP))))
-    assert abs(float(r["BasePoints"]) - (float(r["ConfidencePart"]) + float(r["SeverityPart"]) + float(r["SightingPart"]))) < 0.01
+    assert abs(float(r["BasePoints"]) - (float(r["ConfidencePart"]) + float(r["SeverityPart"]))) < 0.01
+    assert abs(float(r["ConfidencePart"]) - d["indicator"]["Confidence"] * 0.55) < 0.01 and abs(float(r["SeverityPart"]) - r["SeverityWeight"] * 0.45) < 0.01
 
 
 # ------------------------------------------------------------------ log avı

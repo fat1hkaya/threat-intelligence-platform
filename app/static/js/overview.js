@@ -65,11 +65,10 @@
     const label = (r) => `${r.Name} (${r.MinScore}+)`;
     document.getElementById('sevLegend').innerHTML = sevRows.map((r) => `<li><a href="/iocs?minRisk=${r.MinScore}&maxRisk=${(d.byRisk[d.byRisk.findIndex((b) => b.Code === r.Code) - 1] || { MinScore: 101 }).MinScore - 1}&status=active" class="${r.Total ? '' : 'is-zero'}"><i class="sev-dot sev-${r.Code}"></i><span>${esc(label(r))}</span><b>${fmtN(r.Total)} <span class="faint">%${pct(r.Total, total).toLocaleString('tr-TR')}</span></b></a></li>`).join('');
     document.getElementById('sevSummary').textContent = 'Risk skoru dağılımı: ' + sevRows.map((r) => `${r.Name} ${r.Total}`).join(', ');
-    const top = sevRows.filter((r) => r.Code === 'critical' || r.Code === 'high').reduce((a, r) => a + r.Total, 0);
     const used = sevRows.filter((r) => r.Total);
     document.getElementById('riskNote').innerHTML = used.length === 1
-      ? `Tüm IOC'ler ${esc(used[0].Name)} bantta: puan ölçeği bkz. <a href="/settings?tab=risk">Ayarlar</a>.${top ? '' : ' Yüksek ve kritik banda çıkmak için IOC\'nin kurum içinde görülmüş olması gerekir.'}`
-      : (top ? '' : 'Yüksek ve kritik banda çıkmak için IOC\'nin kurum içinde görülmüş olması gerekir (görülme sayısı skora eklenir).');
+      ? `Tüm IOC'ler ${esc(used[0].Name)} bantta: puan ölçeği bkz. <a href="/settings?tab=risk">Ayarlar</a>.`
+      : '';
     document.getElementById('sevTotal').textContent = "Aktif IOC'ler, Ayarlar'daki bant eşiklerine göre";
     document.getElementById('sevStack').innerHTML = sevRows.filter((r) => r.Total).map((r) => `<i class="sev-seg sev-${r.Code}" style="flex-grow:${r.Total}" title="${esc(label(r))}: ${fmtN(r.Total)}"></i>`).join('');
 

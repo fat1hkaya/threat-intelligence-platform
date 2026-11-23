@@ -10,8 +10,8 @@ Bu rapor `docs/CLAUDE_CODE_TASARIM_KONSOL.md` görevinin (A · Konsol yönü ve 
 | 4 | `3e084dc`, `867dd76`, `27a8922` | Ortak bileşenler (filtre paneli, tablo, önizleme paneli, IOC detay) |
 | 5 | `68dbad9` | Sayfa sayfa uygulama |
 | 6 | `26cd95d` | Açık tema eşitliği |
-| 7 | bu commit | Doğrulama ve rapor |
-| 8 | — | Risk puanı ölçeği: onay bekliyor (§9, aşağıda) |
+| 7 | `e076273` | Doğrulama ve rapor |
+| 8 | bu commit | Risk puanı ölçeği: seçenek (a) (§9, aşağıda) |
 
 Önce: `docs/ui-audit/konsol-before/` (yalnızca koyu tema; tema seçeneği o sırada yoktu). Sonra: `docs/ui-audit/konsol-after/<tema>/<görünüm>/`. Depoda yalnızca `primary` (1440×790) görüntüleri tutulur; diğer görünüm alanları yerelde üretilir.
 
@@ -93,10 +93,24 @@ Bilinçli kalan farklar: araç çubuğunda B · Dosya'dan alınan "Görünüm: T
 - ✓ Önizleme çerçeveleri (koyu / açık, 1440 / 390) ve `karsilastirma.png` (`scripts/konsol_compare.py`).
 - ✓ Otomatik denetim: `scripts/theme_audit.py` (yanlış tonda yüzey, aynı tonda kart, 12–14 px metin kontrastı, araç çubuğunda yerel select) ve `scripts/ui_screenshots.py` (taşma, kenar çubuğu kaydırması, iç kaydırma, kesik ama ipucusuz metin, çakışma, konsol hatası). Taşma denetimi aşama 5'te güçlendirildi: içerik alanında kırpılan (`overflow-x: clip` yüzünden görünmeyen) öğeler de sayılır.
 - ✓ `scripts/a11y_audit.py`: kritik ihlal 0; genel bakış, IOC araştırma ve ilişki grafı ≥ 90 (sonuçlar aşağıda).
-- ✓ `pytest`: 171 test geçti; yeni testler: facet sayıları (4), senkron durumu, IOC kaynak listesi, zararlı ATT&CK filtresi; canlı veritabanı koruma testi geçer.
+- ✓ `pytest`: 171 test geçti (aşama 8 ile 176); yeni testler: facet sayıları (4), senkron durumu, IOC kaynak listesi, zararlı ATT&CK filtresi; canlı veritabanı koruma testi geçer.
 
 ### §9 Aşama 8: risk puanı ölçeği
-- yapılmadı: şartname gereği onay bekliyor. İki seçenek ve her birinin mevcut veride bant dağılımı ayrıca sunulacak; seçimden sonra `database/functions/03_functions.sql`, açıklama ve testler güncellenecek.
+- ✓ İki seçenek canlı veride (25.489 aktif IOC) hesaplandı; proje sahibi **(a) taban ölçekleme**yi seçti.
+
+  | Bant | Önceki | (a) taban ölçekleme | (b) yalnızca eşikler |
+  |---|---|---|---|
+  | Kritik | 0 | **2.177** (≥ 85) | 0 (≥ 80) |
+  | Yüksek | 0 | **10.996** (70–84) | 4.164 (62–79) |
+  | Orta | 25.489 | **12.316** | 21.325 |
+  | Düşük | 0 | 0 | 0 |
+  | Puan aralığı | 40–69 | 50–86 | 40–69 |
+
+- ✓ Yeni formül (`database/functions/03_functions.sql`, satır içi `fn_RiskBreakdown`): taban = güven × 0,55 + önem ağırlığı × 0,45; skor = taban × kaynak güvenilirliği × tazelik × durum **+ kurumda görülme bonusu** (görülme × 2, en çok 20; çarpanlardan geçmez); sonuç 0–100 ile sınırlı. Şartname çarpanların yerini belirtmiyordu; çarpanlar tabana uygulandı, bonus sonra eklendi. Çıktı sütun adları aynı kaldı (`BasePoints` artık yalnızca güven + önem); `fn_RiskScore` ve `vw_Indicator` formülü buradan aldığı için kendiliğinden uyumlu.
+- ✓ Canlı veritabanına yalnızca bu dosya (`CREATE OR ALTER`) uygulandı; saklanan veri değişmedi (skor saklanmaz). Uygulamadan sonra genel bakıştaki dağılım tabloyla birebir aynı.
+- ✓ Ayarlar'daki adımlar, IOC önizleme paneli ve detay sayfasındaki döküm, genel bakış notu güncellendi ("kurumda görülme şartı" notu kalktı).
+- ✓ Testler: eşitlik testi yeni formülle (`test_risk_breakdown_matches_score`); `test_risk_breakdown_scale` beş girdiyle ağırlıkları, bonusun çarpansız eklenmesini, pasif durumu ve 100 sınırını doğrular (eski formülle ilk durum 65 verirdi, test 81 bekler).
+- Görüntüler: [genel bakış koyu](konsol-asama8/dark/primary/overview.png) · [IOC paneli açık](konsol-asama8/light/primary/iocs-panel.png) · [IOC detay koyu](konsol-asama8/dark/primary/ioc-detail.png) · [Ayarlar risk açık](konsol-asama8/light/primary/settings-risk.png). `konsol-after` görüntüleri aşama 8'den önce alındı (risk sütunları eski ölçekle).
 
 ## Otomatik denetim sonuçları
 
@@ -181,10 +195,10 @@ Bilinçli kalan farklar: araç çubuğunda B · Dosya'dan alınan "Görünüm: T
 
 ## Bilinen sınırlamalar
 
-- **Aşama 8 bekliyor.** Risk dağılımı hâlâ "%100 Orta" gösterir; genel bakış bunu açıklayan notu verir.
 - **Yerel açılır liste görüntüsü.** Windows'ta açılan yerel `select` listesi tarayıcı otomasyonunun ekran görüntüsüne düşmez; renkler hesaplanan stille doğrulandı. Araç çubuklarında yerel liste kalmadı; formlarda kaldı (şartnamenin izin verdiği yer).
 - **İlişki grafı kontrol çubuğu** hâlâ kart içinde.
 - **Telefon IOC listesi** önizlemedeki tek satırlık kompakt satır yerine kart düzenini kullanır.
 - **Puanlar Lighthouse değildir.** Erişilebilirlik puanı axe sonuçlarından Lighthouse'a benzer ağırlıklandırmayla hesaplanır; pencereler (Yeni IOC, Toplu kontrol) axe kapsamında değil, tema denetiminde var.
 - **Önce görüntüleri** tek temadır; tema denetiminin "önce" sonucu yok (betik aşama 6'da yazıldı).
+- **Denetim kaydı sayıları** ~151 ms (hedef 150 ms IOC listesi içindi): "otomasyon kayıtlarını gizle" koşulu AuditLog'u tarar; şartname AuditLog'a dokunmayı yasakladığı için indeks eklenmedi.
 - **Tasarım referansları.** `docs/design-references/*.png` (9 dosya) çalışma ağacında silinmiş görünüyor; commit'e katılmadı, geri yüklenmedi (karar bekleniyor).

@@ -9,8 +9,12 @@ GO
 
 /* ---------------------------------------------------------------------
    Risk skoru: 0-100 (türetilmiş nitelik, saklanmaz, her okumada hesaplanır)
-     taban puan = güven x 0,45 + önem ağırlığı x 0,35 + görülme sayısı x 2 (en çok 20)
+     taban puan = güven x 0,55 + önem ağırlığı x 0,45                      (0-100)
      skor       = taban x kaynak güvenilirliği x tazelik x durum
+                  + kurumda görülme bonusu (görülme sayısı x 2, en çok 20); sonuç 0-100 ile sınırlı
+     Ölçek (Konsol aşama 8, seçenek a): önceki formülde taban güven x 0,45 + önem x 0,35 idi ve görülme tabana
+     eklenip çarpanlardan geçiyordu; beslemeler "kritik" önem vermediği için kurumda görülmemiş bir IOC en çok ~69
+     alıyor, Yüksek bant (70) hiç dolmuyordu. Yeni tabanda en güvenilir ve taze IOC 100'e ulaşabilir.
    Formül tek yerde, satır içi tablo değerli fn_RiskBreakdown'dadır; bileşenleri ayrı ayrı döndürür
    (arayüzdeki "skor nasıl hesaplandı" dökümü). Satır içi olduğu için sorgu planına gömülür.
    "Şimdiki zaman" @AsOf parametresiyle verilir: fonksiyon içinde SYSUTCDATETIME() kullanmak skaler
@@ -31,17 +35,17 @@ RETURN
     SELECT p.ConfidencePart, p.SeverityPart, p.SightingPart, b.BasePoints,
            f.ReliabilityFactor, f.AgeDays, t.FreshnessFactor, f.StatusFactor,
            CAST(CASE WHEN r.Raw > 100 THEN 100 WHEN r.Raw < 0 THEN 0 ELSE ROUND(r.Raw, 0) END AS TINYINT) AS Score
-    FROM (SELECT CAST(@Confidence * 0.45 AS DECIMAL(6,2)) AS ConfidencePart,
-                 CAST(@SeverityWeight * 0.35 AS DECIMAL(6,2)) AS SeverityPart,
+    FROM (SELECT CAST(@Confidence * 0.55 AS DECIMAL(6,2)) AS ConfidencePart,
+                 CAST(@SeverityWeight * 0.45 AS DECIMAL(6,2)) AS SeverityPart,
                  CAST(CASE WHEN ISNULL(@SightingCount, 0) > 10 THEN 20 ELSE ISNULL(@SightingCount, 0) * 2 END AS DECIMAL(6,2)) AS SightingPart) AS p
-    CROSS APPLY (SELECT p.ConfidencePart + p.SeverityPart + p.SightingPart AS BasePoints) AS b
+    CROSS APPLY (SELECT p.ConfidencePart + p.SeverityPart AS BasePoints) AS b          -- görülme bonusu çarpanlardan sonra eklenir
     CROSS APPLY (SELECT CAST(CASE @Reliability WHEN 'A' THEN 1.00 WHEN 'B' THEN 0.95 WHEN 'C' THEN 0.88
                                                WHEN 'D' THEN 0.78 WHEN 'E' THEN 0.68 ELSE 0.60 END AS DECIMAL(4,2)) AS ReliabilityFactor,
                         DATEDIFF(DAY, @LastSeen, @AsOf) AS AgeDays,
                         CAST(CASE WHEN @IsActive = 1 THEN 1.0 ELSE 0.5 END AS DECIMAL(3,1)) AS StatusFactor) AS f
     CROSS APPLY (SELECT CAST(CASE WHEN f.AgeDays <= 30 THEN 1.00 WHEN f.AgeDays <= 90 THEN 0.85
                                   WHEN f.AgeDays <= 180 THEN 0.65 ELSE 0.45 END AS DECIMAL(4,2)) AS FreshnessFactor) AS t
-    CROSS APPLY (SELECT CAST(b.BasePoints * f.ReliabilityFactor * t.FreshnessFactor * f.StatusFactor AS DECIMAL(9,3)) AS Raw) AS r;
+    CROSS APPLY (SELECT CAST(b.BasePoints * f.ReliabilityFactor * t.FreshnessFactor * f.StatusFactor + p.SightingPart AS DECIMAL(9,3)) AS Raw) AS r;
 GO
 
 /* Skaler sürüm: tek bir değer için (ör. SSMS'te veya başka bir yordamda) skor. Formül fn_RiskBreakdown'dan gelir. */

@@ -96,16 +96,16 @@
   };
   const riskBox = (i, r) => {
     if (!r) return '';
-    const [, band] = TL.riskBand(r.Score), sevW = r.SeverityWeight, k = r.ReliabilityFactor * r.FreshnessFactor * r.StatusFactor, w = (x) => Math.max(0, (x * k)).toFixed(2);
+    const [, band] = TL.riskBand(r.Score), sevW = r.SeverityWeight, k = r.ReliabilityFactor * r.FreshnessFactor * r.StatusFactor, w = (x, m = k) => Math.max(0, Math.min(100, x * m)).toFixed(2);
     return `<section aria-labelledby="pkRisk"><h3 id="pkRisk">Risk puanı</h3>
       <div class="pk-score"><b>${r.Score}</b><span>/ 100 · ${esc(band)} bant</span></div>
       <div class="pk-stack" role="img" aria-label="Bileşenler: güven ${num(r.ConfidencePart)}, önem ${num(r.SeverityPart)}, kurumda görülme ${num(r.SightingPart)}">
-        <i style="width:${w(r.ConfidencePart)}%;background:var(--accent)"></i><i style="width:${w(r.SeverityPart)}%;background:color-mix(in srgb, var(--accent) 50%, transparent)"></i><i style="width:${w(r.SightingPart)}%;background:var(--text-3)"></i></div>
+        <i style="width:${w(r.ConfidencePart)}%;background:var(--accent)"></i><i style="width:${w(r.SeverityPart)}%;background:color-mix(in srgb, var(--accent) 50%, transparent)"></i><i style="width:${w(r.SightingPart, 1)}%;background:var(--text-3)"></i></div>
       <div class="pk-legend">
-        <i style="background:var(--accent)"></i><span>Güven ${i.Confidence} × 0,45</span><b>${num(r.ConfidencePart)}</b>
-        <i style="background:color-mix(in srgb, var(--accent) 50%, transparent)"></i><span>Önem ${esc(TL.SEV[i.SeverityCode] || i.SeverityCode)} ${sevW} × 0,35</span><b>${num(r.SeverityPart)}</b>
-        <i style="background:var(--text-3)"></i><span>Kurumda görülme ${fmtN(i.SightingCount || 0)} × 2 (en çok 20)</span><b>${num(r.SightingPart)}</b>
-        <span class="eq">× kaynak ${esc(i.Reliability)} ${num(r.ReliabilityFactor, 2)} · tazelik ${num(r.FreshnessFactor, 2)}${r.StatusFactor < 1 ? ` · durum ${num(r.StatusFactor, 2)}` : ''} = <b>${r.Score}</b><span class="tech"> · fn_RiskBreakdown</span></span>
+        <i style="background:var(--accent)"></i><span>Güven ${i.Confidence} × 0,55</span><b>${num(r.ConfidencePart)}</b>
+        <i style="background:color-mix(in srgb, var(--accent) 50%, transparent)"></i><span>Önem ${esc(TL.SEV[i.SeverityCode] || i.SeverityCode)} ${sevW} × 0,45</span><b>${num(r.SeverityPart)}</b>
+        <i style="background:var(--text-3)"></i><span>Kurumda görülme ${fmtN(i.SightingCount || 0)} × 2 (en çok 20, çarpansız)</span><b>${num(r.SightingPart)}</b>
+        <span class="eq">(${num(r.BasePoints)} × kaynak ${esc(i.Reliability)} ${num(r.ReliabilityFactor, 2)} · tazelik ${num(r.FreshnessFactor, 2)}${r.StatusFactor < 1 ? ` · durum ${num(r.StatusFactor, 2)}` : ''})${+r.SightingPart ? ` + görülme ${num(r.SightingPart)}` : ''} = <b>${r.Score}</b><span class="tech"> · fn_RiskBreakdown</span></span>
       </div></section>`;
   };
 
