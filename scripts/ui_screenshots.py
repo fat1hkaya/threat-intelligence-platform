@@ -158,7 +158,8 @@ def shoot(page, name: str, folder: Path, report: dict, errors: list) -> None:
     audit = page.evaluate(AUDIT_JS)
     audit["consoleErrors"] = list(errors)
     report[name] = audit
-    page.screenshot(path=str(folder / f"{name}.png"), full_page=True)
+    # animations="disabled": tam sayfa çekimi görünüm alanını büyütürken giriş animasyonları (ör. detay paneli) yeniden başlar; bitmiş hâli çekilir
+    page.screenshot(path=str(folder / f"{name}.png"), full_page=True, animations="disabled")
 
 
 def run(phase: str, only: list[str] | None, only_pages: list[str] | None, base: str) -> dict:

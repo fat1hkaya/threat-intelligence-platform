@@ -133,7 +133,7 @@
           ${i.Tags.length ? `<dt>Etiketler</dt><dd><div class="chips">${i.Tags.map((t) => `<a class="chip" href="/iocs?tag=${encodeURIComponent(t)}">${esc(t)}</a>`).join('')}</div></dd>` : ''}
         </dl></section>
         <section class="pk-more" aria-labelledby="pkTech"><h3 id="pkTech">Teknikler${techs.length ? ` (${techs.length})` : ''}</h3>
-          ${techs.length ? `<div class="pk-tech">${techs.slice(0, 5).map((t) => `<a class="chip" href="/attack?id=${t.TechniqueID || ''}" title="${esc(t.ExternalID)} ${esc(t.Technique)} (${esc(t.Malware)} üzerinden)"><span class="mono">${esc(t.ExternalID)}</span>${esc(TL.midTruncate(t.Technique, 16, 0))}</a>`).join('')}${techs.length > 5 ? `<a class="chip" href="/iocs/${i.IndicatorID}">+${techs.length - 5}</a>` : ''}</div>`
+          ${techs.length ? `<div class="pk-tech">${techs.slice(0, 5).map((t) => `<a class="chip" href="/attack?id=${t.TechniqueID || ''}" title="${esc(t.ExternalID)} ${esc(t.Technique)} (${esc(t.Malware)} üzerinden)"><span class="mono">${esc(t.ExternalID)}</span>${esc(t.Technique)}</a>`).join('')}${techs.length > 5 ? `<a class="chip" href="/iocs/${i.IndicatorID}">+${techs.length - 5}</a>` : ''}</div>`
             : '<p class="faint" style="font-size:13px">Teknik ilişkisi yok.</p>'}</section>
         <div class="panel-foot"><a class="btn" href="${TL.graphUrl('indicator', i.IndicatorID)}"><i data-lucide="share-2"></i>Grafta aç</a>
           ${can('analyst') ? `<button type="button" class="btn" data-add-case><i data-lucide="briefcase"></i>Vakaya ekle</button>` : ''}

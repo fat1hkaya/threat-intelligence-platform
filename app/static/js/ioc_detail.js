@@ -24,17 +24,31 @@
   const n = (x, k = 1) => Number(x).toLocaleString('tr-TR', { minimumFractionDigits: k, maximumFractionDigits: k });
   function riskCard(r, i) {
     if (!r) return '';
-    const parts = [['Güven', r.ConfidencePart, `${i.Confidence} × 0,45`, 'var(--cyan)'], ['Önem', r.SeverityPart, `${r.SeverityWeight} × 0,35`, 'var(--purple)'],
-      ['Görülme', r.SightingPart, `${i.SightingCount} × 2 (en çok 20)`, 'var(--medium)']];
-    const factors = [['Kaynak güvenilirliği', r.ReliabilityFactor, `${i.Reliability} sınıfı`], ['Tazelik', r.FreshnessFactor, `${r.AgeDays} gün önce görüldü`],
-      ['Durum', r.StatusFactor, i.Status === 'active' ? 'aktif' : 'aktif değil (yarıya iner)']];
-    return `<article class="card"><div class="card-head"><div><h2>Risk skoru: ${r.Score} / 100</h2><p>Nasıl hesaplandı?<span class="tech"> (fn_RiskBreakdown)</span></p></div></div>
-      <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--elev-2)" role="img" aria-label="Taban puanın bileşenleri">
-        ${parts.map(([, v, , c]) => `<i style="width:${v}%;background:${c}"></i>`).join('')}</div>
-      <dl class="kv" style="margin-top:12px">${parts.map(([l, v, how, c]) => `<dt><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${c};margin-right:6px"></span>${l}</dt><dd><b>${n(v)}</b> <span class="faint">(${how})</span></dd>`).join('')}
-        <dt>Taban puan</dt><dd><b>${n(r.BasePoints)}</b></dd>
-        ${factors.map(([l, v, how]) => `<dt>× ${l}</dt><dd><b>${n(v, 2)}</b> <span class="faint">(${esc(how)})</span></dd>`).join('')}
-        <dt>= Skor</dt><dd><b>${r.Score}</b> <span class="faint how">(${n(r.BasePoints)} × ${n(r.ReliabilityFactor, 2)} × ${n(r.FreshnessFactor, 2)} × ${n(r.StatusFactor, 1)}, yuvarlanmış)</span></dd></dl></article>`;
+    const [code, band] = TL.riskBand(r.Score);
+    const parts = [['Güven', r.ConfidencePart, `${i.Confidence} × 0,45`, 'var(--accent)'], ['Önem', r.SeverityPart, `${esc(TL.SEV[i.SeverityCode] || '')} ${r.SeverityWeight} × 0,35`, 'color-mix(in srgb, var(--accent) 50%, transparent)'],
+      ['Kurumda görülme', r.SightingPart, `${i.SightingCount} × 2 (en çok 20)`, 'var(--text-3)']];
+    const factors = [['kaynak', r.ReliabilityFactor, `${i.Reliability} sınıfı`], ['tazelik', r.FreshnessFactor, `${r.AgeDays} gün önce görüldü`],
+      ['durum', r.StatusFactor, i.Status === 'active' ? 'aktif' : 'aktif değil']];
+    return `<div class="gauge"><svg viewBox="0 0 112 62" role="img" aria-label="Risk ${r.Score} / 100, ${esc(band)} bant">
+        <path d="M8 56 A48 48 0 0 1 104 56" pathLength="100" class="g-track"/><path d="M8 56 A48 48 0 0 1 104 56" pathLength="100" class="g-val band-stroke-${code}" style="stroke-dasharray:${r.Score} 100"/></svg>
+      <div><div class="g-big">${r.Score}<small> / 100</small></div><div class="g-band"><i class="band-${code}" aria-hidden="true"></i>${esc(band)} bant</div></div></div>
+      <div class="pk-legend" style="margin-top:12px">${parts.map(([l, v, how, c]) => `<i style="background:${c}"></i><span>${l} <span class="faint">${how}</span></span><b>${n(v)}</b>`).join('')}
+        <span class="eq">${factors.map(([l, v, how]) => `× ${l} ${n(v, 2)}`).join(' · ')} = <b>${r.Score}</b><span class="tech"> · fn_RiskBreakdown</span></span></div>`;
+  }
+  /** Yatay atıf zinciri: IOC → zararlı → aktör düğüm kartları, aralarında oklar (ilk zincir; tümü İlişkiler sekmesinde) */
+  function pathCard(i, attribution) {
+    const node = (color, kind, title, sub, href) => `<${href ? `a href="${href}"` : 'div'} class="pnode"><small><i style="background:var(${color})" aria-hidden="true"></i>${kind}</small><b title="${esc(title)}">${esc(title)}</b><span title="${esc(sub)}">${esc(sub)}</span></${href ? 'a' : 'div'}>`;
+    const arr = '<span class="parr" aria-hidden="true"><i data-lucide="arrow-right"></i></span>';
+    const first = attribution[0];
+    const actors = first ? [...new Set(attribution.filter((a) => a.ViaID === first.ViaID && a.ActorID).map((a) => a.ActorName))] : [];
+    const firstActor = first ? attribution.find((a) => a.ViaID === first.ViaID && a.ActorID) : null;
+    return `<ol class="ppath" aria-label="Atıf zinciri">
+      <li>${node('--n-ioc', 'Gösterge', TL.TYPE_LABEL[i.TypeCode] || i.TypeCode, TL.sourceShort(i.SourceName))}</li><li aria-hidden="true">${arr}</li>
+      <li>${first ? node(first.ViaType === 'malware' ? '--n-malware' : '--n-campaign', first.ViaType === 'malware' ? 'Zararlı yazılım' : 'Kampanya', first.ViaName, `kanıt: ${first.EvidenceSource || 'kaynak belirtilmemiş'}`, TL.entityUrl(first.ViaType, first.ViaID))
+        : node('--line-strong', 'Zararlı yazılım', 'Ailesi belirlenmemiş', 'ilişki kaydı yok')}</li><li aria-hidden="true">${arr}</li>
+      <li>${actors.length ? node('--n-actor', 'Tehdit aktörü', actors.join(', '), firstActor.ActorEvidenceSource || 'MITRE ATT&CK', TL.entityUrl('actor', firstActor.ActorID))
+        : node('--line-strong', 'Tehdit aktörü', 'Bilinmiyor', 'aktör kaydı yok')}</li></ol>
+      ${new Set(attribution.map((a) => `${a.ViaType}${a.ViaID}`)).size > 1 ? `<p class="faint" style="font-size:12px;margin-top:8px">${new Set(attribution.map((a) => `${a.ViaType}${a.ViaID}`)).size} zincir var; tümü İlişkiler sekmesinde.</p>` : ''}`;
   }
 
   // Zaman yolculuğu: tarayıcıdaki yerel saat UTC'ye çevrilip gönderilir
@@ -64,59 +78,94 @@
     try { [d, rel] = await Promise.all([api(`/api/iocs/${id}`), api(`/api/iocs/${id}/relationships`)]); }
     catch (e) { root.innerHTML = empty(e.message, 'circle-alert'); icons(); return; }
     const i = d.indicator;
-    document.getElementById('crumb').textContent = i.Value.length > 48 ? i.Value.slice(0, 48) + '…' : i.Value;
     document.title = `${i.Value.slice(0, 40)} · ThreatLens`;
     const writer = can('analyst');
+    const techs = [...new Map(rel.malwareTechniques.map((t) => [t.ExternalID, t])).values()];
+    const relCount = new Set(rel.attribution.map((a) => `${a.ViaType}${a.ViaID}`)).size + d.related.length;
+    const tab = (key, label, count) => `<button type="button" role="tab" id="tab-${key}" aria-controls="p-${key}" data-tab="${key}">${label}${count != null ? `<em>${TL.fmtN(count)}</em>` : ''}</button>`;
     root.innerHTML = `
-      <div class="page-head" style="margin-bottom:18px">
-        <div class="entity-title">${TL.nodeIcon('indicator')}<div style="min-width:0">
-          <h1 class="mono" style="font-size:18px;overflow-wrap:anywhere">${esc(i.Value)}</h1>
-          <div class="chips" style="margin-top:8px">${typeBadge(i.TypeCode)}${sev(i.SeverityCode)}${status(i.Status)}<span class="badge b-muted">${esc(i.TLPCode)}</span>${sourceBadge(i.SourceName)}</div>
-          <div class="chips" id="caseChips" style="margin-top:6px"></div>
-          ${i.OriginalValue !== i.Value ? `<p class="faint" style="font-size: 13px;margin-top:6px">Kaynaktaki yazımı: <span class="mono">${esc(i.OriginalValue)}</span></p>` : ''}
-        </div></div>
+      <div class="page-head file-head">
+        <div class="ph-title file-title"><span class="pk-kind"><i data-lucide="hash" aria-hidden="true"></i>IOC · ${esc(TL.TYPE_LABEL[i.TypeCode] || i.TypeCode)}</span>
+          <h1 class="mono">${esc(i.Value)}</h1>
+          <div class="pk-tags">${sev(i.SeverityCode)}${status(i.Status)}<span class="badge" title="Kaynak ve güvenilirlik derecesi">${esc(TL.sourceShort(i.SourceName))} · ${esc(i.Reliability)}</span><span class="badge">Güven ${i.Confidence}</span><span class="badge">${esc(i.TLPCode)}</span></div>
+          <div class="chips" id="caseChips"></div>
+          ${i.OriginalValue !== i.Value ? `<p class="faint" style="font-size:12px">Kaynaktaki yazımı: <span class="mono">${esc(i.OriginalValue)}</span></p>` : ''}
+        </div>
         <div class="page-actions">${copyBtn(i.Value).replace('btn sm icon ghost', 'btn').replace('</i>', '</i>Kopyala')}
-          <a class="btn" href="${TL.graphUrl('indicator', id)}"><i data-lucide="share-2"></i>Grafikte aç</a>${TL.caseBtn('indicator', id, i.Value, 'btn')}
+          <a class="btn" href="${TL.graphUrl('indicator', id)}"><i data-lucide="share-2"></i>Grafta aç</a>${TL.caseBtn('indicator', id, i.Value, 'btn')}
           <a class="btn" href="/api/export/stix/indicator/${id}" download title="STIX 2.1 paketi: IOC, bağlı zararlı yazılımlar ve aktörler"><i data-lucide="download"></i>STIX</a>
           ${writer ? `<button class="btn" id="sightBtn"><i data-lucide="eye"></i>Görülme ekle</button><button class="btn" id="statusBtn"><i data-lucide="circle-dot"></i>Durumu değiştir</button><button class="btn" id="linkBtn"><i data-lucide="link"></i>İlişki ekle</button>
-          <button class="btn primary" id="editBtn"><i data-lucide="pencil"></i>Düzenle</button><button class="btn icon danger" id="delBtn" aria-label="IOC'yi sil" title="IOC'yi sil"><i data-lucide="trash-2"></i></button>` : ''}</div>
+          <button class="btn icon danger" id="delBtn" aria-label="IOC'yi sil" title="IOC'yi sil"><i data-lucide="trash-2"></i></button><button class="btn primary" id="editBtn"><i data-lucide="pencil"></i>Düzenle</button>` : ''}</div>
       </div>
-      <article class="card chain-card"><div class="card-head"><div><h2>Atıf zinciri</h2><p>IOC → zararlı yazılım → aktör; her bağlantının kanıtı ve kaynağı altında<span class="tech"> · vw_IndicatorAttribution (MATCH)</span></p></div></div>${TL.chains(i, rel.attribution)}</article>
-      <div class="grid g-main-side">
-        <div class="grid" style="align-content:start">
+      <div class="ftabs" role="tablist" aria-label="IOC bölümleri">${tab('ozet', 'Özet')}${tab('iliskiler', 'İlişkiler', relCount)}${tab('gorulmeler', 'Görülmeler', d.sightings.length)}${tab('gecmis', 'Geçmiş', d.history.length)}</div>
+
+      <div id="p-ozet" role="tabpanel" aria-labelledby="tab-ozet" class="file-grid">
+        <div class="file-main">
+          <article class="card"><div class="file-sum"><section aria-label="Risk puanı"><h2 class="sec-h">Risk puanı</h2>${riskCard(d.risk, i)}</section>
+            <section aria-label="Atıf zinciri"><h2 class="sec-h">Atıf zinciri</h2>${pathCard(i, rel.attribution)}</section></div></article>
+          <article class="card" id="netCard" hidden></article>
+          ${i.Description ? `<article class="card"><h2 class="sec-h">Açıklama</h2>${TL.clampText(i.Description)}</article>` : ''}
+        </div>
+        <aside class="file-side" aria-label="Özellikler">
+          <article class="card"><h2 class="sec-h">Özellikler</h2><dl class="kv kv-shodan">
+            <dt>Tip</dt><dd>${esc(TL.TYPE_LABEL[i.TypeCode] || i.TypeCode)}</dd>
+            <dt>Kaynak</dt><dd title="${esc(i.SourceName)}">${esc(i.SourceName)} <span class="faint">(${esc(i.Reliability)})</span></dd>
+            <dt>Güven</dt><dd>${conf(i.Confidence)}</dd>
+            <dt>İlk görülme</dt><dd>${fmtDT(i.FirstSeen)}</dd><dt>Son görülme</dt><dd title="${fmtDT(i.LastSeen)}">${TL.ago(i.LastSeen)}</dd>
+            <dt>Geçerlilik sonu</dt><dd>${i.ExpiresAt ? fmtDT(i.ExpiresAt) : '—'}</dd>
+            <dt>Kurumda görülme</dt><dd>${i.SightingCount ? `${TL.fmtN(i.SightingCount)} kez` : '<span class="faint">Görülmedi</span>'}</dd>
+            <dt>Eklendi</dt><dd>${fmtDT(i.CreatedAt)}</dd><dt>Güncellendi</dt><dd>${fmtDT(i.UpdatedAt)}</dd>
+            <dt class="tech">Sürüm (RowVer)</dt><dd class="mono tech">${esc(i.RowVer)}</dd>
+            <dt>Etiketler</dt><dd>${i.Tags.length ? `<div class="chips">${i.Tags.map((t) => `<a class="chip" href="/iocs?tag=${encodeURIComponent(t)}">${esc(t)}</a>`).join('')}</div>` : '—'}</dd></dl></article>
+          <article class="card"><h2 class="sec-h">Teknikler${techs.length ? ` (${techs.length})` : ''}</h2>
+            ${techs.length ? `<div class="pk-tech">${techs.slice(0, 10).map((t) => `<a class="chip" href="/attack?id=${t.TechniqueID}" title="${esc(t.ExternalID)} ${esc(t.Technique)} (${esc(t.Malware)} üzerinden)"><span class="mono">${esc(t.ExternalID)}</span>${esc(t.Technique)}</a>`).join('')}
+              ${techs.length > 10 ? `<button type="button" class="chip" data-goto="iliskiler">+${techs.length - 10}</button>` : ''}</div>` : '<p class="faint" style="font-size:13px">Teknik ilişkisi yok.</p>'}</article>
+        </aside>
+      </div>
+
+      <div id="p-iliskiler" role="tabpanel" aria-labelledby="tab-iliskiler" hidden class="tab-panel">
+        <article class="card chain-card"><div class="card-head"><div><h2>Atıf zincirleri</h2><p>IOC → zararlı yazılım → aktör; her bağlantının kanıtı ve kaynağı altında<span class="tech"> · vw_IndicatorAttribution (MATCH)</span></p></div></div>${TL.chains(i, rel.attribution)}</article>
+        <div class="grid g-main-side">
           <article class="card flush"><div class="card-head"><div><h2>Olası teknikler: IOC → zararlı → aktör → teknik</h2><p>Bağlı aktörlerin kullandığı teknikler (${rel.killchain.length})<span class="tech"> · sp_IndicatorKillChain</span></p></div></div>
             ${rel.killchain.length ? table([{ label: 'Zararlı', render: (r) => esc(r.Malware) }, { label: 'Aktör', render: (r) => esc(r.Actor) },
               { label: 'Teknik', primary: true, render: (r) => `<span class="mono">${esc(r.ExternalID)}</span> ${esc(r.Technique)}` }], rel.killchain.slice(0, 30), { caption: 'Kill chain' })
               + (rel.killchain.length > 30 ? `<p class="faint" style="padding:10px 16px;font-size: 13px">İlk 30 satır gösteriliyor.</p>` : '') : empty('Zararlı yazılımı kullanan bilinen bir aktör yok.', 'git-branch')}</article>
-          <article class="card"><div class="card-head"><div><h2>Değişiklik geçmişi</h2><p>Kim neyi ne zaman değiştirdi: alan bazında önce/sonra<span class="tech"> · AuditLog, tetikleyiciyle yazılır</span></p></div></div>
-            ${d.history.length ? `<ol class="timeline history">${d.history.map((h) => `<li><span class="dot ${h.Action === 'I' ? 'done' : ''}"></span><div>
-                <div class="hist-head"><span class="badge ${ACTION[h.Action][1]}">${ACTION[h.Action][0]}</span><b>${esc(h.ChangedBy || 'Sistem / toplu içe aktarma')}</b><small class="muted" title="${fmtDT(h.ChangedAt)}">${TL.ago(h.ChangedAt)}</small></div>
-                ${diff(h)}</div></li>`).join('')}</ol>`
-              : empty('Kayıt yok. Toplu içe aktarmalar satır başına denetim kaydı üretmez; özet içe aktarma işinde tutulur.', 'history')}</article>
-        </div>
-        <div class="grid" style="align-content:start">
-          <article class="card"><h2 style="margin-bottom:12px">Özellikler</h2><dl class="kv">
-            <dt>Güven skoru</dt><dd>${conf(i.Confidence)}</dd><dt>Risk skoru</dt><dd><b>${i.RiskScore}</b> / 100<span class="faint tech"> (fn_RiskScore)</span></dd>
-            <dt>Kaynak</dt><dd>${esc(i.SourceName)} <span class="faint">(${esc(i.Reliability)})</span></dd>
-            <dt>İlk görülme</dt><dd>${fmtDT(i.FirstSeen)}</dd><dt>Son görülme</dt><dd>${fmtDT(i.LastSeen)}</dd>
-            <dt>Bitiş</dt><dd>${i.ExpiresAt ? fmtDT(i.ExpiresAt) : '—'}</dd><dt>Eklendi</dt><dd>${fmtDT(i.CreatedAt)}</dd><dt>Güncellendi</dt><dd>${fmtDT(i.UpdatedAt)}</dd>
-            <dt>Sürüm (RowVer)</dt><dd class="mono">${esc(i.RowVer)}</dd>
-            <dt>Etiketler</dt><dd>${i.Tags.length ? `<div class="chips">${i.Tags.map((t) => `<a class="chip" href="/iocs?tag=${encodeURIComponent(t)}">${esc(t)}</a>`).join('')}</div>` : '—'}</dd>
-            <dt>Açıklama</dt><dd>${esc(i.Description || '—')}</dd></dl></article>
-          ${riskCard(d.risk, i)}
-          <article class="card" id="timeCard"><div class="card-head"><div><h2>Zaman yolculuğu</h2><p>Sistem sürümlü tablo: FOR SYSTEM_TIME AS OF / ALL</p></div></div>
-            <form id="asofForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
-              <div class="field" style="flex:1;min-width:180px"><label for="asofAt">Bu tarihteki hâli</label><input class="input" id="asofAt" type="datetime-local" required></div>
-              <button class="btn">Göster</button></form>
-            <div id="asofOut" style="margin-top:10px"></div>
-            <h3 style="margin-top:14px">Sürümler</h3><ol class="timeline" id="versions" style="margin-top:8px"></ol></article>
-          <article class="card"><h2 style="margin-bottom:10px">Kurum içi görülmeler (${d.sightings.length})</h2>
-            ${list(d.sightings.slice(0, 8), (s) => `<li><div><span>${esc(s.Location || 'Konum yok')}<br><small>${fmtDT(s.SightedAt)} · ${esc(s.ReportedBy || '—')}</small></span><b>${s.Quantity}×</b></div></li>`, 'Bu IOC kurum içinde görülmedi.')}</article>
-          <article class="card" id="netCard" hidden></article>
-          <article class="card"><h2 style="margin-bottom:10px">Aynı zararlıya bağlı diğer IOC'ler</h2>
+          <article class="card"><h2 class="sec-h">Aynı zararlıya bağlı diğer IOC'ler</h2>
             ${list(d.related, (r) => `<li><a href="/iocs/${r.IndicatorID}"><span class="mono value" style="max-width:220px">${esc(r.Value)}</span>${sev(r.SeverityCode)}</a></li>`, 'İlişkili IOC yok.')}</article>
         </div>
+      </div>
+
+      <div id="p-gorulmeler" role="tabpanel" aria-labelledby="tab-gorulmeler" hidden class="tab-panel">
+        <article class="card"><h2 class="sec-h">Kurum içi görülmeler (${d.sightings.length})</h2>
+          ${list(d.sightings, (s) => `<li><div><span>${esc(s.Location || 'Konum yok')}<br><small>${fmtDT(s.SightedAt)} · ${esc(s.ReportedBy || '—')}</small></span><b>${s.Quantity}×</b></div></li>`, 'Bu IOC kurum içinde görülmedi. Kurum içi bir logda geçtiyse "Görülme ekle" ile kaydedin.')}</article>
+      </div>
+
+      <div id="p-gecmis" role="tabpanel" aria-labelledby="tab-gecmis" hidden class="file-grid">
+        <div class="file-main"><article class="card"><div class="card-head"><div><h2>Değişiklik geçmişi</h2><p>Kim neyi ne zaman değiştirdi: alan bazında önce/sonra<span class="tech"> · AuditLog, tetikleyiciyle yazılır</span></p></div></div>
+          ${d.history.length ? `<ol class="timeline history">${d.history.map((h) => `<li><span class="dot ${h.Action === 'I' ? 'done' : ''}"></span><div>
+              <div class="hist-head"><span class="badge ${ACTION[h.Action][1]}">${ACTION[h.Action][0]}</span><b>${esc(h.ChangedBy || 'Sistem / toplu içe aktarma')}</b><small class="muted" title="${fmtDT(h.ChangedAt)}">${TL.ago(h.ChangedAt)}</small></div>
+              ${diff(h)}</div></li>`).join('')}</ol>`
+            : empty('Kayıt yok. Toplu içe aktarmalar satır başına denetim kaydı üretmez; özet içe aktarma işinde tutulur.', 'history')}</article></div>
+        <aside class="file-side"><article class="card" id="timeCard"><div class="card-head"><div><h2>Zaman yolculuğu</h2><p>Bu IOC'nin geçmişteki bir andaki hâli<span class="tech"> · sistem sürümlü tablo: FOR SYSTEM_TIME AS OF / ALL</span></p></div></div>
+          <form id="asofForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+            <div class="field" style="flex:1;min-width:180px"><label for="asofAt">Bu tarihteki hâli</label><input class="input" id="asofAt" type="datetime-local" required></div>
+            <button class="btn">Göster</button></form>
+          <div id="asofOut" style="margin-top:10px"></div>
+          <h3 style="margin-top:14px">Sürümler</h3><ol class="timeline" id="versions" style="margin-top:8px"></ol></article></aside>
       </div>`;
+    // Sekmeler: ok tuşlarıyla gezilir, seçim adres çubuğunda (?tab=)
+    const tabs = [...root.querySelectorAll('[role=tab]')];
+    const showTab = (key, focus) => {
+      tabs.forEach((t) => { const on = t.dataset.tab === key; t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1; document.getElementById(`p-${t.dataset.tab}`).hidden = !on; if (on && focus) t.focus(); });
+      TL.qs.set({ tab: key === 'ozet' ? null : key });
+    };
+    root.querySelector('.ftabs').addEventListener('click', (e) => { const t = e.target.closest('[role=tab]'); if (t) showTab(t.dataset.tab); });
+    root.querySelector('.ftabs').addEventListener('keydown', (e) => {
+      const k = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (!k) return;
+      const idx = tabs.indexOf(document.activeElement); showTab(tabs[(idx + k + tabs.length) % tabs.length].dataset.tab, true);
+    });
+    root.addEventListener('click', (e) => { const g = e.target.closest('[data-goto]'); if (g) showTab(g.dataset.goto, true); });
+    showTab(['iliskiler', 'gorulmeler', 'gecmis'].includes(TL.qs.get('tab')) ? TL.qs.get('tab') : 'ozet');
     icons();
     TL.overflowActions(root.querySelector('.page-actions'), 2);
     timeTravel();

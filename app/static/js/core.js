@@ -742,6 +742,9 @@
       if (full && !(history.state && history.state.tlPanel)) history.pushState({ ...(history.state || {}), tlPanel: 1 }, '');
     }
     splitEl.classList.remove('no-panel'); p.hidden = false; p.innerHTML = html; icons();
+    // Varlık panellerinde eylemler altta yapışkan çubukta (IOC önizlemesi kendi çubuğunu çizer)
+    const pa = p.querySelector(':scope > section .panel-actions');
+    if (pa && !p.querySelector('.panel-foot')) { const f = document.createElement('div'); f.className = 'panel-foot entity-foot'; f.appendChild(pa); p.appendChild(f); }
     p.querySelector('[data-close]')?.addEventListener('click', () => closePanel(splitEl));
     document.documentElement.classList.toggle('panel-full', full);
     if (full) p.scrollTop = 0;

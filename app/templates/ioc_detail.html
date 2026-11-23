@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block content %}
-<nav aria-label="Sayfa yolu" class="muted" style="font-size:13px"><a href="/iocs">IOC araştırma</a> / <span id="crumb">#{{ indicator_id }}</span></nav>
 <div id="root" data-id="{{ indicator_id }}"><div class="skeleton" role="status"><span class="sr-only">Yükleniyor…</span><i></i><i></i><i></i><i></i><i></i></div></div>
 {% endblock %}
 {% block scripts %}
