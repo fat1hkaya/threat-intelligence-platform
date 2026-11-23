@@ -2,14 +2,14 @@
 {% block content %}
 <div id="listView">
   <div class="page-head">
-    <div><h1>Vakalar</h1><p>Bir olayı incelerken ilgili IOC, zararlı yazılım, aktör ve teknikleri tek bir vakada toplayın; notlarla ne bulduğunuzu kaydedin. Vaka öğeleri SQL Graph kenarı olarak saklanır.</p></div>
+    <div><h1>Vakalar</h1><p>Bir olayın IOC, zararlı yazılım, aktör ve tekniklerini tek vakada toplayın; bulguları notlarla kaydedin.<span class="tech"> Vaka öğeleri SQL Graph kenarı olarak saklanır.</span></p></div>
     <div class="page-actions"><button class="btn primary" id="newCase" hidden><i data-lucide="briefcase"></i>Yeni vaka</button></div>
   </div>
   <div class="card flush">
     <div class="card-head">
       <div><h2>Vaka listesi</h2><p id="listNote"></p></div>
       <div class="seg" role="group" aria-label="Durum filtresi" id="statusSeg">
-        <button type="button" data-v="" aria-pressed="true">Tümü</button><button type="button" data-v="open">Açık</button><button type="button" data-v="investigating">İnceleniyor</button><button type="button" data-v="closed">Kapalı</button>
+        <button type="button" data-v="" data-name="Tümü" aria-pressed="true">Tümü</button><button type="button" data-v="open" data-name="Açık" aria-pressed="false">Açık</button><button type="button" data-v="investigating" data-name="İnceleniyor" aria-pressed="false">İnceleniyor</button><button type="button" data-v="closed" data-name="Kapalı" aria-pressed="false">Kapalı</button>
       </div>
     </div>
     <div id="caseTbl"></div>

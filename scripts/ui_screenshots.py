@@ -118,7 +118,7 @@ def page_list(ids: dict) -> list[tuple[str, str, str | None]]:
     pages = [
         ("overview", "/", None),
         ("iocs", "/iocs", None),
-        ("ioc-detail", f"/iocs/{ids['ioc']}" if ids["ioc"] else None, None),
+        ("ioc-detail", f"/iocs/{ids['hash'] or ids['ioc']}" if (ids["hash"] or ids["ioc"]) else None, None),   # atıf zinciri olan örnek
         ("ioc-new-dialog", "/iocs", "#newBtn"),
         ("ioc-lookup-dialog", "/iocs", "#lookupBtn"),
         ("hunt", "/hunt", None),

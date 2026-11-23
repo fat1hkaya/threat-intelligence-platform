@@ -102,7 +102,17 @@ def get_case(case_id: int, db: Db = Depends(get_db)):
         FROM dbo.InvestigationNote AS n LEFT JOIN dbo.AppUser AS u ON u.UserID = n.AuthorID
         WHERE n.InvestigationID = ? ORDER BY n.CreatedAt DESC;
         """, (case_id,))
-    return {"case": case, "items": items, "notes": notes}
+    # Durum değişiklikleri denetim kaydından (trg_Investigation_Audit): vaka açılışı ve her durum geçişi (salt okunur)
+    status_events = db.query(
+        """
+        SELECT l.ChangedAt AS At, u.FullName AS Who, l.Action,
+               JSON_VALUE(l.OldValues, '$.Status') AS OldStatus, JSON_VALUE(l.NewValues, '$.Status') AS NewStatus
+        FROM dbo.AuditLog AS l LEFT JOIN dbo.AppUser AS u ON u.UserID = l.ChangedBy
+        WHERE l.TableName = N'Investigation' AND l.RecordID = ?
+          AND (l.Action = 'I' OR ISNULL(JSON_VALUE(l.OldValues, '$.Status'), '') <> ISNULL(JSON_VALUE(l.NewValues, '$.Status'), ''))
+        ORDER BY l.ChangedAt DESC;
+        """, (case_id,))
+    return {"case": case, "items": items, "notes": notes, "statusEvents": status_events}
 
 
 class CaseUpdate(BaseModel):

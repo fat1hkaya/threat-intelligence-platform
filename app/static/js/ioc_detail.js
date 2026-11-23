@@ -3,6 +3,21 @@
   const { api, esc, fmtDT, sev, typeBadge, conf, status, sourceBadge, copyBtn, table, empty, icons, toast, dialog, formData, can, list } = TL;
   const root = document.getElementById('root'), id = +root.dataset.id;
   const ACTION = { I: ['Eklendi', 'b-ok'], U: ['Güncellendi', 'b-warn'], D: ['Silindi', 'b-bad'] };
+  // Denetim kaydındaki alan adlarının kullanıcı dilindeki karşılığı
+  const FIELD = { Status: 'Durum', Confidence: 'Güven', SeverityID: 'Önem', TLPID: 'TLP', Description: 'Açıklama', ExpiresAt: 'Geçerlilik sonu', LastSeen: 'Son görülme',
+    FirstSeen: 'İlk görülme', SourceID: 'Kaynak', Value: 'Değer', NormalizedValue: 'Kanonik değer', TypeID: 'Tip' };
+  const STATUS_TR = { active: 'Aktif', expired: 'Süresi doldu', revoked: 'İptal edildi', false_positive: 'Yanlış pozitif' };
+  const val = (k, v) => v == null || v === '' ? '<span class="faint">boş</span>' : esc(k === 'Status' ? (STATUS_TR[v] || v) : v);
+  /** Önce/sonra farkı: alan bazında; değişen alanlar vurgulu. Silinen kayıtta "silinmeden önceki hâli". */
+  const diff = (h) => {
+    const o = h.OldValues || {}, nv = h.NewValues || {};
+    const keys = Object.keys({ ...o, ...nv });
+    if (!keys.length) return '<span class="faint">Alan ayrıntısı yok</span>';
+    const changed = (k) => JSON.stringify(o[k]) !== JSON.stringify(nv[k]);
+    const shown = h.Action === 'U' ? keys.filter(changed) : keys;
+    return `<table class="diff"><thead><tr><th scope="col">Alan</th>${h.Action !== 'I' ? `<th scope="col">${h.Action === 'D' ? 'Silinmeden önceki hâli' : 'Önce'}</th>` : ''}${h.Action !== 'D' ? '<th scope="col">Sonra</th>' : ''}</tr></thead><tbody>
+      ${shown.map((k) => `<tr class="${h.Action === 'U' ? 'changed' : ''}"><th scope="row">${esc(FIELD[k] || k)}</th>${h.Action !== 'I' ? `<td class="old">${val(k, o[k])}</td>` : ''}${h.Action !== 'D' ? `<td class="new">${val(k, nv[k])}</td>` : ''}</tr>`).join('')}</tbody></table>`;
+  };
   const ROLE = { c2: 'Komuta-kontrol (C2)', payload: 'Yük (payload)', dropper: 'Bırakıcı (dropper)', exfil: 'Veri sızdırma', phishing: 'Oltalama', other: 'Diğer' };
 
   // Açıklanabilir risk skoru: fn_RiskBreakdown bileşenleri
@@ -61,24 +76,23 @@
           ${i.OriginalValue !== i.Value ? `<p class="faint" style="font-size: 13px;margin-top:6px">Kaynaktaki yazımı: <span class="mono">${esc(i.OriginalValue)}</span></p>` : ''}
         </div></div>
         <div class="page-actions">${copyBtn(i.Value).replace('btn sm icon ghost', 'btn').replace('</i>', '</i>Kopyala')}
-          <a class="btn" href="${TL.graphUrl('indicator', id)}"><i data-lucide="share-2"></i>İlişki grafı</a>${TL.caseBtn('indicator', id, i.Value, 'btn')}
+          <a class="btn" href="${TL.graphUrl('indicator', id)}"><i data-lucide="share-2"></i>Grafikte aç</a>${TL.caseBtn('indicator', id, i.Value, 'btn')}
           <a class="btn" href="/api/export/stix/indicator/${id}" download title="STIX 2.1 paketi: IOC, bağlı zararlı yazılımlar ve aktörler"><i data-lucide="download"></i>STIX</a>
-          ${writer ? `<button class="btn" id="sightBtn"><i data-lucide="eye"></i>Görülme ekle</button><button class="btn" id="linkBtn"><i data-lucide="link"></i>İlişki ekle</button>
-          <button class="btn primary" id="editBtn"><i data-lucide="pencil"></i>Düzenle</button><button class="btn danger" id="delBtn" aria-label="Sil"><i data-lucide="trash-2"></i></button>` : ''}</div>
+          ${writer ? `<button class="btn" id="sightBtn"><i data-lucide="eye"></i>Görülme ekle</button><button class="btn" id="statusBtn"><i data-lucide="circle-dot"></i>Durumu değiştir</button><button class="btn" id="linkBtn"><i data-lucide="link"></i>İlişki ekle</button>
+          <button class="btn primary" id="editBtn"><i data-lucide="pencil"></i>Düzenle</button><button class="btn icon danger" id="delBtn" aria-label="IOC'yi sil" title="IOC'yi sil"><i data-lucide="trash-2"></i></button>` : ''}</div>
       </div>
+      <article class="card chain-card"><div class="card-head"><div><h2>Atıf zinciri</h2><p>IOC → zararlı yazılım → aktör; her bağlantının kanıtı ve kaynağı altında<span class="tech"> · vw_IndicatorAttribution (MATCH)</span></p></div></div>${TL.chains(i, rel.attribution)}</article>
       <div class="grid g-main-side">
         <div class="grid" style="align-content:start">
-          <article class="card"><div class="card-head"><div><h2>Atıf zinciri</h2><p>Göstergenin bağlı olduğu zararlı yazılım ve aktör<span class="tech"> · vw_IndicatorAttribution (MATCH)</span></p></div></div>${TL.chains(i, rel.attribution)}</article>
           <article class="card flush"><div class="card-head"><div><h2>Olası teknikler: IOC → zararlı → aktör → teknik</h2><p>Bağlı aktörlerin kullandığı teknikler (${rel.killchain.length})<span class="tech"> · sp_IndicatorKillChain</span></p></div></div>
             ${rel.killchain.length ? table([{ label: 'Zararlı', render: (r) => esc(r.Malware) }, { label: 'Aktör', render: (r) => esc(r.Actor) },
               { label: 'Teknik', primary: true, render: (r) => `<span class="mono">${esc(r.ExternalID)}</span> ${esc(r.Technique)}` }], rel.killchain.slice(0, 30), { caption: 'Kill chain' })
               + (rel.killchain.length > 30 ? `<p class="faint" style="padding:10px 16px;font-size: 13px">İlk 30 satır gösteriliyor.</p>` : '') : empty('Zararlı yazılımı kullanan bilinen bir aktör yok.', 'git-branch')}</article>
-          <article class="card flush"><div class="card-head"><h2>Değişiklik geçmişi</h2><p>Kim neyi ne zaman değiştirdi<span class="tech"> · AuditLog, tetikleyiciyle yazılır</span></p></div>
-            ${d.history.length ? table([{ label: 'Zaman', render: (h) => fmtDT(h.ChangedAt) }, { label: 'İşlem', render: (h) => `<span class="badge ${ACTION[h.Action][1]}">${ACTION[h.Action][0]}</span>` },
-              { label: 'Kullanıcı', render: (h) => esc(h.ChangedBy || 'Sistem / toplu içe aktarma') },
-              { label: 'Değişen alanlar', render: (h) => { const o = h.OldValues || {}, n = h.NewValues || {}; const keys = Object.keys({ ...o, ...n }).filter((k) => JSON.stringify(o[k]) !== JSON.stringify(n[k]));
-                  return keys.length ? keys.map((k) => `<span class="mono" style="font-size:12px">${esc(k)}: ${esc(o[k] ?? '∅')} → ${esc(n[k] ?? '∅')}</span>`).join('<br>') : '<span class="faint">—</span>'; } }], d.history)
-              : empty('Kayıt yok. Toplu içe aktarmalar satır başına denetim kaydı üretmez; özet ImportJob tablosundadır.', 'history')}</article>
+          <article class="card"><div class="card-head"><div><h2>Değişiklik geçmişi</h2><p>Kim neyi ne zaman değiştirdi: alan bazında önce/sonra<span class="tech"> · AuditLog, tetikleyiciyle yazılır</span></p></div></div>
+            ${d.history.length ? `<ol class="timeline history">${d.history.map((h) => `<li><span class="dot ${h.Action === 'I' ? 'done' : ''}"></span><div>
+                <div class="hist-head"><span class="badge ${ACTION[h.Action][1]}">${ACTION[h.Action][0]}</span><b>${esc(h.ChangedBy || 'Sistem / toplu içe aktarma')}</b><small class="muted" title="${fmtDT(h.ChangedAt)}">${TL.ago(h.ChangedAt)}</small></div>
+                ${diff(h)}</div></li>`).join('')}</ol>`
+              : empty('Kayıt yok. Toplu içe aktarmalar satır başına denetim kaydı üretmez; özet içe aktarma işinde tutulur.', 'history')}</article>
         </div>
         <div class="grid" style="align-content:start">
           <article class="card"><h2 style="margin-bottom:12px">Özellikler</h2><dl class="kv">
@@ -111,8 +125,8 @@
     if (!writer) return;
     document.getElementById('editBtn').onclick = () => TL.iocForm(i, load);
     document.getElementById('delBtn').onclick = () => {
-      const dl = dialog(`<div class="dlg"><h2>IOC silinsin mi?</h2><p class="muted"><span class="mono">${esc(i.Value)}</span> kalıcı olarak silinir. Görülmeler, etiketler ve ilişkiler (graf kenarları dahil) birlikte silinir; işlem denetim kaydına yazılır.</p>
-        <div class="dlg-foot"><button class="btn" data-dismiss>Vazgeç</button><button class="btn primary" id="yes">Kalıcı olarak sil</button></div></div>`);
+      const dl = dialog(`<div class="dlg"><div class="dlg-head"><h2>IOC silinsin mi?</h2><button type="button" class="btn icon ghost" data-dismiss aria-label="Kapat"><i data-lucide="x"></i></button></div><p class="muted"><span class="mono">${esc(i.Value)}</span> kalıcı olarak silinir. Görülmeler, etiketler ve ilişkiler (graf kenarları dahil) birlikte silinir; işlem denetim kaydına yazılır.</p>
+        <div class="dlg-foot"><button class="btn" data-dismiss>Vazgeç</button><button class="btn danger" id="yes">Kalıcı olarak sil</button></div></div>`);
       dl.querySelector('#yes').onclick = async () => { try { await api(`/api/iocs/${id}`, { method: 'DELETE' }); toast('IOC silindi.'); location.href = '/iocs'; } catch (e) { toast(e.message, 'err'); } };
     };
     document.getElementById('sightBtn').onclick = () => {
@@ -127,6 +141,18 @@
         catch (err) { e.target.querySelector('.err').textContent = err.message; } };
     };
     document.getElementById('linkBtn').onclick = () => linkDialog();
+    document.getElementById('statusBtn').onclick = () => {
+      const dl = dialog(`<form><div class="dlg-head"><h2>Durumu değiştir</h2><button type="button" class="btn icon ghost" data-dismiss aria-label="Kapat"><i data-lucide="x"></i></button></div>
+        <p class="muted">Şu anki durum: ${status(i.Status)}. Değişiklik denetim kaydına yazılır.</p>
+        <div class="field"><label for="st-new">Yeni durum</label><select class="input" id="st-new" name="status">${Object.entries(STATUS_TR).map(([k, v]) => `<option value="${k}" ${k === i.Status ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+        <p class="err" role="alert"></p><div class="dlg-foot"><button type="button" class="btn" data-dismiss>Vazgeç</button><button class="btn primary">Durumu değiştir</button></div></form>`);
+      dl.querySelector('form').onsubmit = async (e) => {
+        e.preventDefault(); const v = e.target.status.value;
+        if (v === i.Status) { dl.close(); return; }
+        try { await api('/api/iocs/bulk-status', { method: 'POST', body: { ids: [id], status: v } }); dl.close(); toast(`Durum: ${STATUS_TR[v]}.`); load(); }
+        catch (err) { e.target.querySelector('.err').textContent = err.message; }
+      };
+    };
   }
 
   function linkDialog() {

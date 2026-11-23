@@ -143,12 +143,16 @@
   TL.chains = (ind, attribution) => {
     if (!attribution.length) return '<p class="faint" style="font-size:13px">Bu IOC henüz bir zararlı yazılım veya kampanyayla ilişkilendirilmemiş.</p>';
     const seen = new Set();
+    // Her halka: düğüm + altında o bağlantının kanıtı ve kaynağı
+    const ev = (text, src, conf) => text ? `<span class="link-ev" title="${esc(text)}">${esc(src || 'Kaynak belirtilmemiş')}${conf != null ? ` · güven ${conf}` : ''}: ${esc(text.slice(0, 140))}${text.length > 140 ? '…' : ''}</span>`
+      : '<span class="link-ev faint">Kanıt kaydı yok</span>';
     return attribution.filter((a) => { const k = `${a.ViaType}${a.ViaID}${a.ActorID}`; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 8).map((a) => `
-      <div class="chain" role="group" aria-label="Atıf zinciri">
-        ${node('indicator', ind.IndicatorID, TL.midTruncate(ind.Value, 16, 8), TL.TYPE_LABEL[ind.TypeCode] || 'IOC')}<span class="arrow" aria-hidden="true">→</span>
-        ${node(a.ViaType, a.ViaID, a.ViaName, a.ViaType === 'malware' ? 'Zararlı yazılım' : 'Kampanya')}
-        ${a.ActorID ? `<span class="arrow" aria-hidden="true">→</span>${node('actor', a.ActorID, a.ActorName, 'Tehdit aktörü')}` : '<span class="faint" style="font-size:12px">aktör bilinmiyor</span>'}
-      </div>
-      ${a.Evidence ? `<p class="faint" style="font-size:12px;margin:-2px 0 6px">Kanıt (${esc(a.EvidenceSource)}${a.Confidence != null ? `, güven ${a.Confidence}` : ''}): ${esc(a.Evidence.slice(0, 180))}</p>` : ''}`).join('');
+      <ol class="chain big-chain" aria-label="Atıf zinciri: ${esc(ind.Value)} → ${esc(a.ViaName)}${a.ActorID ? ` → ${esc(a.ActorName)}` : ''}">
+        <li>${node('indicator', ind.IndicatorID, TL.midTruncate(ind.Value, 16, 8), TL.TYPE_LABEL[ind.TypeCode] || 'IOC')}</li>
+        <li class="link"><span class="arrow" aria-hidden="true">→</span>${ev(a.Evidence, a.EvidenceSource, a.Confidence)}</li>
+        <li>${node(a.ViaType, a.ViaID, a.ViaName, a.ViaType === 'malware' ? 'Zararlı yazılım' : 'Kampanya')}</li>
+        ${a.ActorID ? `<li class="link"><span class="arrow" aria-hidden="true">→</span>${ev(a.ActorEvidence, a.ActorEvidenceSource, a.ActorConfidence)}</li><li>${node('actor', a.ActorID, a.ActorName, 'Tehdit aktörü')}</li>`
+          : '<li class="link"><span class="faint" style="font-size:12px">aktör bilinmiyor</span></li>'}
+      </ol>`).join('');
   };
 })();

@@ -295,11 +295,17 @@ def ioc_relationships(indicator_id: int, db: Db = Depends(get_db)):
         raise HTTPException(404, "Gösterge graf düğümü bulunamadı.")
     attribution = db.query(
         """
+        -- Zincirin her halkasının kanıtı: IOC -> zararlı/kampanya (kenar) ve zararlı/kampanya -> aktör (ilişki tablosu)
         SELECT a.ViaType, a.ViaID, a.ViaName, a.Role, a.Confidence, a.EvidenceID, a.ActorID, a.ActorName,
-               e.Summary AS Evidence, s.Name AS EvidenceSource
+               e.Summary AS Evidence, s.Name AS EvidenceSource,
+               COALESCE(am.Confidence, NULL) AS ActorConfidence, e2.Summary AS ActorEvidence, s2.Name AS ActorEvidenceSource
         FROM dbo.vw_IndicatorAttribution AS a               -- görünüm içinde MATCH(i-(e)->m) ve MATCH(c-(e)->i)
         LEFT JOIN dbo.Evidence AS e ON e.EvidenceID = a.EvidenceID
         LEFT JOIN dbo.Source AS s ON s.SourceID = e.SourceID
+        LEFT JOIN dbo.ActorMalware AS am ON a.ViaType = 'malware' AND am.ActorID = a.ActorID AND am.MalwareID = a.ViaID
+        LEFT JOIN dbo.Campaign AS ca ON a.ViaType = 'campaign' AND ca.CampaignID = a.ViaID
+        LEFT JOIN dbo.Evidence AS e2 ON e2.EvidenceID = COALESCE(am.EvidenceID, ca.AttributionEvidenceID)
+        LEFT JOIN dbo.Source AS s2 ON s2.SourceID = e2.SourceID
         WHERE a.IndicatorID = ?
         ORDER BY a.ViaType DESC, a.ViaName, a.ActorName;
         """, (indicator_id,))
