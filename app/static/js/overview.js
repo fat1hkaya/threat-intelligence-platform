@@ -52,7 +52,7 @@
       ['bug', 'c', 'Zararlı yazılım ailesi', k.MalwareFamilies, `${fmtN(k.FamiliesWithIOCs)} ailenin IOC'si var`],
       ['triangle-alert', 'a', 'Yüksek önemli IOC', k.HighSeverityIOCs, `önemi yüksek/kritik · yüksek riskli (skor ≥ ${k.HighRiskMin}): ${fmtN(k.HighRiskIOCs)}`],
     ].map(([icon, c, lbl, val, sub]) => `<article class="card kpi"><span class="ic ${c}"><i data-lucide="${icon}"></i></span>
-      <div><div class="lbl">${lbl}</div><div class="val">${fmtN(val)}</div><div class="sub">${sub}</div></div></article>`).join('');
+      <div><div class="val">${fmtN(val)}</div><div class="lbl">${lbl}</div><div class="sub">${sub}</div></div></article>`).join('');
     if (!k.PrevNewIOCs) document.querySelector('#kpis .kpi .sub')?.setAttribute('title', 'Önceki dönemde kayıt olmadığı için karşılaştırma yapılmadı');
 
     // Önem halkası

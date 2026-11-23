@@ -12,7 +12,7 @@
       ['calendar-clock', 'c', 'Son içe aktarma', t.LastJobAt ? ago(t.LastJobAt) : '—', t.LastJobAt ? fmtDT(t.LastJobAt) : 'Henüz iş yok'],
       ['circle-check', '', 'Başarılı işler (7 gün)', fmtN(t.Success7d), `${fmtN(t.Jobs7d)} işten`],
       ['triangle-alert', 'r', 'Sorunlu işler (7 gün)', fmtN(t.Problem7d), 'Kısmi veya hatalı'],
-    ].map(([i, c, l, v, s]) => `<article class="card kpi"><span class="ic ${c}"><i data-lucide="${i}"></i></span><div><div class="lbl">${l}</div><div class="val">${v}</div><div class="sub">${s}</div></div></article>`).join('');
+    ].map(([i, c, l, v, s]) => `<article class="card kpi"><span class="ic ${c}"><i data-lucide="${i}"></i></span><div><div class="val">${v}</div><div class="lbl">${l}</div><div class="sub">${s}</div></div></article>`).join('');
     document.getElementById('keyNotice').hidden = d.abusechKey;
     const writer = can('analyst'), admin = can('admin');
     document.getElementById('srcTbl').innerHTML = table([

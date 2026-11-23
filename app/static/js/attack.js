@@ -43,7 +43,7 @@
       ['grid-3x3', 'c', 'Üst tekniklerde tam tespit', fmtN(t.FullTop), `${fmtN(t.PartialTop || 0)} kısmi · toplam ${fmtN(t.TopTechniques || 0)}`],
       ['crosshair', 'a', 'Aktör tekniklerinde kapsama', pct(t.UsedCoveragePct), 'tam = 1, kısmi = 0,5 puan'],
       ['users', 'r', 'Tamamen kapsanan aktör', fmtN(d.fullyCovered.length), 'ilişkisel bölme sonucu'],
-    ].map(([i, c, l, v, sub]) => `<article class="card kpi"><span class="ic ${c}"><i data-lucide="${i}"></i></span><div><div class="lbl">${l}</div><div class="val">${v}</div><div class="sub">${sub}</div></div></article>`).join('');
+    ].map(([i, c, l, v, sub]) => `<article class="card kpi"><span class="ic ${c}"><i data-lucide="${i}"></i></span><div><div class="val">${v}</div><div class="lbl">${l}</div><div class="sub">${sub}</div></div></article>`).join('');
     document.getElementById('covGaps').innerHTML = d.gaps.length ? TL.table([
       { label: 'Teknik', primary: true, render: (g) => `<a href="/attack?id=${g.TechniqueID}"><span class="mono">${esc(g.ExternalID)}</span> ${esc(g.Name)}</a>` },
       { label: 'Kullanan aktör', num: true, render: (g) => fmtN(g.ActorCount) },

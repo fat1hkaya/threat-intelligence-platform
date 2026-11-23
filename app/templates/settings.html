@@ -19,7 +19,7 @@
   <article class="card">
     <h2>Rol yetki matrisi</h2>
     <p class="muted" style="font-size: 13px;margin:4px 0 12px"><span class="user-only">Aynı sınırlar hem uygulamada hem veritabanında uygulanır: izleyici yalnızca okur, analist kayıt ekler, yönetici her şeyi yönetir.</span><span class="tech">Uygulamada (FastAPI bağımlılıkları) ve veritabanında (tip_reader ⊂ tip_analyst ⊂ tip_admin rolleri, GRANT/DENY) aynı sınırlar uygulanır.</span></p>
-    <div class="table-wrap"><table class="data"><caption class="sr-only">Rol yetkileri</caption>
+    <div class="table-wrap"><table class="data perm-table"><caption class="sr-only">Rol yetkileri</caption>
       <thead><tr><th scope="col">Yetki</th><th scope="col">Yönetici</th><th scope="col">Analist</th><th scope="col">İzleyici</th></tr></thead>
       <tbody id="perm"></tbody></table></div>
   </article>

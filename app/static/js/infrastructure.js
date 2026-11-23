@@ -17,7 +17,7 @@
       ['building-2', 'c', 'ASN ile eşlenen', s.Enriched, s.IpIOCs ? `%${Math.round((s.Enriched / s.IpIOCs) * 100)}` : ''],
       ['server', 'a', 'Farklı ASN', s.DistinctASNs, 'IOC barındıran sağlayıcı'],
       ['database', '', 'IP aralığı', s.Ranges, s.RangesLoadedAt ? `yüklendi ${fmtDT(s.RangesLoadedAt)}` : 'yüklenmedi'],
-    ].map(([i, c, l, v, sub]) => `<article class="card kpi"><span class="ic ${c}"><i data-lucide="${i}"></i></span><div><div class="lbl">${l}</div><div class="val">${fmtN(v || 0)}</div><div class="sub">${sub}</div></div></article>`).join('');
+    ].map(([i, c, l, v, sub]) => `<article class="card kpi"><span class="ic ${c}"><i data-lucide="${i}"></i></span><div><div class="val">${fmtN(v || 0)}</div><div class="lbl">${l}</div><div class="sub">${sub}</div></div></article>`).join('');
 
     document.getElementById('subnets').innerHTML = d.subnets.length ? table([
       { label: 'Alt ağ', primary: true, render: (r) => `<span class="mono">${esc(r.Subnet)}</span>` },

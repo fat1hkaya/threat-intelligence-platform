@@ -14,8 +14,9 @@
   <div class="field" id="cands" style="grid-column:1/-1" hidden></div>
 </form>
 
-<div class="graph-layout">
+<div class="graph-layout" id="gLayoutBox">
   <div class="grid" style="align-content:start;gap:18px">
+    <div class="graph-view" role="group" aria-label="Görünüm"><p class="faint" id="gViewNote"></p><button type="button" class="btn" id="gViewBtn" aria-pressed="false"><i data-lucide="share-2"></i>Grafiği göster</button></div>
     <div class="graph-stage force-dark" aria-label="Etkileşimli ilişki grafı. Aynı bilgi aşağıdaki ilişki tablosunda da var.">
       <div class="graph-legend" id="legend" role="group" aria-label="Düğüm türü filtresi"></div>
       <div id="network"></div>
@@ -34,7 +35,7 @@
       </div>
       <div class="graph-status" id="gStatus" aria-live="polite"></div>
     </div>
-    <article class="card flush">
+    <article class="card flush edge-card">
       <div class="card-head"><div><h2>İlişki tablosu</h2><p>Grafın metin karşılığı (ekran okuyucular ve klavye için)</p></div></div>
       <div id="edgeTable"></div>
     </article>

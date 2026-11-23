@@ -19,7 +19,7 @@
       <dl class="kv" style="margin-top:12px">${parts.map(([l, v, how, c]) => `<dt><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${c};margin-right:6px"></span>${l}</dt><dd><b>${n(v)}</b> <span class="faint">(${how})</span></dd>`).join('')}
         <dt>Taban puan</dt><dd><b>${n(r.BasePoints)}</b></dd>
         ${factors.map(([l, v, how]) => `<dt>× ${l}</dt><dd><b>${n(v, 2)}</b> <span class="faint">(${esc(how)})</span></dd>`).join('')}
-        <dt>= Skor</dt><dd><b>${r.Score}</b> <span class="faint">(${n(r.BasePoints)} × ${n(r.ReliabilityFactor, 2)} × ${n(r.FreshnessFactor, 2)} × ${n(r.StatusFactor, 1)}, yuvarlanmış)</span></dd></dl></article>`;
+        <dt>= Skor</dt><dd><b>${r.Score}</b> <span class="faint how">(${n(r.BasePoints)} × ${n(r.ReliabilityFactor, 2)} × ${n(r.FreshnessFactor, 2)} × ${n(r.StatusFactor, 1)}, yuvarlanmış)</span></dd></dl></article>`;
   }
 
   // Zaman yolculuğu: tarayıcıdaki yerel saat UTC'ye çevrilip gönderilir

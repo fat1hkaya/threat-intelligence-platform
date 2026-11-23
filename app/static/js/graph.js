@@ -114,8 +114,9 @@
   function status() {
     const vis = nodes.get({ filter: (n) => !n.hidden }).length;
     document.getElementById('gStatus').textContent = `${nodes.length} düğüm · ${edges.length} kenar${vis !== nodes.length ? ` · ${vis} görünür` : ''}`;
+    document.getElementById('gViewNote').textContent = `${nodes.length} düğüm, ${edges.length} ilişki`;
     // erişilebilir ilişki tablosu
-    const label = (id) => { const n = nodes.get(id); return n ? `<a href="#" data-focus="${esc(id)}" class="${n.type === 'indicator' ? 'mono' : ''}">${esc(short(n.raw, 40))}</a> <span class="faint" style="font-size: 12px">${esc(NODE[n.type].label)}</span>` : esc(id); };
+    const label = (id) => { const n = nodes.get(id); return n ? `<span class="node-ref"><a href="#" data-focus="${esc(id)}" class="${n.type === 'indicator' ? 'mono' : ''}">${esc(short(n.raw, 40))}</a><span class="faint">${esc(NODE[n.type].label)}</span></span>` : esc(id); };
     const rows = edges.get();
     document.getElementById('edgeTable').innerHTML = rows.length ? table([
       { label: 'Kaynak', primary: true, render: (e) => label(e.from) }, { label: 'İlişki', render: (e) => `<span class="badge b-muted">${esc(REL[e.rel] || e.rel)}</span>` },
@@ -129,6 +130,7 @@
     nodes.update(data.nodes.filter((n) => !nodes.get(nid(n.NodeType, n.NodeID)) || n.Lvl === 0 && !st.start).map(toNode));
     edges.update(data.edges.map(toEdge));
     document.getElementById('gEmpty').hidden = nodes.length > 0;
+    document.getElementById('gLayoutBox').classList.toggle('has-data', nodes.length > 0);
     network.setOptions({ physics: { enabled: true } });
     applyGrouping(); syncLabels(true);
     status();
@@ -301,6 +303,13 @@
     document.getElementById('gGroup').onclick = () => { st.group = !st.group; syncTools(); if (network) { applyGrouping(); network.fit({ animation: { duration: 300 } }); } };
     document.getElementById('gLayout').onclick = () => { st.layered = !st.layered; syncTools(); setLayout(); };
     syncTools();
+    // Telefonda graf varsayılan olarak ilişki tablosu görünümünde; düğme graf ile tablo arasında geçiş yapar
+    document.getElementById('gViewBtn').addEventListener('click', (e) => {
+      const b = e.currentTarget, on = document.getElementById('gLayoutBox').classList.toggle('show-graph');
+      b.setAttribute('aria-pressed', String(on));
+      b.innerHTML = on ? '<i data-lucide="table-2"></i>Tabloyu göster' : '<i data-lucide="share-2"></i>Grafiği göster'; icons();
+      if (on && network) requestAnimationFrame(() => { network.redraw(); network.fit(); });
+    });
     document.getElementById('edgeTable').addEventListener('click', (e) => {
       const f = e.target.closest('[data-focus]'); if (f) { e.preventDefault(); network.focus(f.dataset.focus, { scale: 1.2, animation: true }); showNode(nodes.get(f.dataset.focus)); }
       const b = e.target.closest('[data-edge]'); if (b) showEdge(edges.get(b.dataset.edge));

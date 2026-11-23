@@ -145,7 +145,7 @@
   const can = (role) => { const r = TL.user && TL.user.Role; return role === 'admin' ? r === 'admin' : role === 'analyst' ? r === 'admin' || r === 'analyst' : true; };
   const qs = {
     get: (k) => new URLSearchParams(location.search).get(k),
-    set: (obj) => { const u = new URL(location.href); Object.entries(obj).forEach(([k, v]) => (v === null || v === undefined || v === '') ? u.searchParams.delete(k) : u.searchParams.set(k, v)); history.replaceState(null, '', u); },
+    set: (obj) => { const u = new URL(location.href); Object.entries(obj).forEach(([k, v]) => (v === null || v === undefined || v === '') ? u.searchParams.delete(k) : u.searchParams.set(k, v)); history.replaceState(history.state, '', u); },
   };
   /** Uzun metin: 4 satırlık kırpma + "Devamını göster / Daha az" (iç kaydırma alanı yerine) */
   const clampText = (text, cls = 'desc') => text ? `<div class="clamp-box"><p class="${cls} clamp">${esc(text)}</p><button type="button" class="link-btn clamp-toggle" aria-expanded="false" hidden>Devamını göster</button></div>` : '';
@@ -154,7 +154,7 @@
     ? `<details class="more-menu"><summary class="btn sm" aria-label="Diğer eylemler" title="Diğer eylemler"><i data-lucide="ellipsis"></i>Diğer</summary><div class="menu-pop" role="menu">${more.filter(Boolean).join('')}</div></details>` : ''}</div>`;
 
   // ---------- render sonrası iyileştirmeler (her icons() çağrısında) ----------
-  const TRUNC = '.data .cell, .data .value, .name-id > b, .list li span, .list li small, .chain b, .bar-row span, .clip-list, .omni-results .t, .kv dd, .chip, .badge, .tactic b, .legend span';
+  const TRUNC = '.data .cell, .data .value, .name-id > b, .list li span, .list li small, .chain b, .bar-row span, .clip-list, .omni-results .t, .kv dd, .chip, .badge, .tactic b, .legend span, .node-ref > a';
   function enhance(root = document) {
     // kesik metne ipucu: yalnızca gerçekten kesikse ve atalarında ipucu yoksa
     root.querySelectorAll(TRUNC).forEach((el) => {
@@ -398,6 +398,21 @@
     form.querySelector('.sheet-done')?.addEventListener('click', closeSheet);
     form.addEventListener('keydown', (e) => { if (e.key === 'Escape' && form.classList.contains('sheet-open')) { e.stopPropagation(); closeSheet(); } });
     form.querySelectorAll('.range2').forEach(range2);
+    // 768-1279 px: araç çubuğu tek satırda kalsın diye ilk iki açılır filtreden sonrakiler "Diğer filtreler"e taşınır.
+    // Öğeler taşınır (kopyalanmaz): form içinde kalır, değerleri ve dinleyicileri korunur; geniş ekranda yerine döner.
+    const pop = form.querySelector('.more-filters .more-pop');
+    if (pop) {
+      const extra = [...form.querySelectorAll('.tb-filters > .tb-field:not(.tb-sort)')].slice(2);
+      const slots = extra.map((el) => { const c = document.createComment('tb-slot'); el.before(c); return c; });
+      const mq = window.matchMedia('(min-width: 768px) and (max-width: 1279px)');
+      const place = () => {
+        if (mq.matches) extra.slice().reverse().forEach((el) => { el.classList.add('in-more'); pop.prepend(el); });
+        else extra.forEach((el, i) => { el.classList.remove('in-more'); slots[i].after(el); });
+        render();
+      };
+      mq.addEventListener('change', place);
+      if (mq.matches) place();
+    }
     restore(); render();
     return { values, activeCount, render, restore, reset: () => form.reset() };
   }
@@ -418,7 +433,7 @@
   }
 
   // ---------- sağ detay paneli (split düzeni) ----------
-  const OVERLAY = window.matchMedia('(max-width: 1439px)');
+  const OVERLAY = window.matchMedia('(max-width: 1279px)');
   function panel(splitEl, html) {
     const p = splitEl.querySelector('.panel');
     if (html === null) {
@@ -426,14 +441,27 @@
       if (p._opener && document.contains(p._opener)) p._opener.focus?.();
       return p;
     }
-    if (p.hidden) p._opener = document.activeElement;
+    const full = FULL.matches;
+    if (p.hidden) {
+      p._opener = document.activeElement;
+      // <1024: panel ayrı bir sayfa gibi davranır; tarayıcının geri tuşu paneli kapatır
+      if (full && !(history.state && history.state.tlPanel)) history.pushState({ ...(history.state || {}), tlPanel: 1 }, '');
+    }
     splitEl.classList.remove('no-panel'); p.hidden = false; p.innerHTML = html; icons();
     p.querySelector('[data-close]')?.addEventListener('click', () => closePanel(splitEl));
-    document.documentElement.classList.toggle('panel-full', window.matchMedia('(max-width: 1023px)').matches);
+    document.documentElement.classList.toggle('panel-full', full);
+    if (full) p.scrollTop = 0;
     if (OVERLAY.matches && !p.contains(document.activeElement)) p.focus?.({ preventScroll: true });
     return p;
   }
-  const closePanel = (splitEl) => { panel(splitEl, null); TL.onPanelClose && TL.onPanelClose(); };
+  const FULL = window.matchMedia('(max-width: 1023px)');
+  const doClose = (splitEl) => { panel(splitEl, null); TL.onPanelClose && TL.onPanelClose(); };
+  const closePanel = (splitEl) => { if (history.state && history.state.tlPanel) history.back(); else doClose(splitEl); };
+  window.addEventListener('popstate', (e) => {
+    if (e.state && e.state.tlPanel) return;
+    const sp = document.querySelector('.split:not(.no-panel)');
+    if (sp && sp.querySelector('.panel:not([hidden])')) doClose(sp);
+  });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || document.querySelector('dialog[open]') || e.defaultPrevented) return;
     const sp = document.querySelector('.split:not(.no-panel)');
@@ -689,7 +717,7 @@
   }
 
   // ---------- dar ekran yardımcıları ----------
-  const NARROW = window.matchMedia('(max-width: 900px)');
+  const NARROW = window.matchMedia('(max-width: 1023px)');
   const PHONE = window.matchMedia('(max-width: 560px)');
 
   /** Eylem çubuğu: telefonda birincil düğme ve ilk `keep` eylem görünür kalır, gerisi "Diğer" menüsüne taşınır.

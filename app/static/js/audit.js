@@ -49,7 +49,7 @@
     document.getElementById('kpis').innerHTML = [
       ['file-clock', '', 'Toplam kayıt', t.Total, `${fmtN(t.Users)} farklı kullanıcı`], ['clock', 'c', 'Son 24 saat', t.Last24h, 'Tetikleyicilerin yazdığı olaylar'],
       ['pencil', 'a', 'Güncelleme', t.Updates, `${fmtN(t.Inserts)} ekleme`], ['trash-2', 'r', 'Silme', t.Deletes, 'Silinen kayıtların son hâli saklanır'],
-    ].map(([i, c, l, v, sub]) => `<article class="card kpi"><span class="ic ${c}"><i data-lucide="${i}"></i></span><div><div class="lbl">${l}</div><div class="val">${fmtN(v)}</div><div class="sub">${sub}</div></div></article>`).join('');
+    ].map(([i, c, l, v, sub]) => `<article class="card kpi"><span class="ic ${c}"><i data-lucide="${i}"></i></span><div><div class="val">${fmtN(v)}</div><div class="lbl">${l}</div><div class="sub">${sub}</div></div></article>`).join('');
     const tableSel = document.getElementById('table'), cur = tableSel.value;
     tableSel.innerHTML = '<option value="">Tümü</option>';
     tableSel.insertAdjacentHTML('beforeend', s.byTable.map((x) => `<option value="${esc(x.TableName)}">${esc(TABLE[x.TableName] || x.TableName)} (${x.Total})</option>`).join(''));

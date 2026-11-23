@@ -12,7 +12,7 @@
       ['scan-search', 'c', 'IOC adayı', s.Candidates, d.candidatesByType ? Object.entries(d.candidatesByType).map(([k, v]) => `${esc(TL.TYPE_LABEL[k] || k)} ${fmtN(v)}`).join(' · ') : 'ayıklanan değer'],
       ['siren', 'r', 'Bilinen tehdit eşleşmesi', s.Matches, `${fmtN(s.HighRisk || 0)} yüksek/kritik önemde`],
       ['user-round-x', 'a', 'İlişkili tehdit aktörü', s.Actors, s.Recorded ? 'Görülme olarak kaydedildi' : 'Kaydedilmedi (yalnızca arama)'],
-    ].map(([i, c, l, v, sub]) => `<article class="card kpi"><span class="ic ${c}"><i data-lucide="${i}"></i></span><div><div class="lbl">${l}</div><div class="val">${fmtN(v || 0)}</div><div class="sub">${sub}</div></div></article>`).join('');
+    ].map(([i, c, l, v, sub]) => `<article class="card kpi"><span class="ic ${c}"><i data-lucide="${i}"></i></span><div><div class="val">${fmtN(v || 0)}</div><div class="lbl">${l}</div><div class="sub">${sub}</div></div></article>`).join('');
     document.getElementById('resultTitle').textContent = `Av #${s.HuntID}: ${fmtN(s.Matches || 0)} eşleşme`;
     document.getElementById('resultNote').innerHTML = `${esc(fmtDT(s.StartedAt))} · ${esc(s.StartedBy || '')}<span class="tech"> · eşleme sp_RetroHunt ile tek set tabanlı sorguda yapıldı</span>`
       + (d.truncated ? ' · aday sınırına (20.000) ulaşıldı, logun bir kısmı taranmadı' : '');
