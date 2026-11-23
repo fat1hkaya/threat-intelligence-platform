@@ -63,7 +63,9 @@ AUDIT_JS = r"""
   const nested = [], allowed = [], trunc = [], overlaps = [];
   // şartnamenin izin verdiği yatay şeritler: ATT&CK taktik çipleri, telefonda filtre düğmeleri, IOC detay sekmeleri (yalnızca yatay)
   const strip = (el) => el.matches('.tactics, .toolbar.facets .tb-filters, .ftabs') && el.scrollHeight <= el.clientHeight + 1;
-  const okScroll = (el) => el.matches('.panel, dialog') || strip(el) || (el.matches('.table-scroll, .matrix') && el.scrollHeight <= el.clientHeight + 1 && el.closest('.scroll-host'));
+  // açılır filtre panelindeki seçenek listesi (yerel açılır listenin karşılığı, en çok 320 px)
+  const popList = (el) => el.matches('.facet-pop .fp-list');
+  const okScroll = (el) => el.matches('.panel, dialog') || strip(el) || popList(el) || (el.matches('.table-scroll, .matrix') && el.scrollHeight <= el.clientHeight + 1 && el.closest('.scroll-host'));
   for (const el of document.querySelectorAll('body *')) {
     if (!visible(el) || el.closest('#sqlDrawer, .vis-network, dialog:not([open])')) continue;
     const cs = getComputedStyle(el);
@@ -125,10 +127,13 @@ def discover(base: str, request) -> dict:
 
 
 def page_list(ids: dict) -> list[tuple[str, str, str | None]]:
-    """(ad, yol, eylem) - eylem: açılacak pencere düğmesinin kimliği."""
+    """(ad, yol, eylem) - eylem: açılacak pencerenin düğmesi (#id) ya da açılacak filtre paneli ("facet:#fp-ad")."""
     pages = [
         ("overview", "/", None),
         ("iocs", "/iocs", None),
+        ("iocs-panel", f"/iocs?id={ids['ioc']}" if ids["ioc"] else None, None),
+        ("iocs-facet", "/iocs", "facet:#fp-source"),
+        ("iocs-date", "/iocs", "facet:#fp-dateFrom"),
         ("ioc-detail", f"/iocs/{ids['hash'] or ids['ioc']}" if (ids["hash"] or ids["ioc"]) else None, None),   # atıf zinciri olan örnek
         ("ioc-new-dialog", "/iocs", "#newBtn"),
         ("ioc-lookup-dialog", "/iocs", "#lookupBtn"),
@@ -140,15 +145,20 @@ def page_list(ids: dict) -> list[tuple[str, str, str | None]]:
         ("infrastructure", "/infrastructure", None),
         ("actors", "/actors", None),
         ("actors-panel", f"/actors?id={ids['actor']}" if ids["actor"] else None, None),
+        ("actors-facet", "/actors", "facet:#fp-country"),
         ("campaigns", "/campaigns", None),
         ("campaigns-panel", f"/campaigns?id={ids['campaign']}" if ids["campaign"] else None, None),
+        ("campaigns-facet", "/campaigns", "facet:#fp-ongoing"),
         ("malware", "/malware", None),
         ("malware-panel", f"/malware?id={ids['malware']}" if ids["malware"] else None, None),
+        ("malware-facet", "/malware", "facet:#fp-type"),
         ("attack-list", "/attack", None),
+        ("attack-facet", "/attack", "facet:#fp-campaign"),
         ("attack-matrix", "/attack?view=matrix", None),
         ("attack-coverage", "/attack?view=coverage", None),
         ("sources", "/sources", None),
         ("audit", "/audit", None),
+        ("audit-facet", "/audit", "facet:#fp-table"),
         ("audit-logins", "/audit?tab=logins", None),
         ("audit-runs", "/audit?tab=runs", None),
         ("settings", "/settings", None),
@@ -157,6 +167,20 @@ def page_list(ids: dict) -> list[tuple[str, str, str | None]]:
         ("settings-maintenance", "/settings?tab=maintenance", None),
     ]
     return [p for p in pages if p[1]]
+
+
+def do_action(page, action: str) -> None:
+    """Pencere ya da filtre paneli açar. Telefonda sayfanın birincil eylemi üst çubuktaki ikondur (#topPrimary)."""
+    page.wait_for_load_state("networkidle", timeout=15000)
+    if action.startswith("facet:"):
+        pop = action.split(":", 1)[1]
+        page.click(f".facet-wrap:has({pop}) > button")
+        page.wait_for_selector(f"{pop}:not([hidden])", timeout=5000)
+        page.wait_for_timeout(600)                                    # sayılar sunucudan gelir
+        return
+    target = action if page.locator(action).is_visible() else "#topPrimary"
+    page.click(target)
+    page.wait_for_selector("dialog[open]", timeout=5000)
 
 
 def shoot(page, name: str, folder: Path, report: dict, errors: list) -> None:
@@ -210,13 +234,9 @@ def run(phase: str, only: list[str] | None, only_pages: list[str] | None, base: 
                 page.goto(base + path)
                 if action:
                     try:
-                        page.wait_for_load_state("networkidle", timeout=15000)
-                        # telefonda sayfanın birincil eylemi üst çubuktaki ikondur (#topPrimary aynı düğmeyi tetikler)
-                        target = action if page.locator(action).is_visible() else "#topPrimary"
-                        page.click(target)
-                        page.wait_for_selector("dialog[open]", timeout=5000)
+                        do_action(page, action)
                     except Exception as exc:  # noqa: BLE001
-                        errors.append(f"pencere açılamadı: {exc}"[:200])
+                        errors.append(f"pencere/panel açılamadı: {exc}"[:200])
                 shoot(page, name, folder, report, errors)
                 if action:
                     page.keyboard.press("Escape")

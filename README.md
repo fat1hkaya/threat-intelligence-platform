@@ -137,7 +137,7 @@ Windows Görev Zamanlayıcı 6 saatte bir `pythonw.exe scripts\sync_feeds.py` ç
 .venv\Scripts\python -m pytest -q
 ```
 
-164 test vardır ve gerçek SQL Server'da çalışır. **Testler canlı veritabanına dokunmaz:** ayrı bir test veritabanında (`ThreatLens_Test`, `TL_DB_NAME_TEST` ile değiştirilebilir) çalışırlar; bu veritabanı her test oturumunun başında `setup_db.py` ile kurulur ya da güncellenir (birkaç saniye). `tests/test_zz_live_guard.py` oturumun başında ve sonunda canlı veritabanındaki satır sayılarını karşılaştırır. Ayrımdan önce canlıda kalmış test kayıtları için `python scripts/purge_test_artifacts.py` (önce rapor, `--apply` ile siler; `AuditLog`'a dokunmaz). Sunum öncesi adımlar: [docs/sunum_oncesi_kontrol.md](docs/sunum_oncesi_kontrol.md). Arayüz ekran görüntüleri ve otomatik düzen denetimi: `pip install -r requirements-dev.txt`, `python -m playwright install chromium`, `python scripts/ui_screenshots.py <klasör>` (`docs/ui-audit/`); erişilebilirlik denetimi (axe-core 4.10.2, yalnızca bu betikte, `scripts/vendor/`): `python scripts/a11y_audit.py <klasör> --all`. Arayüz iyileştirme raporu: [docs/ui-audit/RAPOR.md](docs/ui-audit/RAPOR.md). Bu iki betik giriş yaptığı için canlı veritabanı koruma testini etkiler: pytest ile aynı anda çalıştırmayın. GitHub Actions her push'ta aynı testleri SQL Server 2025 Linux kapsayıcısında çalıştırır (`.github/workflows/ci.yml`; beslemeler indirilmez, tam metin arama kapsayıcıda kurulu olmadığı için LIKE yedeği sınanır). Kapsadıkları:
+171 test vardır ve gerçek SQL Server'da çalışır. **Testler canlı veritabanına dokunmaz:** ayrı bir test veritabanında (`ThreatLens_Test`, `TL_DB_NAME_TEST` ile değiştirilebilir) çalışırlar; bu veritabanı her test oturumunun başında `setup_db.py` ile kurulur ya da güncellenir (birkaç saniye). `tests/test_zz_live_guard.py` oturumun başında ve sonunda canlı veritabanındaki satır sayılarını karşılaştırır. Ayrımdan önce canlıda kalmış test kayıtları için `python scripts/purge_test_artifacts.py` (önce rapor, `--apply` ile siler; `AuditLog`'a dokunmaz). Sunum öncesi adımlar: [docs/sunum_oncesi_kontrol.md](docs/sunum_oncesi_kontrol.md). Arayüz ekran görüntüleri ve otomatik düzen denetimi: `pip install -r requirements-dev.txt`, `python -m playwright install chromium`, `python scripts/ui_screenshots.py <klasör> --themes dark,light` (`docs/ui-audit/`); tema denetimi (yüzey tonu, kart, metin kontrastı): `python scripts/theme_audit.py <klasör>`; Konsol önizlemesiyle karşılaştırma: `python scripts/konsol_compare.py <klasör>`; erişilebilirlik denetimi (axe-core 4.10.2, yalnızca bu betikte, `scripts/vendor/`): `python scripts/a11y_audit.py <klasör> --all`. Arayüz raporları: [docs/ui-audit/RAPOR.md](docs/ui-audit/RAPOR.md) (sağlamlaştırma) ve [docs/ui-audit/KONSOL_RAPOR.md](docs/ui-audit/KONSOL_RAPOR.md) (Konsol tasarımı). Bu betikler giriş yaptığı için canlı veritabanı koruma testini etkiler: pytest ile aynı anda çalıştırmayın. GitHub Actions her push'ta aynı testleri SQL Server 2025 Linux kapsayıcısında çalıştırır (`.github/workflows/ci.yml`; beslemeler indirilmez, tam metin arama kapsayıcıda kurulu olmadığı için LIKE yedeği sınanır). Kapsadıkları:
 - **Normalleştirme:** 34 test.
 - **Kimlik doğrulama ve rol yetkileri:** izleyici yazma denemesinde 403 alır.
 - **IOC işlemleri:**
@@ -180,7 +180,7 @@ database/       T-SQL: schema, indexes, functions, views, graph, procedures, tri
                 temporal, performans, tam metin, vakalar, ağ, bakım, ayarlama), demos, backup
 importers/      MITRE ATT&CK, abuse.ch, CISA KEV, Malpedia, iptoasn.com içe aktarıcıları
 scripts/        setup_db.py (kurulum), gen_docs.py (belge üretimi), sync_feeds.py (zamanlanmış, penceresiz senkron), sync_feeds.cmd (elle),
-                purge_test_artifacts.py, ui_screenshots.py ve a11y_audit.py (arayüz denetimi; vendor/axe.min.js yalnızca denetimde)
+                purge_test_artifacts.py, ui_screenshots.py, theme_audit.py, konsol_compare.py ve a11y_audit.py (arayüz denetimi; vendor/axe.min.js yalnızca denetimde)
 .github/        CI iş akışı (SQL Server kapsayıcısında pytest, JS sözdizimi)
 tests/          pytest
 docs/           proje belgeleri ve tasarım referansları
@@ -193,6 +193,7 @@ _archive/       eski React prototipi ve eski betikler (yalnızca referans)
 - [docs/02_normalizasyon_taslak.md](docs/02_normalizasyon_taslak.md): normalizasyon örnekleri (ekip için taslak)
 - [docs/03_test_ve_demo.md](docs/03_test_ve_demo.md): test sonuçları ve 8 demo senaryosunun sunum akışı
 - [docs/ui-audit/RAPOR.md](docs/ui-audit/RAPOR.md): arayüz iyileştirme raporu (madde madde durum, otomatik denetim ve erişilebilirlik sonuçları, önce/sonra ekran görüntüleri)
+- [docs/ui-audit/KONSOL_RAPOR.md](docs/ui-audit/KONSOL_RAPOR.md): Konsol tasarımı raporu (önizlemeyle karşılaştırma, iki temada denetim sonuçları, madde madde durum)
 - [docs/diyagramlar/](docs/diyagramlar/): Chen ER (Graphviz DOT) ve ilişkisel şema (Mermaid)
 - [docs/veritabani_nesneleri.md](docs/veritabani_nesneleri.md) ve [docs/api.md](docs/api.md): `python scripts/gen_docs.py` ile canlı sistemden üretilir
 

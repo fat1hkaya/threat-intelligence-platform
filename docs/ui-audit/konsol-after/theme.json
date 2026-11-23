@@ -1,0 +1,766 @@
+{
+  "dark": {
+    "login": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "overview": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "iocs": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "iocs-panel": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "iocs-facet": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "iocs-date": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "ioc-detail": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "ioc-new-dialog": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "ioc-lookup-dialog": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "hunt": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "cases": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "graph-empty": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "graph-hash": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "infrastructure": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "actors": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "actors-panel": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "actors-facet": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "campaigns": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "campaigns-panel": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "campaigns-facet": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "malware": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "malware-panel": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "malware-facet": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "attack-list": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "attack-facet": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "attack-matrix": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "attack-coverage": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "sources": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "audit": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "audit-facet": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "audit-logins": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "audit-runs": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "settings": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "settings-risk": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "settings-integrations": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "settings-maintenance": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "dev-sql-drawer": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "dev-settings-db": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    }
+  },
+  "light": {
+    "login": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "overview": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "iocs": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "iocs-panel": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "iocs-facet": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "iocs-date": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "ioc-detail": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "ioc-new-dialog": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "ioc-lookup-dialog": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "hunt": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "cases": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "graph-empty": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "graph-hash": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "infrastructure": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "actors": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "actors-panel": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "actors-facet": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "campaigns": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "campaigns-panel": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "campaigns-facet": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "malware": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "malware-panel": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "malware-facet": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "attack-list": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "attack-facet": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "attack-matrix": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "attack-coverage": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "sources": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "audit": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "audit-facet": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "audit-logins": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "audit-runs": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "settings": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "settings-risk": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "settings-integrations": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "settings-maintenance": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "dev-sql-drawer": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    },
+    "dev-settings-db": {
+      "wrongSurface": [],
+      "sameSurface": [],
+      "lowContrast": [],
+      "nativeSelect": [],
+      "wrongSurfaceCount": 0,
+      "sameSurfaceCount": 0,
+      "lowContrastCount": 0,
+      "nativeSelectCount": 0
+    }
+  }
+}

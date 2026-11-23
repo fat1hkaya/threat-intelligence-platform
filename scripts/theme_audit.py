@@ -26,7 +26,7 @@ sys.path.insert(0, str(ROOT))
 
 from playwright.sync_api import sync_playwright  # noqa: E402
 
-from scripts.ui_screenshots import discover, page_list, password  # noqa: E402
+from scripts.ui_screenshots import discover, do_action, page_list, password  # noqa: E402
 
 THEME_JS = r"""
 (theme) => {
@@ -122,9 +122,9 @@ def run(phase: str, pages: list[str] | None, themes: list[str], base: str) -> di
                 time.sleep(2.5 if name.startswith("graph") else 0.8)
                 if action:
                     try:
-                        page.click(action); page.wait_for_selector("dialog[open]", timeout=5000)
-                    except Exception:  # noqa: BLE001
-                        pass
+                        do_action(page, action)
+                    except Exception as exc:  # noqa: BLE001
+                        print(f"  {name}: açılamadı ({str(exc)[:80]})")
                 rep[name] = page.evaluate(THEME_JS, theme)
                 if action:
                     page.keyboard.press("Escape")
@@ -137,11 +137,6 @@ def run(phase: str, pages: list[str] | None, themes: list[str], base: str) -> di
             for name, path, action in page_list(ids):
                 if path and (not pages or name in pages):
                     check(name, path, action)
-            # açık filtre paneli (yüzey ve gölge)
-            if not pages or "iocs-facet" in pages:
-                page.goto(base + "/iocs"); page.wait_for_load_state("networkidle")
-                page.click(".facet-wrap:has(#fp-source) > button"); time.sleep(0.5)
-                rep["iocs-facet"] = page.evaluate(THEME_JS, theme)
             # geliştirici modu: SQL çekmecesi ve veritabanı sekmesi (kod blokları .force-dark kalır)
             if not pages or "dev-sql" in pages:
                 page.evaluate("() => { localStorage.setItem('tl-dev', '1'); }")

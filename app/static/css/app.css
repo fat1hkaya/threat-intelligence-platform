@@ -1472,3 +1472,4 @@ dialog { border-radius: var(--radius-pop); box-shadow: var(--shadow-pop); }
 /* ATT&CK ısı haritası: yoğun hücrelerde teknik kodu ana metin renginde (4,5:1) */
 .matrix .cell.heat-2 small, .matrix .cell.heat-3 small, .matrix .cell.heat-4 small { color: var(--text); }
 .fp-n { color: var(--text-2); }
+.fp-list li.dim.act, .fp-list li.dim:hover { color: var(--text-2); }   /* vurgulu satır zemininde de 4,5:1 */

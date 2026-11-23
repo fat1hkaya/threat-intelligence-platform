@@ -449,7 +449,7 @@
         const mark = isMenu ? `<span class="fp-radio${on ? ' on' : ''}" aria-hidden="true"></span>`
           : `<span class="${multi ? 'fp-cb' : 'fp-radio'}${on ? ' on' : ''}" aria-hidden="true">${multi && on ? '<i data-lucide="check"></i>' : ''}</span>`;
         return `<li id="${uid}-o${i}" role="${isMenu ? 'menuitemradio' : 'option'}" ${isMenu ? `aria-checked="${on}"` : `aria-selected="${on}"`} data-v="${esc(o.value)}"
-            class="${dim ? 'dim' : ''}${i === act ? ' act' : ''}" ${o.hint ? `title="${esc(o.hint)}"` : ''}>${mark}<span class="fp-l">${esc(o.label)}</span>
+            class="${dim ? 'dim' : ''}${i === act ? ' act' : ''}" ${o.hint ? `title="${esc(o.hint)}"` : ''}>${mark}<span class="fp-l"${o.label.length > 24 ? ` title="${esc(o.label)}"` : ''}>${esc(o.label)}</span>
             ${n != null ? `<span class="fp-n">${fmtN(n)}</span>${!isMenu ? `<i class="fp-ratio" style="--r:${(n / max).toFixed(3)}" aria-hidden="true"></i>` : ''}` : ''}</li>`;
       }).join('') : `<li class="fp-empty" role="presentation">Eşleşen seçenek yok</li>`;
       if (act >= 0 && vis[act]) list.setAttribute('aria-activedescendant', `${uid}-o${act}`); else list.removeAttribute('aria-activedescendant');
