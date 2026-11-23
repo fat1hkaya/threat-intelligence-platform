@@ -25,14 +25,14 @@
     size: n.Lvl === 0 ? 26 : n.NodeType === 'technique' ? 11 : 17,
     color: { background: NODE[n.NodeType].color, border: n.Lvl === 0 ? '#FFFFFF' : NODE[n.NodeType].color, highlight: { background: NODE[n.NodeType].color, border: '#FFFFFF' }, hover: { background: NODE[n.NodeType].color, border: '#FFFFFF' } },
     borderWidth: n.Lvl === 0 ? 3 : 1,
-    font: { color: '#E2E8F0', size: n.Lvl === 0 ? 14 : 12, face: n.NodeType === 'indicator' ? 'JetBrains Mono' : 'Inter', strokeWidth: 4, strokeColor: '#0B1020' },
+    font: { color: '#EDEEF0', size: n.Lvl === 0 ? 14 : 12, face: n.NodeType === 'indicator' ? 'Geist Mono' : 'Geist', strokeWidth: 4, strokeColor: '#141518' },
   });
   const toEdge = (e) => ({
     id: `${nid(e.SourceType, e.SourceID)}>${e.Relation}>${nid(e.TargetType, e.TargetID)}`, from: nid(e.SourceType, e.SourceID), to: nid(e.TargetType, e.TargetID),
     rel: e.Relation, conf: e.Confidence, lbl: REL[e.Relation] || e.Relation, label: '', main: e.Main !== 0,
     arrows: { to: { enabled: true, scaleFactor: 0.6 } },
-    color: { color: EDGE_COLOR, highlight: '#22D3EE', hover: '#94A3B8', opacity: e.Main === 0 ? 0.35 : 1 }, width: e.Confidence != null ? 1 + e.Confidence / 50 : 1.2,
-    font: { color: '#94A3B8', size: 10, strokeWidth: 3, strokeColor: '#0B1020', align: 'middle' }, smooth: { type: 'continuous' },
+    color: { color: EDGE_COLOR, highlight: '#22D3EE', hover: '#A1A5AD', opacity: e.Main === 0 ? 0.35 : 1 }, width: e.Confidence != null ? 1 + e.Confidence / 50 : 1.2,
+    font: { color: '#A1A5AD', size: 10, strokeWidth: 3, strokeColor: '#141518', align: 'middle' }, smooth: { type: 'continuous' },
   });
 
   function ensureNetwork() {
@@ -71,7 +71,7 @@
     const ce = keep ? new Set(network.getConnectedEdges(id)) : null;
     nodes.update(nodes.get().map((n) => ({ id: n.id, opacity: !keep || keep.has(n.id) ? 1 : 0.15 })));
     edges.update(edges.get().map((e) => ({ id: e.id,
-      color: { color: ce && ce.has(e.id) ? '#22D3EE' : e.path ? '#22D3EE' : EDGE_COLOR, opacity: ce ? (ce.has(e.id) ? 1 : 0.1) : (e.main ? 1 : 0.35), highlight: '#22D3EE', hover: '#94A3B8' },
+      color: { color: ce && ce.has(e.id) ? '#22D3EE' : e.path ? '#22D3EE' : EDGE_COLOR, opacity: ce ? (ce.has(e.id) ? 1 : 0.1) : (e.main ? 1 : 0.35), highlight: '#22D3EE', hover: '#A1A5AD' },
       label: ce && ce.has(e.id) ? e.lbl : '' })));
   }
 
@@ -85,7 +85,7 @@
         joinCondition: (n) => n.type === 'technique' && !n.hidden,
         clusterNodeProperties: { id: CLUSTER_ID, label: `${techs} ATT&CK tekniği\n(çift tıklayın)`, shape: 'triangle', size: 30, level: LEVEL.technique,
           color: { background: NODE.technique.color, border: '#FFFFFF' }, borderWidth: 2,
-          font: { color: '#E2E8F0', size: 13, face: 'Inter', strokeWidth: 4, strokeColor: '#0B1020' } },
+          font: { color: '#EDEEF0', size: 13, face: 'Geist', strokeWidth: 4, strokeColor: '#141518' } },
         clusterEdgeProperties: { color: { color: EDGE_COLOR, opacity: 0.6 } },
       });
     }
@@ -160,8 +160,8 @@
       ns.push({ id: c.id, type: 'more', parentType: c.parentType, parentId: c.parentId, childType: c.childType, count: c.count, offset: c.offset,
         label: `+${fmtN(c.count)} ${COUNT_LABEL[c.childType]}`, title: `Gösterilmeyen ${fmtN(c.count)} ${COUNT_LABEL[c.childType]}: açmak için çift tıklayın`,
         shape: SHAPE[c.childType], size: 14, level: LEVEL[c.childType], hidden: st.hidden.has(c.childType), borderWidth: 2, shapeProperties: { borderDashes: [3, 3] },
-        color: { background: '#0B1020', border: t.color, highlight: { background: '#1F2D48', border: '#FFFFFF' }, hover: { background: '#1F2D48', border: '#FFFFFF' } },
-        font: { color: '#CBD5E1', size: 12, face: 'Inter', strokeWidth: 4, strokeColor: '#0B1020' } });
+        color: { background: '#141518', border: t.color, highlight: { background: '#1B1D21', border: '#FFFFFF' }, hover: { background: '#1B1D21', border: '#FFFFFF' } },
+        font: { color: '#C9CBD0', size: 12, face: 'Geist', strokeWidth: 4, strokeColor: '#141518' } });
       es.push({ id: `${nid(c.parentType, c.parentId)}>more>${c.id}`, from: nid(c.parentType, c.parentId), to: c.id, more: true, lbl: '', label: '', main: true,
         dashes: true, color: { color: EDGE_COLOR, opacity: 0.6 }, arrows: { to: { enabled: false } } });
     });
@@ -232,7 +232,7 @@
       const [c, d] = await Promise.all([api(`/api/cases/${caseId}`), api(`/api/cases/${caseId}/graph`)]);
       ensureNetwork(); if (clustered()) network.openCluster(CLUSTER_ID); st.focus = null; nodes.clear(); edges.clear();
       nodes.update(d.nodes.map((n) => ({ ...toNode(n), ...(n.Lvl === 0 ? {} : { shapeProperties: { borderDashes: [4, 4] }, borderWidth: 2,
-        color: { background: '#0B1020', border: NODE[n.NodeType].color, highlight: { background: NODE[n.NodeType].color, border: '#FFFFFF' }, hover: { background: '#1F2D48', border: '#FFFFFF' } } }) })));
+        color: { background: '#141518', border: NODE[n.NodeType].color, highlight: { background: NODE[n.NodeType].color, border: '#FFFFFF' }, hover: { background: '#1B1D21', border: '#FFFFFF' } } }) })));
       edges.update(d.edges.map(toEdge));
       document.getElementById('gEmpty').hidden = nodes.length > 0;
       network.setOptions({ physics: { enabled: true } });

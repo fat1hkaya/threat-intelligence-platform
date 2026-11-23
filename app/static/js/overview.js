@@ -1,7 +1,6 @@
 /* Genel bakış: /api/dashboard/summary */
 (() => {
   const { api, esc, fmtN, fmtDT, ago, sev, typeBadge, job, sourceBadge, iocCell, TYPE_LABEL, SEV, icons, empty, toast, pct } = TL;
-  const SEV_COLORS = { critical: '#F87171', high: '#FB923C', medium: '#FBBF24', low: '#34D399', info: '#60A5FA' };
   let sevChart, trendChart;
 
   const delta = (now, prev) => {
@@ -95,7 +94,7 @@
         const css = getComputedStyle(document.documentElement);
         ctx.save(); ctx.strokeStyle = css.getPropertyValue('--text-3').trim() || '#64748B'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(px, ca.top); ctx.lineTo(px, ca.bottom); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = css.getPropertyValue('--text-2').trim() || '#94A3B8'; ctx.font = '12px Inter, system-ui, sans-serif';
+        ctx.fillStyle = css.getPropertyValue('--text-2').trim() || '#94A3B8'; ctx.font = '12px Geist, system-ui, sans-serif';
         const txt = `İlk içe aktarma: ${dayLbl(d.trend[markIdx].Day)}`, w = ctx.measureText(txt).width;
         const right = px - ca.left > w + 8;
         ctx.textAlign = right ? 'right' : 'left';
@@ -105,7 +104,7 @@
     trendChart = new Chart(document.getElementById('trendChart'), {
       type: 'bar',
       data: { labels: d.trend.map((r) => dayLbl(r.Day)),
-        datasets: [{ data: d.trend.map((r) => r.Added), backgroundColor: (c) => { const g = c.chart.ctx.createLinearGradient(0, 0, 0, 240); g.addColorStop(0, '#7C5CFC'); g.addColorStop(1, '#22D3EE'); return g; }, borderRadius: 3, maxBarThickness: 14 }] },
+        datasets: [{ data: d.trend.map((r) => r.Added), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(), borderRadius: 3, maxBarThickness: 14 }] },
       options: { maintainAspectRatio: false, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 6, maxRotation: 0, minRotation: 0, autoSkipPadding: 12 } }, y: { beginAtZero: true, ticks: { precision: 0 } } } },
       plugins: [marker],
     });

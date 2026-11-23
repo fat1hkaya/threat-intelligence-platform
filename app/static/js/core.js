@@ -796,7 +796,7 @@
   function chartDefaults() {
     if (!window.Chart) return;
     Chart.defaults.color = cssVar('--text-2'); Chart.defaults.borderColor = cssVar('--line');
-    Chart.defaults.font.family = 'Inter, system-ui, sans-serif'; Chart.defaults.font.size = 12;
+    Chart.defaults.font.family = 'Geist, Inter, system-ui, sans-serif'; Chart.defaults.font.size = 12;
     Chart.defaults.plugins.legend.display = false;
     Chart.defaults.plugins.tooltip.backgroundColor = cssVar('--elev-2'); Chart.defaults.plugins.tooltip.borderColor = cssVar('--line-strong'); Chart.defaults.plugins.tooltip.borderWidth = 1;
     Chart.defaults.plugins.tooltip.titleColor = cssVar('--text'); Chart.defaults.plugins.tooltip.bodyColor = cssVar('--text');
