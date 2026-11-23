@@ -7,12 +7,12 @@
 <section class="grid g-4" id="kpis" aria-label="Kaynak özeti"></section>
 <p class="notice" id="keyNotice" hidden><i data-lucide="key-round"></i><span>ThreatFox, MalwareBazaar ve URLhaus için ücretsiz abuse.ch anahtarı gerekir (<a href="https://auth.abuse.ch" target="_blank" rel="noopener noreferrer">auth.abuse.ch</a>). Anahtarı <code>.env</code> dosyasına <code>ABUSECH_AUTH_KEY=...</code> olarak yazıp uygulamayı yeniden başlatın. Anahtar yokken uygulama ATT&amp;CK, CISA KEV ve Feodo Tracker verisiyle çalışmaya devam eder.</span></p>
 
-<article class="card flush">
+<article class="card flush bare">
   <div class="card-head"><div><h2>Kaynaklar</h2><p>Kaynakların son içe aktarma durumu<span class="tech"> · vw_SourceHealth</span></p></div></div>
   <div id="srcTbl"></div>
 </article>
 
-<article class="card flush">
+<article class="card flush bare">
   <div class="card-head"><div><h2>İçe aktarma işleri</h2><p>Satıra tıklayınca işin ayrıntısı ve hatalı satırları açılır<span class="tech"> · ImportJob, ImportJobError</span></p></div>
     <div class="head-actions">
       <label class="check" title="Hiçbir satırı değiştirmeyen başarılı işler (ör. her senkronda tekrarlanan '0 yeni') gizlenir"><input type="checkbox" id="jChanged" checked>Yalnızca değişiklik olanlar ve hatalılar</label>

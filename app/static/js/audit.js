@@ -71,6 +71,18 @@
     TL.icons();
   }
 
+  // Tek tepe varsa (en büyük gün ikinciden en az iki kat) o günün değeri çubuğun üstüne yazılır
+  function peakLabel(daily) {
+    const totals = daily.map((d) => d.Total), sorted = [...totals].sort((a, b) => b - a);
+    const i = sorted[0] > 0 && sorted[0] >= 2 * (sorted[1] || 0) ? totals.indexOf(sorted[0]) : -1;
+    return { id: 'peak', afterDatasetsDraw(chart) {
+      if (i < 0) return;
+      const { ctx, scales: { x, y } } = chart, css = getComputedStyle(document.documentElement);
+      ctx.save(); ctx.fillStyle = css.getPropertyValue('--text').trim(); ctx.font = '500 12px Geist, system-ui, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(fmtN(sorted[0]), x.getPixelForValue(i), y.getPixelForValue(sorted[0]) - 4); ctx.restore();
+    } };
+  }
+
   // Günlük olaylar: işlem türüne göre yığılmış çubuk (ekleme yeşil, güncelleme sarı, silme kırmızı)
   function drawChart(daily) {
     const total = daily.reduce((a, d) => a + d.Total, 0);
@@ -82,8 +94,9 @@
       data: { labels: daily.map((d) => new Date(d.Day + 'T00:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })),
         datasets: [['Ekleme', 'Inserts', c('--low', '#34D399')], ['Güncelleme', 'Updates', c('--medium', '#FBBF24')], ['Silme', 'Deletes', c('--critical', '#F87171')]]
           .map(([l, k, col]) => ({ label: l, data: daily.map((d) => d[k]), backgroundColor: col, borderRadius: 2, maxBarThickness: 18, stack: 'a' })) },
-      options: { maintainAspectRatio: false, plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10 } } },
-        scales: { x: { stacked: true, grid: { display: false }, ticks: { maxTicksLimit: 8, maxRotation: 0 } }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } } });
+      options: { maintainAspectRatio: false, layout: { padding: { top: 14 } }, plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10 } } },
+        scales: { x: { stacked: true, grid: { display: false }, ticks: { maxTicksLimit: 8, maxRotation: 0 } }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } },
+      plugins: [peakLabel(daily)] });
   }
 
   // ---------- giriş denemeleri ----------

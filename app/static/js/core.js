@@ -188,7 +188,11 @@
       let host = sc.parentElement;
       if (!host.classList.contains('scroll-host')) { host = document.createElement('div'); host.className = 'scroll-host'; sc.before(host); host.appendChild(sc); }
       const shade = () => {
+        // ölçüm kaydırma kipinde: görünür taşma kipinde tablonun en küçük genişliği üst ızgarayı genişletir ve taşma görünmez olur
+        sc.style.overflowX = 'auto';
         const over = sc.scrollWidth > sc.clientWidth + 1;
+        sc.style.overflowX = '';
+        host.classList.toggle('fits', !over);
         host.classList.toggle('more-right', over && sc.scrollLeft + sc.clientWidth < sc.scrollWidth - 2);
         host.classList.toggle('more-left', over && sc.scrollLeft > 2);
         host.classList.toggle('scroll-x', over);
@@ -196,6 +200,8 @@
         else if (sc.getAttribute('role') === 'region') { sc.removeAttribute('tabindex'); sc.removeAttribute('role'); sc.removeAttribute('aria-label'); }
       };
       sc._shade = shade; sc.addEventListener('scroll', shade, { passive: true }); shade();
+      // içerik sonradan genişlerse (yazı tipi yüklenmesi, ikonlar) ölçüm yenilenir
+      if (window.ResizeObserver) new ResizeObserver(() => shade()).observe(sc.firstElementChild || sc);
     });
   }
   const icons = () => { window.lucide && window.lucide.createIcons(); requestAnimationFrame(() => enhance()); };

@@ -66,7 +66,10 @@
     document.getElementById('sevLegend').innerHTML = sevRows.map((r) => `<li><a href="/iocs?minRisk=${r.MinScore}&maxRisk=${(d.byRisk[d.byRisk.findIndex((b) => b.Code === r.Code) - 1] || { MinScore: 101 }).MinScore - 1}&status=active" class="${r.Total ? '' : 'is-zero'}"><i class="sev-dot sev-${r.Code}"></i><span>${esc(label(r))}</span><b>${fmtN(r.Total)} <span class="faint">%${pct(r.Total, total).toLocaleString('tr-TR')}</span></b></a></li>`).join('');
     document.getElementById('sevSummary').textContent = 'Risk skoru dağılımı: ' + sevRows.map((r) => `${r.Name} ${r.Total}`).join(', ');
     const top = sevRows.filter((r) => r.Code === 'critical' || r.Code === 'high').reduce((a, r) => a + r.Total, 0);
-    document.getElementById('riskNote').textContent = top ? '' : 'Yüksek ve kritik banda çıkmak için IOC\'nin kurum içinde görülmüş olması gerekir (görülme sayısı skora eklenir).';
+    const used = sevRows.filter((r) => r.Total);
+    document.getElementById('riskNote').innerHTML = used.length === 1
+      ? `Tüm IOC'ler ${esc(used[0].Name)} bantta: puan ölçeği bkz. <a href="/settings?tab=risk">Ayarlar</a>.${top ? '' : ' Yüksek ve kritik banda çıkmak için IOC\'nin kurum içinde görülmüş olması gerekir.'}`
+      : (top ? '' : 'Yüksek ve kritik banda çıkmak için IOC\'nin kurum içinde görülmüş olması gerekir (görülme sayısı skora eklenir).');
     document.getElementById('sevTotal').textContent = "Aktif IOC'ler, Ayarlar'daki bant eşiklerine göre";
     document.getElementById('sevStack').innerHTML = sevRows.filter((r) => r.Total).map((r) => `<i class="sev-seg sev-${r.Code}" style="flex-grow:${r.Total}" title="${esc(label(r))}: ${fmtN(r.Total)}"></i>`).join('');
 
@@ -118,12 +121,14 @@
     ], d.latest, { caption: 'Son istihbarat' }) : empty('Henüz IOC yok. Veri kaynaklarından içe aktarma yapın.', 'inbox');
 
     // Her satırda durum rozeti; son işin getirdiği yeni kayıt ve kaynağın toplamı, kaynağın kendi birimiyle
-    const srcState = (x) => !x.IsActive ? '<span class="badge b-muted">Kapalı</span>' : x.LastRunStatus ? job(x.LastRunStatus) : '<span class="badge b-muted">Bekliyor</span>';
-    document.getElementById('sources').innerHTML = d.sources.map((x) => `<li class="${x.IsActive ? '' : 'is-off'}"><a href="/sources?source=${x.SourceID}">
-      <span><b>${esc(x.Name)}</b><br><small title="${x.LastRunAt ? `Son iş: ${fmtDT(x.LastRunAt)}` : ''}">${x.LastRunAt
-        ? `+${fmtN(x.LastRowsInserted || 0)} yeni · toplam ${fmtN(x.UnitCount || 0)} ${esc(x.UnitLabel || 'IOC')} · ${ago(x.LastRunAt)}`
-        : `Henüz içe aktarma yapılmadı · toplam ${fmtN(x.UnitCount || 0)} ${esc(x.UnitLabel || 'IOC')}`}</small></span>
-      ${srcState(x)}</a></li>`).join('');
+    const STATE = { success: ['ok', 'Son iş başarılı'], partial: ['warn', 'Son iş kısmen başarılı'], failed: ['bad', 'Son iş hatalı'] };
+    const srcState = (x) => !x.IsActive ? ['off', 'Kaynak kapalı'] : STATE[x.LastRunStatus] || ['off', 'Henüz içe aktarma yapılmadı'];
+    document.getElementById('sources').innerHTML = d.sources.map((x) => {
+      const [c, l] = srcState(x);
+      return `<li class="${x.IsActive ? '' : 'is-off'}"><a href="/sources?source=${x.SourceID}" title="${esc(x.Name)} · ${l}${x.LastRunAt ? ` · son iş ${fmtDT(x.LastRunAt)}` : ''} · toplam ${fmtN(x.UnitCount || 0)} ${esc(x.UnitLabel || 'IOC')}">
+        <span class="hdot ${c}" aria-hidden="true"></span><span class="hname">${esc(TL.sourceShort(x.Name))}</span><span class="sr-only">${l}</span>
+        <span class="hnew">${x.LastRunAt ? `+${fmtN(x.LastRowsInserted || 0)} yeni` : '—'}</span><span class="htime">${x.LastRunAt ? ago(x.LastRunAt) : ''}</span></a></li>`;
+    }).join('');
 
     // Teknik kodu ayrı dar sütunda, ad kesilmeden (gerekirse iki satıra sarılır)
     const tmax = Math.max(1, ...d.topTechniques.map((r) => r.ActorCount));

@@ -5,6 +5,7 @@
     <div class="ph-title"><h1>Vakalar</h1><span class="head-count" id="headCount" hidden></span><span class="page-help"><button type="button" class="btn icon ghost help-btn" aria-expanded="false" aria-controls="pageHelp" aria-label="Bu sayfa hakkında" title="Bu sayfa hakkında"><i data-lucide="circle-help"></i></button><span class="help-pop" id="pageHelp" role="note" hidden>Bir olayın IOC, zararlı yazılım, aktör ve tekniklerini tek vakada toplayın; bulguları notlarla kaydedin.<span class="tech"> Vaka öğeleri SQL Graph kenarı olarak saklanır.</span></span></span></div>
     <div class="page-actions"><button class="btn primary" id="newCase" hidden><i data-lucide="briefcase"></i>Yeni vaka</button></div>
   </div>
+  <div class="cases-layout">
   <div class="card flush">
     <div class="card-head">
       <div><h2>Vaka listesi</h2><p id="listNote"></p></div>
@@ -13,6 +14,12 @@
       </div>
     </div>
     <div id="caseTbl"></div>
+  </div>
+  <!-- Bağlam: boş durum yalnızca liste kartında kalır; sayfanın kalanı şablonlar ve son avlarla dolar -->
+  <aside class="case-context" id="caseContext" aria-label="Vaka başlatma" hidden>
+    <article class="card"><h2 class="sec-h">Vaka şablonları</h2><p class="faint" style="font-size:12px;margin:-4px 0 8px">Başlığı ve özeti dolu bir Yeni vaka penceresi açar</p><ul class="ctx-list" id="tplList"></ul></article>
+    <article class="card"><h2 class="sec-h">Son log avları</h2><ul class="ctx-list" id="huntList"></ul></article>
+  </aside>
   </div>
 </div>
 <div id="detailView" hidden></div>

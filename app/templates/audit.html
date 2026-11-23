@@ -14,7 +14,7 @@
   <article class="card">
     <div class="card-head"><div><h2>Günlük olaylar</h2><p id="dailyNote"></p></div>
       <div class="seg" role="group" aria-label="Dönem" id="period"><button type="button" data-v="7" aria-pressed="false">7 gün</button><button type="button" data-v="30" aria-pressed="true">30 gün</button><button type="button" data-v="90" aria-pressed="false">90 gün</button></div></div>
-    <div class="chart-box" style="height:200px"><canvas id="daily" role="img" aria-label="Günlük denetim olayları grafiği" aria-describedby="dailySummary"></canvas></div>
+    <div class="chart-box" style="height:160px"><canvas id="daily" role="img" aria-label="Günlük denetim olayları grafiği" aria-describedby="dailySummary"></canvas></div>
     <p class="sr-only" id="dailySummary"></p>
   </article>
   <form class="toolbar facets" id="filters" role="search" aria-label="Denetim filtreleri">
@@ -38,7 +38,7 @@
 </div>
 
 <div id="loginsTab" role="tabpanel" aria-labelledby="tab-logins" class="tab-panel" hidden>
-  <article class="card flush">
+  <article class="card flush bare">
     <div class="card-head"><div><h2>Giriş denemeleri</h2><p id="loginNote">15 dakikada 5 hatalı deneme hesabı geçici olarak kilitler</p></div>
       <div class="head-actions">
         <div class="seg" role="group" aria-label="Sonuç filtresi" id="loginFilter"><button type="button" data-v="" aria-pressed="true">Tümü</button><button type="button" data-v="failed" aria-pressed="false">Hatalı</button><button type="button" data-v="locked" aria-pressed="false">Kilitlenme</button><button type="button" data-v="ok" aria-pressed="false">Başarılı</button></div>

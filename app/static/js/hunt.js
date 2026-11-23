@@ -61,6 +61,8 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    // /hunt?id=N: geçmiş bir avın sonucunu açar (Vakalar > Son log avları)
+    const hid = +TL.qs.get('id'); if (hid) TL.api(`/api/hunt/${hid}`).then(show).catch((e) => TL.toast(e.message, 'err'));
     const form = document.getElementById('huntForm'), rec = document.getElementById('record'), note = document.getElementById('sampleNote');
     if (!can('analyst')) { rec.disabled = true; document.getElementById('recordWrap').title = 'Görülme kaydı için analist yetkisi gerekir'; }
     const setSample = (on, text) => {

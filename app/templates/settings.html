@@ -12,7 +12,7 @@
 </div>
 
 <div id="usersTab" role="tabpanel" aria-labelledby="tab-users" class="tab-panel">
-<div class="grid g-main-side">
+<div class="grid g-2 equal">
   <article class="card flush">
     <div class="card-head"><div><h2 class="sr-only">Kullanıcılar ve roller</h2><p>Hesaplar, roller ve son girişler<span class="tech"> · AppUser tablosu, değişiklikler trg_AppUser_Audit ile denetlenir</span></p></div>
       <div class="head-actions"><label class="check" id="inactiveWrap" hidden><input type="checkbox" id="showInactive">Devre dışı olanları göster</label>
@@ -30,7 +30,7 @@
 </div>
 
 <div id="riskTab" role="tabpanel" aria-labelledby="tab-risk" class="tab-panel" hidden>
-<div class="grid g-2">
+<div class="grid g-2 equal">
   <article class="card" id="risk">
     <h2>Risk skoru nasıl hesaplanıyor?</h2>
     <p class="muted" style="font-size: 13px;margin:4px 0 12px"><span class="user-only">Skor saklanmaz; IOC her okunduğunda güncel verilerle yeniden hesaplanır.</span><span class="tech">dbo.fn_RiskScore skaler fonksiyonu (türetilmiş nitelik: saklanmaz, vw_Indicator içinde her okumada hesaplanır)</span></p>

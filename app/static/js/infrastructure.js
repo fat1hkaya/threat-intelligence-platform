@@ -55,8 +55,11 @@
       { label: 'Zararlı aileleri', render: (r) => families(r.FamilyNames) },
     ], d.asns, { caption: 'ASN örtüşmesi' }) : empty(s.Ranges ? 'Birden çok aileyi barındıran ASN bulunmadı.' : 'ASN eşlemesi için IP aralığı verisi gerekli.', 'server');
 
-    const max = Math.max(1, ...d.countries.map((c) => c.IOCs));
-    document.getElementById('countries').innerHTML = d.countries.length ? d.countries.slice(0, 15).map((c) => `<div class="bar-row"><span>${country(c.CountryCode)}</span>
+    // en çok 8 ülke ve "Diğer" (kalanların toplamı); çubuk tek renk, sayı nötr
+    const top = d.countries.slice(0, 8), rest = d.countries.slice(8);
+    const rows = rest.length ? [...top, { CountryCode: null, IOCs: rest.reduce((a, c) => a + c.IOCs, 0), other: rest.length }] : top;
+    const max = Math.max(1, ...rows.map((c) => c.IOCs));
+    document.getElementById('countries').innerHTML = d.countries.length ? rows.map((c) => `<div class="bar-row"><span>${c.CountryCode ? country(c.CountryCode) : `Diğer <span class="faint">${fmtN(c.other)} ülke</span>`}</span>
       <span class="track" aria-hidden="true"><i style="width:${(c.IOCs / max) * 100}%"></i></span><b>${fmtN(c.IOCs)}</b></div>`).join('')
       : '<p class="faint" style="font-size:13px">Ülke bilgisi IP aralığı verisiyle gelir.</p>';
     icons();

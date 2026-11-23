@@ -39,13 +39,13 @@
       <li><b>İnceleyin ve kapatın</b><span>Notlarla bulguları kaydedin, ortak bağlantılara bakın, iş bitince vakayı kapatın ve raporunu alın.</span></li>
     </ol>${writer ? '<button type="button" class="btn primary" data-new-case><i data-lucide="briefcase"></i>Yeni vaka</button>' : ''}</div>`;
 
-  function caseForm(c, onSaved) {
+  function caseForm(c, onSaved, pre = {}) {
     const users = api('/api/cases/assignees');
     const d = dialog(`<form><div class="dlg-head"><h2>${c ? 'Vakayı düzenle' : 'Yeni vaka'}</h2><button type="button" class="btn icon ghost" data-dismiss aria-label="Kapat"><i data-lucide="x"></i></button></div>
-      <div class="field"><label for="cf-title">Başlık</label><input class="input" id="cf-title" name="title" minlength="3" maxlength="150" required value="${esc(c?.Title || '')}" placeholder="ör. Muhasebe birimine yönelik oltalama"></div>
-      <div class="field"><label for="cf-sum">Özet</label><textarea class="input" id="cf-sum" name="summary" rows="4" maxlength="2000" placeholder="Ne oldu, nereden fark edildi, kapsam ne?">${esc(c?.Summary || '')}</textarea></div>
+      <div class="field"><label for="cf-title">Başlık</label><input class="input" id="cf-title" name="title" minlength="3" maxlength="150" required value="${esc(c?.Title || pre.title || '')}" placeholder="ör. Muhasebe birimine yönelik oltalama"></div>
+      <div class="field"><label for="cf-sum">Özet</label><textarea class="input" id="cf-sum" name="summary" rows="4" maxlength="2000" placeholder="Ne oldu, nereden fark edildi, kapsam ne?">${esc(c?.Summary || pre.summary || '')}</textarea></div>
       <div class="form-grid">
-        <div class="field"><label for="cf-sev">Önem</label><select class="input" id="cf-sev" name="severity">${SEV_OPTS.map((s) => `<option value="${s}" ${(c?.SeverityCode || 'medium') === s ? 'selected' : ''}>${esc(TL.SEV[s])}</option>`).join('')}</select></div>
+        <div class="field"><label for="cf-sev">Önem</label><select class="input" id="cf-sev" name="severity">${SEV_OPTS.map((s) => `<option value="${s}" ${(c?.SeverityCode || pre.severity || 'medium') === s ? 'selected' : ''}>${esc(TL.SEV[s])}</option>`).join('')}</select></div>
         <div class="field"><label for="cf-as">Sorumlu</label><select class="input" id="cf-as" name="assignedTo"></select></div>
       </div>
       <p class="err" role="alert"></p><div class="dlg-foot"><button type="button" class="btn" data-dismiss>Vazgeç</button><button class="btn primary">${c ? 'Değişiklikleri kaydet' : 'Vakayı aç'}</button></div></form>`);
@@ -58,7 +58,9 @@
       const body = { title: f.title, summary: f.summary || null, severity: f.severity, assignedTo: f.assignedTo ? +f.assignedTo : null };
       try {
         const r = c ? await api(`/api/cases/${c.InvestigationID}`, { method: 'PATCH', body }) : await api('/api/cases', { method: 'POST', body });
-        d.close(); toast(c ? 'Vaka güncellendi.' : `Vaka #${r.InvestigationID} açıldı.`); onSaved(c ? c.InvestigationID : r.InvestigationID);
+        let extra = '';
+        if (!c && pre.afterCreate) { try { extra = await pre.afterCreate(r.InvestigationID); } catch (x) { extra = ` IOC'ler eklenemedi: ${x.message}`; } }
+        d.close(); toast(c ? 'Vaka güncellendi.' : `Vaka #${r.InvestigationID} açıldı.${extra || ''}`); onSaved(c ? c.InvestigationID : r.InvestigationID);
       } catch (x) { e.target.querySelector('.err').textContent = x.message; }
     };
   }
@@ -232,8 +234,47 @@
 
   const go = (id) => { qs.set({ id }); id ? detail(id) : list(); };
 
+  // Vaka şablonları: başlık ve özet dolu Yeni vaka penceresi (analist düzenleyip açar)
+  const TEMPLATES = [
+    { key: 'phish', icon: 'mail-warning', title: 'Oltalama', severity: 'high',
+      summary: 'Şüpheli e-posta: gönderen, konu, alıcılar ve bağlantı/ek bilgisi. Kullanıcı bağlantıya tıkladı mı, kimlik bilgisi girdi mi? Ek çalıştırıldıysa uç noktadaki izler.' },
+    { key: 'c2', icon: 'radio-tower', title: 'C2 iletişimi', severity: 'critical',
+      summary: 'Kurum içinden bilinen bir komuta-kontrol adresine bağlantı. Kaynak makine, ilk görülme zamanı, trafik hacmi ve süresi; makine ağdan ayrıldı mı?' },
+    { key: 'cred', icon: 'key-round', title: 'Kimlik bilgisi sızıntısı', severity: 'high',
+      summary: 'Kurum hesabına ait kimlik bilgisi dışarıda görüldü (sızıntı listesi, bilgi hırsızı günlüğü). Etkilenen hesaplar, parola sıfırlama ve oturum kapatma durumu.' },
+  ];
+  async function context() {
+    const box = document.getElementById('caseContext'); if (!box) return;
+    box.hidden = false;
+    document.getElementById('tplList').innerHTML = TEMPLATES.map((t) => `<li><button type="button" class="ctx-row" data-tpl="${t.key}" ${writer ? '' : 'disabled title="Vaka açmak için analist yetkisi gerekir"'}>
+        <i data-lucide="${t.icon}" aria-hidden="true"></i><span><b>${esc(t.title)}</b><small title="${esc(t.summary)}">${esc(t.summary)}</small></span><i data-lucide="plus" aria-hidden="true"></i></button></li>`).join('');
+    const hb = document.getElementById('huntList');
+    try {
+      const hunts = (await api('/api/hunt')).slice(0, 5);
+      hb.innerHTML = hunts.length ? hunts.map((h) => `<li><div class="ctx-row static"><i data-lucide="radar" aria-hidden="true"></i>
+          <span><b title="${esc(h.FileName || h.Location || `Av #${h.HuntID}`)}">${esc(h.FileName || h.Location || `Av #${h.HuntID}`)}</b><small title="${TL.fmtDT(h.StartedAt)}">${TL.ago(h.StartedAt)} · ${fmtN(h.LinesScanned)} satır · ${h.Matches ? `<b class="hit">${fmtN(h.Matches)} eşleşme</b>` : 'eşleşme yok'}</small></span>
+          ${h.Matches && writer ? `<button type="button" class="btn sm" data-hunt="${h.HuntID}">Bu avdan vaka aç</button>` : `<a class="btn sm ghost" href="/hunt?id=${h.HuntID}">Aç</a>`}</div></li>`).join('')
+        : `<li class="faint" style="font-size:13px;padding:6px 0">Henüz log avı yapılmadı. <a href="/hunt">Log avı</a> sayfasından bir log yapıştırın.</li>`;
+    } catch (e) { hb.innerHTML = `<li class="faint">${esc(e.message)}</li>`; }
+    icons();
+  }
+  async function caseFromHunt(huntId) {
+    const d = await api(`/api/hunt/${huntId}`), s = d.summary, ids = [...new Set(d.matches.map((m) => m.IndicatorID).filter(Boolean))];
+    caseForm(null, go, {
+      title: `Log avı: ${s.FileName || s.Location || `#${huntId}`}`,
+      severity: d.matches.some((m) => m.SeverityCode === 'critical') ? 'critical' : 'high',
+      summary: `${TL.fmtDT(s.StartedAt)} tarihli log avında ${fmtN(s.LinesScanned)} satır tarandı, ${fmtN(ids.length)} bilinen IOC ile eşleşme bulundu. Eşleşen IOC'ler vakaya eklenir.`,
+      afterCreate: async (caseId) => { if (!ids.length) return ''; const r = await api(`/api/cases/${caseId}/items/batch`, { method: 'POST', body: { type: 'indicator', ids: ids.slice(0, 200), note: `Log avı #${huntId}` } }); return ` ${fmtN(r.added ?? ids.length)} IOC eklendi.`; },
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     const nb = document.getElementById('newCase');
+    document.getElementById('caseContext')?.addEventListener('click', (e) => {
+      const t = e.target.closest('[data-tpl]'); if (t) { const tp = TEMPLATES.find((x) => x.key === t.dataset.tpl); caseForm(null, go, { title: tp.title, summary: tp.summary, severity: tp.severity }); return; }
+      const h = e.target.closest('[data-hunt]'); if (h) caseFromHunt(+h.dataset.hunt).catch((x) => toast(x.message, 'err'));
+    });
+    context();
     if (writer) { nb.hidden = false; nb.onclick = () => caseForm(null, go); }
     document.getElementById('statusSeg').addEventListener('click', (e) => {
       const b = e.target.closest('button'); if (!b) return; filter = b.dataset.v;

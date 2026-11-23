@@ -49,10 +49,20 @@ AUDIT_JS = r"""
   const visible = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none'; };
   out.overflow = document.documentElement.scrollWidth > vw;
   out.overflowPx = Math.max(0, document.documentElement.scrollWidth - vw);
+  // .content overflow-x: clip olduğu için belge taşması görünmeyebilir: içerik alanından geniş (kırpılan) öğeler de taşma sayılır
+  const ca = document.getElementById('content');
+  if (ca) { const cw = ca.getBoundingClientRect().right + 1;
+    // kendi taşmasını gizleyen/kaydıran bir üst öğe içerik alanı içindeyse öğe kırpılmış değildir
+    const inside = (e) => { for (let q = e.parentElement; q && q !== ca; q = q.parentElement) { if (q instanceof SVGElement) continue; if (getComputedStyle(q).overflowX !== 'visible' && q.getBoundingClientRect().right <= cw) return true; } return false; };
+    const clipped = [...ca.querySelectorAll('*')].filter((e) => { const r = e.getBoundingClientRect(); return !(e instanceof SVGElement && e.ownerSVGElement) && r.width > 0 && r.right > cw && !e.closest('.panel, dialog, .facet-pop, .menu-pop, .help-pop') && !inside(e); });
+    out.clipped = clipped.slice(0, 5).map(label);
+    if (clipped.length) { out.overflow = true; out.overflowPx = Math.max(out.overflowPx, Math.round(Math.max(...clipped.map((e) => e.getBoundingClientRect().right)) - cw)); } }
   const sb = document.getElementById('sidebar');
   out.sidebarScroll = !!(sb && visible(sb) && sb.getBoundingClientRect().left >= -1 && sb.scrollHeight > sb.clientHeight + 1);
   const nested = [], allowed = [], trunc = [], overlaps = [];
-  const okScroll = (el) => el.matches('.panel, dialog') || (el.matches('.table-scroll, .matrix') && el.scrollHeight <= el.clientHeight + 1 && el.closest('.scroll-host'));
+  // şartnamenin izin verdiği yatay şeritler: ATT&CK taktik çipleri, telefonda filtre düğmeleri, IOC detay sekmeleri (yalnızca yatay)
+  const strip = (el) => el.matches('.tactics, .toolbar.facets .tb-filters, .ftabs') && el.scrollHeight <= el.clientHeight + 1;
+  const okScroll = (el) => el.matches('.panel, dialog') || strip(el) || (el.matches('.table-scroll, .matrix') && el.scrollHeight <= el.clientHeight + 1 && el.closest('.scroll-host'));
   for (const el of document.querySelectorAll('body *')) {
     if (!visible(el) || el.closest('#sqlDrawer, .vis-network, dialog:not([open])')) continue;
     const cs = getComputedStyle(el);

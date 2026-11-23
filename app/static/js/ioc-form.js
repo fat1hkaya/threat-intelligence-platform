@@ -68,7 +68,7 @@
           <div class="preview" id="f-preview" aria-live="polite"><span class="faint">Güvenli yazım (hxxp, [.]) çözülür; değer kaydedilmeden önce normalleştirilir.</span></div></div>
         <div class="field"><label for="f-type">Tip</label><select class="input" id="f-type" name="type"><option value="">Otomatik algıla</option>${opt(m.types, ind?.TypeCode, 'Code', (r) => r.Name)}</select></div>
         <div class="field"><label for="f-sev">Önem</label><select class="input" id="f-sev" name="severity">${opt(m.severities, ind?.SeverityCode || 'medium', 'Code', (r) => r.Name)}</select></div>
-        <div class="field full"><label for="f-conf">Güven puanı</label>
+        <div class="field"><label for="f-conf">Güven puanı</label>
           <div class="slider-row"><input type="range" id="f-conf" name="confidence" min="0" max="100" step="5" value="${confVal}" aria-describedby="f-conf-help">
             <input class="input num-box" type="number" min="0" max="100" value="${confVal}" aria-label="Güven puanı (sayı)" id="f-conf-n"></div>
           <small class="faint" id="f-conf-help">0–49 düşük · 50–79 orta · 80–100 yüksek güven</small></div>
@@ -77,14 +77,14 @@
         <div class="field"><label for="f-status">Durum</label><select class="input" id="f-status" name="status">
           ${[['active', 'Aktif'], ['expired', 'Süresi doldu'], ['revoked', 'İptal edildi'], ['false_positive', 'Yanlış pozitif']].map(([v, l]) => `<option value="${v}" ${(ind?.Status || 'active') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="field"><label for="f-exp">Geçerlilik sonu <span class="faint">(isteğe bağlı)</span></label><input class="input" id="f-exp" name="expiresAt" type="date" value="${esc(expires)}"></div>
-        <div class="field full"><label for="f-tag-entry">Etiketler</label>
-          <div class="tag-box input"><input type="hidden" name="tags"><span class="tag-list"></span><input class="tag-entry" id="f-tag-entry" placeholder="Etiket yazıp Enter'a basın (ör. c2)" maxlength="50" autocomplete="off"></div></div>
-        ${ind ? '' : `<div class="field full mw-picker"><label for="f-mw">Zararlı ailesi <span class="faint">(isteğe bağlı)</span></label>
+        ${ind ? '' : `<div class="field mw-picker"><label for="f-mw">Zararlı ailesi <span class="faint">(isteğe bağlı)</span></label>
           <div class="combo"><input class="input" type="search" id="f-mw" role="combobox" aria-expanded="false" aria-controls="f-mw-list" aria-autocomplete="list" placeholder="Aile adı yazın (ör. Emotet)" autocomplete="off">
             <input type="hidden" name="malwareId"><ul class="combo-list" id="f-mw-list" role="listbox" hidden></ul></div></div>
         <div class="field" data-mw-extra hidden><label for="f-role">IOC'nin rolü</label><select class="input" id="f-role" name="role">${ROLES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></div>
         <div class="field" data-mw-extra hidden><label for="f-ev">Bağlantının dayanağı</label><input class="input" id="f-ev" name="evidence" maxlength="1000" placeholder="ör. sandbox raporu, kaynak bülteni"></div>`}
-        <div class="field full"><label for="f-desc">Açıklama</label><textarea class="input" id="f-desc" name="description" maxlength="1000">${esc(ind?.Description || '')}</textarea></div>
+        <div class="field full"><label for="f-tag-entry">Etiketler</label>
+          <div class="tag-box input"><input type="hidden" name="tags"><span class="tag-list"></span><input class="tag-entry" id="f-tag-entry" placeholder="Etiket yazıp Enter'a basın (ör. c2)" maxlength="50" autocomplete="off"></div></div>
+        <div class="field full"><label for="f-desc">Açıklama</label><textarea class="input" id="f-desc" name="description" maxlength="1000" rows="2">${esc(ind?.Description || '')}</textarea></div>
       </div>
       <p class="err" role="alert"></p>
       <div class="dlg-foot"><small class="faint kbd-hint">Ctrl + Enter ile kaydedin</small><button type="button" class="btn" data-dismiss>Vazgeç</button><button class="btn primary" type="submit">${ind ? 'Değişiklikleri kaydet' : 'IOC ekle'}</button></div>

@@ -15,7 +15,7 @@
       { id: 'start', label: 'Başlangıç', priority: 2, render: (r) => r.StartDate ? fmtD(r.StartDate) : '—' },
       { id: 'end', label: 'Bitiş', priority: 3, render: (r) => r.EndDate ? fmtD(r.EndDate) : '—' },
       { id: 'actor', label: 'Aktör', hint: '— : kaynakta bir aktöre atfedilmemiş', render: (r) => r.ActorName ? `<a href="/actors?id=${r.ActorID}">${esc(r.ActorName)}</a>` : TL.unknown('Atfedilmemiş') },
-      { id: 'malware', label: 'Zararlı', num: true, priority: 3, render: (r) => num(r.MalwareCount) },
+      { id: 'malware', label: 'Zararlı', num: true, priority: 3, hideIfAllZero: (r) => r.MalwareCount, render: (r) => num(r.MalwareCount) },
       { id: 'techniques', label: 'Teknik', num: true, render: (r) => num(r.TechniqueCount) },
       { id: 'iocs', label: 'IOC', num: true, hideIfAllZero: (r) => r.IndicatorCount, render: (r) => num(r.IndicatorCount, { strong: true }) },
       { id: 'graph', label: 'İlişki grafı', cls: 'actions', render: (r) => `<a class="btn sm icon ghost" href="${graphUrl('campaign', r.CampaignID)}" aria-label="${esc(r.Name)} ilişki grafı" title="İlişki grafı"><i data-lucide="share-2"></i></a>` },

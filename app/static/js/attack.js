@@ -117,8 +117,11 @@
 
   async function tactics() {
     const rows = await api('/api/tactics'); const sel = document.getElementById('tactic').value;
-    document.getElementById('tactics').innerHTML = rows.map((t) => `<button type="button" class="tactic" data-id="${t.TacticID}" aria-pressed="${String(t.TacticID) === sel}">
-      <b>${esc(t.Name)}</b><span class="cnt" title="${t.TechniqueCount} teknikten ${t.UsedByActors} tanesini en az bir aktör kullanıyor">${t.TechniqueCount} teknik · aktörlerin kullandığı ${t.UsedByActors}</span></button>`).join('');
+    // tek satırlık yatay çip şeridi: "Execution 22 · 18"; ayrıntı ipucunda ve ekran okuyucu adında
+    document.getElementById('tactics').innerHTML = rows.map((t) => {
+      const tip = `${t.Name}: ${t.TechniqueCount} teknik, ${t.UsedByActors}'ini en az bir aktör kullanıyor`;
+      return `<button type="button" class="tactic" data-id="${t.TacticID}" aria-pressed="${String(t.TacticID) === sel}" title="${esc(tip)}" aria-label="${esc(tip)}">
+        <b>${esc(t.Name)}</b><span class="cnt" aria-hidden="true">${t.TechniqueCount} · ${t.UsedByActors}</span></button>`; }).join('');
   }
 
   async function matrix() {

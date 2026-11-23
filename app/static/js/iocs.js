@@ -22,7 +22,7 @@
     { id: 'source', label: 'Kaynak', sort: 'source', priority: 3, render: (r) => sourceBadge(r.SourceName) },
     { id: 'firstSeen', label: 'İlk görülme', sort: 'firstSeen', hidden: true, render: (r) => `<span class="muted nowrap" title="${fmtDT(r.FirstSeen)}">${ago(r.FirstSeen)}</span>` },
     { id: 'lastSeen', label: 'Son görülme', sort: 'lastSeen', render: (r) => `<span class="nowrap" title="${fmtDT(r.LastSeen)}">${ago(r.LastSeen)}</span>` },
-    { id: 'actions', label: 'İşlemler', cls: 'actions', priority: 2, render: (r) => `<a class="btn sm icon ghost" href="/iocs/${r.IndicatorID}" aria-label="Detay sayfası: ${esc(r.Value)}" title="Detay sayfası"><i data-lucide="external-link"></i></a>
+    { id: 'actions', label: 'İşlemler', cls: 'actions', priority: 3, render: (r) => `<a class="btn sm icon ghost" href="/iocs/${r.IndicatorID}" aria-label="Detay sayfası: ${esc(r.Value)}" title="Detay sayfası"><i data-lucide="external-link"></i></a>
         <a class="btn sm icon ghost" href="${TL.graphUrl('indicator', r.IndicatorID)}" aria-label="İlişki grafında aç: ${esc(r.Value)}" title="İlişki grafında aç"><i data-lucide="share-2"></i></a>` },
   ];
 

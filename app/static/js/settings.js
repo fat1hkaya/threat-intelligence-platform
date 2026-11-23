@@ -145,7 +145,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     tabs();
-    document.getElementById('perm').innerHTML = PERMS.map(([p, a, b, c]) => { const [t, x] = p.split('|'); return [t, x, a, b, c]; }).map(([p, x, a, b, c]) => `<tr><td class="wrap">${esc(p)}${x ? `<span class="tech"> ${esc(x)}</span>` : ''}</td><td>${yes(a)}</td><td>${yes(b)}</td><td>${yes(c)}</td></tr>`).join('');
+    document.getElementById('perm').innerHTML = PERMS.map(([p, a, b, c]) => { const [t, x] = p.split('|'); return [t, x, a, b, c]; }).map(([p, x, a, b, c]) => `<tr><td title="${esc(p)}">${esc(p)}${x ? `<span class="tech"> ${esc(x)}</span>` : ''}</td><td>${yes(a)}</td><td>${yes(b)}</td><td>${yes(c)}</td></tr>`).join('');
     if (can('admin')) { const b = document.getElementById('newUser'); b.hidden = false; b.onclick = newUser; }
     const box = document.getElementById('users');
     box.addEventListener('change', (e) => { const s = e.target.closest('[data-role]'); if (!s) return;

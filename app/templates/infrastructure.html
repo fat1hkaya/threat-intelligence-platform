@@ -4,11 +4,16 @@
   <div class="ph-title"><h1>Altyapı örtüşmesi</h1><span class="head-count" id="headCount" hidden></span><span class="page-help"><button type="button" class="btn icon ghost help-btn" aria-expanded="false" aria-controls="pageHelp" aria-label="Bu sayfa hakkında" title="Bu sayfa hakkında"><i data-lucide="circle-help"></i></button><span class="help-pop" id="pageHelp" role="note" hidden>Farklı zararlı ailelerinin aynı alt ağda ya da aynı barındırma sağlayıcısında (ASN) toplanması, ortak bir altyapı kullanıldığına işaret edebilir. IP IOC'leri sayısal adrese çevrilip IP aralıklarıyla tek indeks aramasında eşlenir.</span></span></div>
 </div>
 <p class="notice warn" id="noRanges" hidden><i data-lucide="info"></i><span>ASN ve ülke bilgisi için IP aralığı verisi henüz yüklenmedi. Yönetici, Veri Kaynakları sayfasında iptoasn.com satırından senkronize edebilir. Alt ağ kümeleri bu veri olmadan da hesaplanır.</span></p>
-<section class="grid g-4" id="kpis" aria-label="Özet" style="margin-top:18px"></section>
-<div class="grid g-main-side" style="margin-top:18px">
-  <article class="card flush"><div class="card-head"><div><h2>Paylaşılan /24 alt ağlar</h2><p>En az iki IOC barındıran alt ağlar, önce en çok farklı aile içerenler</p></div></div><div id="subnets"></div></article>
-  <article class="card"><h2>Ülke dağılımı</h2><p class="muted" style="font-size: 13px;margin-top:2px">IP aralığının kayıtlı olduğu ülke (barındırma yeri, saldırganın kökeni değil)</p><div class="bars" id="countries" style="margin-top:12px"></div></article>
+<section class="grid g-4" id="kpis" aria-label="Özet"></section>
+<!-- Ülke dağılımı tabloların üstünde kompakt şerit (en çok 8 ülke ve Diğer); iki tablo tam genişlikte alt alta.
+     Yan yana düzen denendi (docs/ui-audit/konsol-asama5/infra-b.png): ASN tablosu yatay kaydırmaya düşüyor. -->
+<div class="infra" id="infra">
+  <article class="card country-strip"><div class="card-head"><div><h2>Ülke dağılımı</h2><p>IP aralığının kayıtlı olduğu ülke (barındırma yeri, saldırganın kökeni değil)</p></div></div>
+    <div class="cbars" id="countries"></div></article>
+  <div class="infra-tables">
+    <article class="card flush bare"><div class="card-head"><div><h2>Paylaşılan /24 alt ağlar</h2><p>En az iki IOC barındıran alt ağlar, önce en çok farklı aile içerenler</p></div></div><div id="subnets"></div></article>
+    <article class="card flush bare"><div class="card-head"><div><h2>Birden çok aileyi barındıran ASN'ler</h2><p>Ayrıca en az 5 IOC barındıran sağlayıcılar</p></div></div><div id="asns"></div></article>
+  </div>
 </div>
-<article class="card flush" style="margin-top:18px"><div class="card-head"><div><h2>Birden çok aileyi barındıran ASN'ler</h2><p>Ayrıca en az 5 IOC barındıran sağlayıcılar</p></div></div><div id="asns"></div></article>
 {% endblock %}
 {% block scripts %}<script src="/static/js/infrastructure.js?v={{ v }}"></script>{% endblock %}
