@@ -29,6 +29,22 @@ def meta(db: Db = Depends(get_db)):
     }
 
 
+@router.get("/sync-status")
+def sync_status(db: Db = Depends(get_db)):
+    """Üst çubuktaki senkron durumu: etkin kaynakların son işi. Son işi hatalı olan kaynaklar adlarıyla döner."""
+    rows = db.query(
+        """
+        SELECT s.Name, lr.StartedAt, lr.Status
+        FROM dbo.Source AS s
+        CROSS APPLY (SELECT TOP (1) j.StartedAt, j.Status FROM dbo.ImportJob AS j
+                     WHERE j.SourceID = s.SourceID ORDER BY j.StartedAt DESC, j.JobID DESC) AS lr
+        WHERE s.IsActive = 1;
+        """, trace=False)
+    ok = [r["StartedAt"] for r in rows if r["Status"] in ("success", "partial")]
+    return {"lastSyncAt": max(ok) if ok else None,
+            "failing": sorted(r["Name"] for r in rows if r["Status"] == "failed")}
+
+
 @router.get("/dashboard/attention")
 def dashboard_attention(db: Db = Depends(get_db)):
     """Şu an bakılması gerekenler: tek satırda skaler alt sorgular (her biri indeksli bir sayım)."""

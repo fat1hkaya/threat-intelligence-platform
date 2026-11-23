@@ -2,7 +2,7 @@
 {% block content %}
 <div id="listView">
   <div class="page-head">
-    <div><h1>Vakalar</h1><p>Bir olayın IOC, zararlı yazılım, aktör ve tekniklerini tek vakada toplayın; bulguları notlarla kaydedin.<span class="tech"> Vaka öğeleri SQL Graph kenarı olarak saklanır.</span></p></div>
+    <div class="ph-title"><h1>Vakalar</h1><span class="head-count" id="headCount" hidden></span><span class="page-help"><button type="button" class="btn icon ghost help-btn" aria-expanded="false" aria-controls="pageHelp" aria-label="Bu sayfa hakkında" title="Bu sayfa hakkında"><i data-lucide="circle-help"></i></button><span class="help-pop" id="pageHelp" role="note" hidden>Bir olayın IOC, zararlı yazılım, aktör ve tekniklerini tek vakada toplayın; bulguları notlarla kaydedin.<span class="tech"> Vaka öğeleri SQL Graph kenarı olarak saklanır.</span></span></span></div>
     <div class="page-actions"><button class="btn primary" id="newCase" hidden><i data-lucide="briefcase"></i>Yeni vaka</button></div>
   </div>
   <div class="card flush">

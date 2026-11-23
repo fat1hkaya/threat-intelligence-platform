@@ -1,10 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-head">
-  <div>
-    <h1>Genel bakış</h1>
-    <p>Hoş geldin {{ user.FullName.split()[0] }}.<span class="tech"> Tüm sayılar SQL Server'daki canlı sorgulardan geliyor.</span></p>
-  </div>
+  <div class="ph-title"><h1>Genel bakış</h1><span class="head-count" id="headCount" hidden></span><span class="page-help"><button type="button" class="btn icon ghost help-btn" aria-expanded="false" aria-controls="pageHelp" aria-label="Bu sayfa hakkında" title="Bu sayfa hakkında"><i data-lucide="circle-help"></i></button><span class="help-pop" id="pageHelp" role="note" hidden>Bakılması gerekenler, özet göstergeler, risk ve tip dağılımı, son istihbarat ve kaynak durumu.<span class="tech"> Tüm sayılar SQL Server'daki canlı sorgulardan geliyor.</span></span></span></div>
   <div class="page-actions">
     <label class="sr-only" for="days">Dönem</label>
     <select class="input" id="days" style="width:auto">
@@ -14,7 +11,7 @@
 </div>
 
 <section class="attention" aria-labelledby="attTitle">
-  <div class="att-head"><h2 id="attTitle">Dikkat gerektirenler</h2><span class="muted" id="attSync"></span></div>
+  <div class="att-head"><h2 id="attTitle">Dikkat gerektirenler</h2></div>
   <div class="att-grid" id="attention"><div class="skeleton" role="status"><span class="sr-only">Yükleniyor…</span><i></i><i></i></div></div>
 </section>
 

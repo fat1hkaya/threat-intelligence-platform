@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Tehdit aktörleri</h1><p>MITRE ATT&amp;CK gruplarının profilleri, kullandıkları araçlar, teknikler ve atfedilen IOC'ler.</p></div>
+  <div class="ph-title"><h1>Tehdit aktörleri</h1><span class="head-count" id="headCount" hidden></span><span class="page-help"><button type="button" class="btn icon ghost help-btn" aria-expanded="false" aria-controls="pageHelp" aria-label="Bu sayfa hakkında" title="Bu sayfa hakkında"><i data-lucide="circle-help"></i></button><span class="help-pop" id="pageHelp" role="note" hidden>MITRE ATT&amp;CK gruplarının profilleri, kullandıkları araçlar, teknikler ve atfedilen IOC'ler.</span></span></div>
 </div>
 <form class="toolbar" id="filters" role="search" aria-label="Aktör filtreleri">
   <div class="tb-row">

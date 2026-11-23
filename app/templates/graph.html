@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-head">
-  <div><h1>İlişki grafı</h1><p>IOC, zararlı yazılım, kampanya, aktör ve ATT&amp;CK ilişkileri.<span class="tech"> Tüm kenarlar SQL Server Graph tablolarından MATCH ile okunur.</span></p></div>
+  <div class="ph-title"><h1>İlişki grafı</h1><span class="head-count" id="headCount" hidden></span><span class="page-help"><button type="button" class="btn icon ghost help-btn" aria-expanded="false" aria-controls="pageHelp" aria-label="Bu sayfa hakkında" title="Bu sayfa hakkında"><i data-lucide="circle-help"></i></button><span class="help-pop" id="pageHelp" role="note" hidden>IOC, zararlı yazılım, kampanya, aktör ve ATT&amp;CK ilişkileri.<span class="tech"> Tüm kenarlar SQL Server Graph tablolarından MATCH ile okunur.</span></span></span></div>
 </div>
 
 <!-- Tek satır kontrol çubuğu: başlangıç düğümü · derinlik · düğüm sınırı · kapsam anahtarları · Grafı oluştur -->

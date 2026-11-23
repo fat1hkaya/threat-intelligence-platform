@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Ayarlar</h1><p>Kullanıcılar ve roller, risk puanlaması ve IOC yaşam döngüsü, entegrasyonlar ve bakım işleri.<span class="tech"> Geliştirici modunda veritabanı sekmesi de görünür.</span></p></div>
+  <div class="ph-title"><h1>Ayarlar</h1><span class="head-count" id="headCount" hidden></span><span class="page-help"><button type="button" class="btn icon ghost help-btn" aria-expanded="false" aria-controls="pageHelp" aria-label="Bu sayfa hakkında" title="Bu sayfa hakkında"><i data-lucide="circle-help"></i></button><span class="help-pop" id="pageHelp" role="note" hidden>Kullanıcılar ve roller, risk puanlaması ve IOC yaşam döngüsü, entegrasyonlar ve bakım işleri.<span class="tech"> Geliştirici modunda veritabanı sekmesi de görünür.</span></span></span></div>
 </div>
 <div class="tabs-bar" role="tablist" aria-label="Ayar bölümleri" id="settingsTabs">
   <button type="button" role="tab" id="tab-users" aria-controls="usersTab" aria-selected="true" data-tab="usersTab"><i data-lucide="users"></i>Kullanıcılar ve roller</button>

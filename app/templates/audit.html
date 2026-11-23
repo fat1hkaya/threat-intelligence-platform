@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Denetim kayıtları</h1><p>Veri değişiklikleri, giriş denemeleri ve bakım işleri. Kayıtları veritabanı kendisi yazar; değiştirilemez ve silinemez.<span class="tech"> · AFTER tetikleyicileri yazar, INSTEAD OF tetikleyici değişikliği reddeder</span></p></div>
+  <div class="ph-title"><h1>Denetim kayıtları</h1><span class="head-count" id="headCount" hidden></span><span class="page-help"><button type="button" class="btn icon ghost help-btn" aria-expanded="false" aria-controls="pageHelp" aria-label="Bu sayfa hakkında" title="Bu sayfa hakkında"><i data-lucide="circle-help"></i></button><span class="help-pop" id="pageHelp" role="note" hidden>Veri değişiklikleri, giriş denemeleri ve bakım işleri. Kayıtları veritabanı kendisi yazar; değiştirilemez ve silinemez.<span class="tech"> · AFTER tetikleyicileri yazar, INSTEAD OF tetikleyici değişikliği reddeder</span></span></span></div>
   <div class="seg" role="tablist" aria-label="Denetim bölümleri" id="auditTabs">
     <button type="button" role="tab" id="tab-changes" aria-controls="changesTab" aria-selected="true" data-tab="changesTab">Veri değişiklikleri</button>
     <button type="button" role="tab" id="tab-logins" aria-controls="loginsTab" aria-selected="false" data-tab="loginsTab" tabindex="-1">Giriş denemeleri</button>

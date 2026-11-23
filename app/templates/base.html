@@ -7,63 +7,80 @@
   <link rel="icon" href="/static/img/logo.svg" type="image/svg+xml">
   <meta name="theme-color" content="#0D0E10" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#FAFAFA" media="(prefers-color-scheme: light)">
-  <script nonce="{{ request.state.csp_nonce }}">/* tema, yoğunluk ve daraltılmış menü ilk çizimden önce uygulanır (yanıp sönme olmasın) */
-    try { const h = document.documentElement, t = localStorage.getItem('tl-theme'); if (t) h.dataset.theme = t;
-          if (localStorage.getItem('tl-comfortable')) h.classList.add('comfortable');
-          const nc = localStorage.getItem('tl-nav-collapsed');   // seçim yoksa 1024-1279 px arasında ikon şeridi varsayılan
-          if (nc === '1' || (nc === null && innerWidth >= 1024 && innerWidth < 1280)) h.classList.add('nav-collapsed');
-          if (localStorage.getItem('tl-dev')) h.classList.add('dev'); } catch (e) {}</script>
+  <script nonce="{{ request.state.csp_nonce }}">/* tema, yoğunluk ve menü genişliği ilk çizimden önce uygulanır (yanıp sönme olmasın) */
+    try { const h = document.documentElement, ls = localStorage, t = ls.getItem('tl-theme'); if (t) h.dataset.theme = t;
+          if (ls.getItem('tl-comfortable')) h.classList.add('comfortable');
+          // Varsayılan ikon şeridi; "Menüyü genişlet" seçimi tl-nav-expanded ile saklanır (eski tl-nav-collapsed=0 tercihi taşınır)
+          let ne = ls.getItem('tl-nav-expanded');
+          if (ne === null && ls.getItem('tl-nav-collapsed') === '0') { ne = '1'; ls.setItem('tl-nav-expanded', '1'); }
+          ls.removeItem('tl-nav-collapsed');
+          if (ne === '1') h.classList.add('nav-expanded');
+          if (ls.getItem('tl-dev')) h.classList.add('dev'); } catch (e) {}</script>
   <link rel="stylesheet" href="/static/css/app.css?v={{ v }}">
   {% block head %}{% endblock %}
 </head>
 <body>
+{# Konum izi: sayfanın menü grubu ve menüdeki adı (menü adı = sayfa başlığı) #}
+{% set crumb = namespace(group='', label=title, path='') %}
+{% for g, items in nav_groups %}{% for p, k, l, i in items %}{% if k == page %}{% set crumb.group = g %}{% set crumb.label = l %}{% set crumb.path = p %}{% endif %}{% endfor %}{% endfor %}
 <a class="skip-link" href="#content">İçeriğe geç</a>
 <div class="shell">
   <aside class="sidebar" id="sidebar" aria-label="Ana menü">
     <div class="sidebar-head">
-      <a class="brand" href="/" title="ThreatLens: Genel bakış">
+      <a class="brand" href="/" aria-label="ThreatLens: Genel bakış" data-tip="ThreatLens">
         <img src="/static/img/logo.svg" alt="">
-        <span><b>ThreatLens</b><small>Tehdit istihbaratı</small></span>
+        <span class="label"><b>ThreatLens</b><small>Tehdit istihbaratı</small></span>
       </a>
-      <button class="btn icon ghost nav-close" id="navClose" type="button" aria-label="Menüyü kapat"><i data-lucide="x"></i></button>
+      <button class="btn icon ghost nav-close" id="navClose" type="button" aria-label="Menüyü kapat" title="Menüyü kapat"><i data-lucide="x"></i></button>
     </div>
     <nav aria-label="Sayfalar">
       {% for group, items in nav_groups %}
       <div class="nav-group">
         <h2 class="nav-title" id="nav-g{{ loop.index }}">{{ group }}</h2>
         <ul class="nav" aria-labelledby="nav-g{{ loop.index }}">
-          {% for path, key, label, icon in items %}
-          <li><a href="{{ path }}" title="{{ label }}" {% if key == page %}aria-current="page"{% endif %}><i data-lucide="{{ icon }}" aria-hidden="true"></i><span class="label">{{ label }}</span></a></li>
+          {% for path, key, label, icon in items if key != 'settings' %}
+          <li><a href="{{ path }}" aria-label="{{ label }}" data-tip="{{ label }}" {% if key == page %}aria-current="page"{% endif %}><i data-lucide="{{ icon }}" aria-hidden="true"></i><span class="label" aria-hidden="true">{{ label }}</span></a></li>
           {% endfor %}
         </ul>
       </div>
       {% endfor %}
     </nav>
     <div class="sidebar-foot">
-      <span class="db-state" title="Veritabanı bağlantısı"><span class="db-dot" aria-hidden="true"></span><span class="label">SQL Server bağlı</span></span>
-      <button class="btn icon ghost nav-collapse" id="navCollapse" type="button" aria-label="Menüyü daralt" aria-pressed="false" title="Menüyü daralt"><i data-lucide="panel-left-close"></i></button>
+      <ul class="nav">
+        <li><a href="/settings" aria-label="Ayarlar" data-tip="Ayarlar" {% if page == 'settings' %}aria-current="page"{% endif %}><i data-lucide="settings" aria-hidden="true"></i><span class="label" aria-hidden="true">Ayarlar</span></a></li>
+      </ul>
+      <div class="foot-row">
+        <span class="db-state" data-tip="SQL Server bağlı: veritabanı bağlantısı çalışıyor"><span class="db-dot" aria-hidden="true"></span><span class="label">SQL Server bağlı</span></span>
+        <button class="btn icon ghost nav-toggle" id="navToggle" type="button" aria-pressed="false" aria-label="Menüyü genişlet" data-tip="Menüyü genişlet"><i data-lucide="panel-left-open"></i></button>
+      </div>
     </div>
   </aside>
   <div class="scrim" id="scrim" hidden></div>
 
   <div class="main">
     <header class="topbar">
-      <button class="btn icon ghost menu-btn" id="menuBtn" aria-label="Menüyü aç" aria-controls="sidebar" aria-expanded="false"><i data-lucide="menu"></i></button>
+      <button class="btn icon ghost menu-btn" id="menuBtn" type="button" aria-label="Menüyü aç" title="Menüyü aç" aria-controls="sidebar" aria-expanded="false"><i data-lucide="menu"></i></button>
+      <nav class="crumb" aria-label="Konum">
+        {% if crumb.group %}<span class="crumb-group">{{ crumb.group }}</span><span class="crumb-sep" aria-hidden="true">/</span>{% endif %}
+        {% if crumb.path and request.url.path != crumb.path %}<a href="{{ crumb.path }}">{{ crumb.label }}</a>{% else %}<b aria-current="page">{{ crumb.label }}</b>{% endif %}
+      </nav>
       <div class="omni" role="search">
         <i data-lucide="search" aria-hidden="true"></i>
         <label for="omniInput" class="sr-only">Genel arama</label>
-        <input id="omniInput" type="search" autocomplete="off" placeholder="Ara" data-long-placeholder="IOC, aktör, zararlı, kampanya veya teknik ara (ör. 185.220.101.4, APT29, T1059)"
+        <input id="omniInput" type="search" autocomplete="off" placeholder="IOC, aktör, zararlı veya teknik ara"
                role="combobox" aria-expanded="false" aria-controls="omniResults" aria-autocomplete="list">
         <kbd>Ctrl K</kbd>
+        <button type="button" class="btn icon ghost omni-close" id="omniClose" aria-label="Aramayı kapat" title="Aramayı kapat"><i data-lucide="x"></i></button>
         <div class="omni-results" id="omniResults" role="listbox" hidden></div>
       </div>
       <div class="top-actions">
+        <button type="button" class="btn icon ghost omni-open" id="omniOpen" aria-label="Ara" title="Ara"><i data-lucide="search"></i></button>
+        <a class="sync" id="syncState" href="/sources" hidden><span class="sync-dot" aria-hidden="true"></span><span class="sync-text"></span></a>
         <button class="btn sm dev-only" id="sqlBtn" title="Bu sayfanın çalıştırdığı SQL sorguları" aria-controls="sqlDrawer"><i data-lucide="database-zap"></i><span>SQL</span></button>
-        <div style="position:relative">
-          <button class="user-chip" id="userBtn" aria-haspopup="menu" aria-expanded="false">
+        <button type="button" class="btn icon primary top-primary" id="topPrimary" hidden></button>
+        <div class="user-wrap">
+          <button class="user-chip" id="userBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Kullanıcı menüsü: {{ user.FullName }}" title="{{ user.FullName }} · {{ user.RoleName }}">
             <span class="avatar" aria-hidden="true">{{ user.FullName.split()|map('first')|join('')|upper }}</span>
-            <span class="who">{{ user.FullName }}<small>{{ user.RoleName }}</small></span>
-            <i data-lucide="chevron-down" aria-hidden="true"></i>
           </button>
           <div class="menu" id="userMenu" role="menu" aria-label="Kullanıcı menüsü" hidden>
             <div class="menu-who"><b>{{ user.FullName }}</b><small>@{{ user.Username }} · {{ user.RoleName }}</small></div>

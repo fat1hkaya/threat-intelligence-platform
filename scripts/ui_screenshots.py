@@ -195,7 +195,9 @@ def run(phase: str, only: list[str] | None, only_pages: list[str] | None, base: 
                 if action:
                     try:
                         page.wait_for_load_state("networkidle", timeout=15000)
-                        page.click(action)
+                        # telefonda sayfanın birincil eylemi üst çubuktaki ikondur (#topPrimary aynı düğmeyi tetikler)
+                        target = action if page.locator(action).is_visible() else "#topPrimary"
+                        page.click(target)
                         page.wait_for_selector("dialog[open]", timeout=5000)
                     except Exception as exc:  # noqa: BLE001
                         errors.append(f"pencere açılamadı: {exc}"[:200])

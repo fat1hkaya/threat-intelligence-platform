@@ -40,7 +40,6 @@
         <span class="att-body"><b class="att-n">${typeof i.n === 'number' ? fmtN(i.n) : esc(i.n)}</b><span class="att-label">${esc(i.label)}${i.cta ? ` · <span class="att-cta">${esc(i.cta)}</span>` : ''}</span></span>
         <i data-lucide="chevron-right" class="att-go" aria-hidden="true"></i></a>`;
     }).join('');
-    document.getElementById('attSync').textContent = a.LastSyncAt ? `Son besleme senkronu ${ago(a.LastSyncAt)}` : 'Henüz besleme senkronu yok';
     icons();
   }
 

@@ -50,7 +50,7 @@
     d.addEventListener('click', (e) => { const b = e.target.closest('[data-fmt]'); if (!b) return; location.href = `/api/iocs/export?format=${b.dataset.fmt}&ids=${ids().join(',')}`; d.close(); });
   }
   const renderBar = () => TL.tableBar(bar, {
-    total: st.last ? st.last.total : 0, unit: 'sonuç', size: st.size, key: KEY, columns: cols, onCols: render,
+    total: st.last ? st.last.total : 0, unit: 'sonuç', headUnit: 'gösterge', size: st.size, key: KEY, columns: cols, onCols: render,
     onSize: (n) => { st.size = n; st.page = 1; TL.pref.set(`tl-size:${KEY}`, n); load(); },
     selection: { count: sel.ids.size, actions: BULK, clear: () => sel.clear() },
   });

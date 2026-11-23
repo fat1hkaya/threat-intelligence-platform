@@ -241,9 +241,14 @@
   const pageSize = (key, def = 25) => { const v = +pref.get(`tl-size:${key}`, def); return [25, 50, 100].includes(v) ? v : def; };
 
   /** Tablo başlık çubuğu: toplam sonuç, "Sütunlar" menüsü, sayfa boyutu; seçim varken toplu işlem çubuğu.
-      o: {total, shown, unit, size, onSize, key, columns, onCols, selection: {count, actions:[{label, icon, run}], clear}} */
+      o: {total, shown, unit, headUnit, size, onSize, key, columns, onCols, selection: {count, actions:[{label, icon, run}], clear}} */
+  /** Başlık satırındaki soluk sayı ("24.617 gösterge"); boş metin gizler */
+  function headCount(text) { const h = document.getElementById('headCount'); if (!h) return; h.textContent = text || ''; h.hidden = !text; }
+
   function tableBar(el, o) {
     if (!el) return;
+    // headUnit: toplam sayfa başlığının yanında yazar, çubukta tekrarlanmaz
+    if (o.headUnit) headCount(`${fmtN(o.total)} ${o.headUnit}`);
     const s = o.selection;
     if (s && s.count) {
       el.className = 'table-bar bulk';
@@ -257,7 +262,7 @@
     const colsMenu = o.columns && o.key ? `<details class="more-menu cols-menu"><summary class="btn sm ghost"><i data-lucide="columns-3"></i>Sütunlar</summary><div class="menu-pop" role="group" aria-label="Görünen sütunlar"></div></details>` : '';
     // shown: sayfadaki satır sayısı verilirse yalnızca "Gösterilen 25 / 190" (toplam başka yerde KPI olarak yazıyorsa)
     const total = o.shown != null ? `Gösterilen <b>${fmtN(o.shown)}</b> / ${fmtN(o.total)}` : `<b>${fmtN(o.total)}</b> ${esc(o.unit || 'sonuç')}`;
-    el.innerHTML = `<span class="tb-total" role="status">${total}</span>
+    el.innerHTML = `${o.headUnit ? '' : `<span class="tb-total" role="status">${total}</span>`}
       <div class="tb-actions">${colsMenu}${o.onSize ? `<label class="tb-size"><span>Sayfa başına</span><select class="input" aria-label="Sayfa başına satır">${[25, 50, 100].map((n) => `<option ${n === o.size ? 'selected' : ''}>${n}</option>`).join('')}</select></label>` : ''}</div>`;
     el.onclick = null;
     el.querySelector('.tb-size select')?.addEventListener('change', (e) => o.onSize(+e.target.value));
@@ -562,9 +567,6 @@
   function initOmni() {
     const input = document.getElementById('omniInput'), box = document.getElementById('omniResults');
     if (!input) return;
-    const mq = window.matchMedia('(min-width: 720px)');
-    const setPh = () => { input.placeholder = mq.matches ? input.dataset.longPlaceholder : 'IOC, aktör, teknik ara'; };
-    setPh(); mq.addEventListener('change', setPh);
     let items = [], idx = -1;
     const close = () => { box.hidden = true; input.setAttribute('aria-expanded', 'false'); idx = -1; };
     const render = () => {
@@ -599,16 +601,16 @@
     const html = document.documentElement;
     const sb = document.getElementById('sidebar'), scrim = document.getElementById('scrim'), mb = document.getElementById('menuBtn');
     const isOpen = () => sb.classList.contains('open');
-    // Dar ekranda kapalı çekmece "inert": içindeki bağlantılar Tab ile odaklanmaz, ekran okuyucu okumaz
-    const syncInert = () => { sb.inert = NARROW.matches && !isOpen(); };
+    // Telefonda (<768) menü soldan açılan çekmecedir; kapalıyken "inert": bağlantılar Tab ile odaklanmaz, ekran okuyucu okumaz
+    const syncInert = () => { sb.inert = DRAWER.matches && !isOpen(); };
     const setNav = (open, { restoreFocus = true } = {}) => {
-      if (open && !NARROW.matches) return;                  // geniş ekranda kenar çubuğu zaten görünür
+      if (open && !DRAWER.matches) return;                  // geniş ekranda menü zaten görünür
       if (!open && !isOpen()) return;
       sb.classList.toggle('open', open); scrim.hidden = !open;
       html.classList.toggle('nav-open', open);   // arka sayfa kaymaz
       if (mb) {
         mb.setAttribute('aria-expanded', String(open));
-        mb.setAttribute('aria-label', open ? 'Menüyü kapat' : 'Menüyü aç');
+        mb.setAttribute('aria-label', open ? 'Menüyü kapat' : 'Menüyü aç'); mb.title = mb.getAttribute('aria-label');
         mb.innerHTML = `<i data-lucide="${open ? 'x' : 'menu'}"></i>`; icons();
       }
       syncInert();
@@ -616,7 +618,7 @@
       else if (restoreFocus && mb && sb.contains(document.activeElement)) mb.focus();
     };
     syncInert();
-    NARROW.addEventListener('change', () => { setNav(false, { restoreFocus: false }); syncInert(); });
+    DRAWER.addEventListener('change', () => { setNav(false, { restoreFocus: false }); syncInert(); });
     mb?.addEventListener('click', () => setNav(!isOpen()));
     document.getElementById('navClose')?.addEventListener('click', () => setNav(false));
     scrim?.addEventListener('click', () => setNav(false));
@@ -629,21 +631,63 @@
       if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
       else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
     });
-    // Masaüstü: kenar çubuğu ikon şeridine daraltılabilir. Seçim saklanır; seçim yoksa 1024-1279 px'de şerit varsayılan.
-    const nc = document.getElementById('navCollapse');
-    const showCollapse = () => {
-      const on = html.classList.contains('nav-collapsed');
-      if (!nc) return;
-      nc.setAttribute('aria-pressed', String(on)); nc.setAttribute('aria-label', on ? 'Menüyü genişlet' : 'Menüyü daralt'); nc.title = nc.getAttribute('aria-label');
-      nc.innerHTML = `<i data-lucide="${on ? 'panel-left-open' : 'panel-left-close'}"></i>`; icons();
+    // Masaüstü ve tablet: varsayılan 56 px ikon şeridi; "Menüyü genişlet" 224 px etiketli menüye geçer (tl-nav-expanded)
+    const nt = document.getElementById('navToggle');
+    const showToggle = () => {
+      if (!nt) return;
+      const on = html.classList.contains('nav-expanded'), lbl = on ? 'Menüyü daralt' : 'Menüyü genişlet';
+      nt.setAttribute('aria-pressed', String(on)); nt.setAttribute('aria-label', lbl); nt.dataset.tip = lbl;
+      nt.innerHTML = `<i data-lucide="${on ? 'panel-left-close' : 'panel-left-open'}"></i>`; icons();
     };
-    showCollapse();
-    nc?.addEventListener('click', () => {
-      const on = html.classList.toggle('nav-collapsed');
-      try { localStorage.setItem('tl-nav-collapsed', on ? '1' : '0'); } catch { /* yok say */ }
-      showCollapse();
+    showToggle();
+    nt?.addEventListener('click', () => {
+      const on = html.classList.toggle('nav-expanded');
+      try { on ? localStorage.setItem('tl-nav-expanded', '1') : localStorage.removeItem('tl-nav-expanded'); } catch { /* yok say */ }
+      showToggle();
       window.dispatchEvent(new Event('resize'));          // graf ve grafikler yeni genişliğe uysun
     });
+
+    // Sayfa açıklaması: başlığın yanındaki "?" düğmesiyle açılan ipucu (Esc ya da dış tıklama kapatır)
+    const hb = document.querySelector('.help-btn'), hp = document.getElementById('pageHelp');
+    const setHelp = (open) => { if (!hb || !hp) return; hp.hidden = !open; hb.setAttribute('aria-expanded', String(open)); };
+    hb?.addEventListener('click', (e) => { e.stopPropagation(); setHelp(hp.hidden); });
+    hp?.addEventListener('click', (e) => e.stopPropagation());
+    document.addEventListener('click', () => setHelp(false));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && hp && !hp.hidden) { setHelp(false); hb.focus(); } });
+
+    // Senkron durumu: son başarılı besleme zamanı; son işi hatalı kaynak varsa kırmızı nokta, adlar ipucunda
+    const sync = document.getElementById('syncState');
+    if (sync) {
+      api('/api/sync-status').then((r) => {
+        if (!r.lastSyncAt && !r.failing.length) return;
+        const bad = r.failing.length > 0;
+        sync.classList.toggle('bad', bad);
+        sync.querySelector('.sync-text').textContent = bad ? `${r.failing.length} kaynakta hata` : `Senkron ${ago(r.lastSyncAt)}`;
+        const tip = (r.lastSyncAt ? `Son başarılı besleme senkronu: ${fmtDT(r.lastSyncAt)}` : 'Henüz başarılı senkron yok')
+          + (bad ? `. Son işi hatalı: ${r.failing.join(', ')}` : '');
+        sync.title = tip; sync.setAttribute('aria-label', `${sync.querySelector('.sync-text').textContent}. ${tip}`);
+        sync.hidden = false;
+      }).catch(() => { /* durum gösterilmez */ });
+    }
+
+    // Telefon: üst çubukta arama ikonu (arama alanı çubuğun üzerine açılır) ve sayfanın birincil eylemi ikon olarak
+    const topbar = document.querySelector('.topbar'), oo = document.getElementById('omniOpen'), oc = document.getElementById('omniClose');
+    const omniIn = document.getElementById('omniInput');
+    const setSearch = (open) => { topbar?.classList.toggle('search-open', open); if (open) omniIn?.focus(); else oo?.focus(); };
+    oo?.addEventListener('click', () => setSearch(true));
+    oc?.addEventListener('click', () => setSearch(false));
+    omniIn?.addEventListener('keydown', (e) => { if (e.key === 'Escape' && topbar?.classList.contains('search-open') && document.getElementById('omniResults').hidden) setSearch(false); });
+    const tp = document.getElementById('topPrimary'), orig = document.querySelector('.page-head .page-actions > .btn.primary');
+    if (tp && orig) {
+      const copy = () => {
+        const label = orig.textContent.trim();
+        tp.hidden = orig.hidden; tp.disabled = orig.disabled;
+        tp.setAttribute('aria-label', label); tp.title = label;
+        const ic = orig.querySelector('svg, i'); tp.innerHTML = ic ? ic.outerHTML : '';
+      };
+      copy(); new MutationObserver(copy).observe(orig, { attributes: true, childList: true, subtree: true });
+      tp.addEventListener('click', () => orig.click());
+    }
 
     // ---- kullanıcı menüsü ----
     const ub = document.getElementById('userBtn'), um = document.getElementById('userMenu');
@@ -725,6 +769,7 @@
 
   // ---------- dar ekran yardımcıları ----------
   const NARROW = window.matchMedia('(max-width: 1023px)');
+  const DRAWER = window.matchMedia('(max-width: 767px)');      // menü çekmecesi (telefon)
   const PHONE = window.matchMedia('(max-width: 560px)');
 
   /** Eylem çubuğu: telefonda birincil düğme ve ilk `keep` eylem görünür kalır, gerisi "Diğer" menüsüne taşınır.
@@ -803,7 +848,7 @@
     Chart.defaults.animation.duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 500;
   }
 
-  Object.assign(TL, { esc, fmtDT, fmtD, fmtN, fmtSize, ago, pct, midTruncate, clipList, unknown, num, SEV, NODE, TYPE_LABEL, sev, typeBadge, status, job, conf,
+  Object.assign(TL, { headCount, esc, fmtDT, fmtD, fmtN, fmtSize, ago, pct, midTruncate, clipList, unknown, num, SEV, NODE, TYPE_LABEL, sev, typeBadge, status, job, conf,
     sourceBadge, sourceShort, maintenanceRuns, copyBtn, iocCell, nodeIcon, techChip, entityUrl, graphUrl, refang, guessType, countTypes, api, icons, enhance, toast, loading, empty,
     failed, debounce, can, qs, pref, clampText, actions, table, bindTable, markRow, pageSize, tableBar, selection, pager, filterBar, panel, closePanel,
     panelHead, list, dialog, dropzone, dropText, formData, chartDefaults, meta, overflowActions, NARROW, PHONE, cssVar });

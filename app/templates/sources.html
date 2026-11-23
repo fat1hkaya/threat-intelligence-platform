@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Veri kaynakları</h1><p>İstihbarat kaynaklarının durumu, içe aktarma işleri ve dosyadan IOC yükleme.</p></div>
+  <div class="ph-title"><h1>Veri kaynakları</h1><span class="head-count" id="headCount" hidden></span><span class="page-help"><button type="button" class="btn icon ghost help-btn" aria-expanded="false" aria-controls="pageHelp" aria-label="Bu sayfa hakkında" title="Bu sayfa hakkında"><i data-lucide="circle-help"></i></button><span class="help-pop" id="pageHelp" role="note" hidden>İstihbarat kaynaklarının durumu, içe aktarma işleri ve dosyadan IOC yükleme.</span></span></div>
   <div class="page-actions"><button class="btn primary" id="uploadBtn" hidden><i data-lucide="upload"></i>Dosya içe aktar</button></div>
 </div>
 <section class="grid g-4" id="kpis" aria-label="Kaynak özeti"></section>

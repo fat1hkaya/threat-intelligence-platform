@@ -20,7 +20,7 @@
         : empty(fb && fb.activeCount() ? 'Bu filtrelere uyan kayıt yok.' : 'Henüz kayıt yok.', 'search-x',
           fb && fb.activeCount() ? { label: 'Filtreleri temizle', icon: 'filter-x' } : null);
       tbl.querySelector('[data-empty-action]')?.addEventListener('click', () => fb.reset());
-      TL.tableBar(bar, { total: d.total, shown: cfg.shownOf ? d.items.length : null, unit: cfg.unit, size: st.size, key, columns: cfg.columns, onCols: render,
+      TL.tableBar(bar, { total: d.total, shown: cfg.shownOf ? d.items.length : null, unit: cfg.unit, headUnit: cfg.shownOf ? null : (cfg.headUnit || cfg.unit), size: st.size, key, columns: cfg.columns, onCols: render,
         onSize: (n) => { st.size = n; st.page = 1; TL.pref.set(`tl-size:${key}`, n); load(); } });
       pager(document.getElementById('pager'), d, (n) => { st.page = n; load(); tbl.closest('section')?.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, cfg.unit);
       icons();

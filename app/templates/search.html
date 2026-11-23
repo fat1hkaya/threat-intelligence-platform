@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Arama</h1><p>Ad, takma ad, kimlik ve IOC eşleşmeleri ile aktör, zararlı, kampanya ve teknik açıklamalarında ve ilişki kanıtlarında tam metin arama.</p></div>
+  <div class="ph-title"><h1>Arama</h1><span class="head-count" id="headCount" hidden></span><span class="page-help"><button type="button" class="btn icon ghost help-btn" aria-expanded="false" aria-controls="pageHelp" aria-label="Bu sayfa hakkında" title="Bu sayfa hakkında"><i data-lucide="circle-help"></i></button><span class="help-pop" id="pageHelp" role="note" hidden>Ad, takma ad, kimlik ve IOC eşleşmeleri ile aktör, zararlı, kampanya ve teknik açıklamalarında ve ilişki kanıtlarında tam metin arama.</span></span></div>
 </div>
 <form class="card filters" id="sForm" role="search" aria-label="Arama">
   <div class="field wide"><label for="sq">Aranacak ifade</label><input class="input" id="sq" name="q" type="search" minlength="2" required placeholder="ör. spearphishing government, ransomware healthcare, APT29, T1059"></div>

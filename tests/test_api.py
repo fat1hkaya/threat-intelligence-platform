@@ -614,8 +614,10 @@ def test_sidebar_is_grouped(viewer):
     # menüdeki ad sayfa başlığıyla birebir aynı (cümle düzeni)
     for path, label in (("/iocs", "IOC araştırma"), ("/infrastructure", "Altyapı örtüşmesi"), ("/sources", "Veri kaynakları")):
         page = viewer.get(path).text
-        assert f'<span class="label">{label}</span>' in html and f"<h1>{label}</h1>" in page
-    assert 'id="navCollapse"' in html and 'id="navClose"' in html and "VTYS projesi" not in html
+        assert f'aria-label="{label}" data-tip="{label}"' in html and f"<h1>{label}</h1>" in page
+    # ikon şeridi varsayılan; "Menüyü genişlet" etiketli menüye geçer; konum izi grup / sayfa adını gösterir
+    assert 'id="navToggle"' in html and 'id="navClose"' in html and "VTYS projesi" not in html
+    assert '<b aria-current="page">IOC araştırma</b>' in html and '<span class="crumb-group">Araştırma</span>' in html
 
 
 def test_dashboard_attention_counts(viewer, conn):
@@ -804,3 +806,12 @@ def test_malware_attack_filter_partitions_list(viewer):
     un = viewer.get("/api/malware", params={"attack": "unmatched", "size": 200}).json()
     assert matched + un["total"] == total
     assert all(m["TechniqueCount"] == 0 and m["ActorCount"] == 0 for m in un["items"])
+
+
+# ------------------------------------------------------------------ Konsol aşama 3
+def test_sync_status_matches_active_sources_last_jobs(viewer, admin):
+    r = viewer.get("/api/sync-status").json()
+    assert set(r) == {"lastSyncAt", "failing"}
+    active = {s["Name"]: s for s in admin.get("/api/sources").json()["sources"] if s["IsActive"]}
+    assert all(name in active and active[name]["LastRunStatus"] == "failed" for name in r["failing"])
+    assert sorted(n for n, s in active.items() if s["LastRunStatus"] == "failed") == r["failing"]

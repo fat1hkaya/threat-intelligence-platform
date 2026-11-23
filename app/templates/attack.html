@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-head">
-  <div><h1>MITRE ATT&amp;CK</h1><p>Enterprise ATT&amp;CK taktikleri ve teknikleri; hangi aktör, kampanya ve zararlının hangi tekniği kullandığı.</p></div>
+  <div class="ph-title"><h1>MITRE ATT&amp;CK</h1><span class="head-count" id="headCount" hidden></span><span class="page-help"><button type="button" class="btn icon ghost help-btn" aria-expanded="false" aria-controls="pageHelp" aria-label="Bu sayfa hakkında" title="Bu sayfa hakkında"><i data-lucide="circle-help"></i></button><span class="help-pop" id="pageHelp" role="note" hidden>Enterprise ATT&amp;CK taktikleri ve teknikleri; hangi aktör, kampanya ve zararlının hangi tekniği kullandığı.</span></span></div>
   <div class="seg" role="group" aria-label="Görünüm" id="view"><button type="button" data-v="list" aria-pressed="true">Teknik listesi</button><button type="button" data-v="matrix">Matris</button><button type="button" data-v="coverage">Kapsama</button></div>
 </div>
 
