@@ -1,4 +1,22 @@
-# SON DURUM — 22 Kasım 2026, geliştirme turu 3 (önce bunu okuyun)
+# SON DURUM — 23 Kasım 2026, arayüz/UX turu (önce bunu okuyun)
+
+`docs/CLAUDE_CODE_UI_PROMPT.md` görevi 5 aşamada uygulandı; madde madde durum, denetim sonuçları ve önce/sonra ekran görüntüleri: **[docs/ui-audit/RAPOR.md](docs/ui-audit/RAPOR.md)**.
+
+| Aşama | Ne yapıldı |
+|---|---|
+| 1 · Veri doğruluğu | Testler ayrı veritabanında (`ThreatLens_Test`) ve canlı veritabanı koruma testi; `purge_test_artifacts.py` (önce rapor); "Otomasyon kayıtlarını gizle"; yer tutucu aileler; "yüksek önemli" / "yüksek riskli" ayrımı; kaynak birimleri; risk bantları; giriş ipucu varsayılan kapalı |
+| 2 · Tasarım sistemi | Belirteçler, kenar çubuğu, kullanıcı menüsü, ortak tablo (sütun önceliği, toplu seçim, kart listesi), tek satır filtre çubuğu, detay paneli, pencereler, durumlar, geliştirici modu |
+| 3 · Duyarlı düzen | §5 kırılımları, kart konteyner sorguları, telefonda yapışkan birincil eylem ve tablo öncelikli graf |
+| 4 · Sayfa sayfa | Graf yönlü gezinme (teknik/zafiyet yaprak, tip başına sınır), vaka iş akışı ve raporu, IOC detayında kanıtlı atıf zinciri, ATT&CK kapsamı işaretleme ve Navigator içe aktarma, veri kaynakları / denetim / ayarlar yeniden düzeni |
+| 5 · Son kontrol | `after` ekran görüntüleri, axe-core erişilebilirlik denetimi (26 sayfa, koyu ve açık tema: puan 100, ihlal 0), rapor |
+
+**Testler:** 164/164. **Otomatik denetim** (5 görünüm alanı, 28 sayfa): yatay taşma, kenar çubuğu kaydırması, izinsiz iç kaydırma, ipucusuz kesik metin, çakışan metin, konsol hatası = 0.
+
+**Yeni uçlar:** `/api/graph/neighborhood` (yönlü gezinme, `only`/`offset` ile küme açma), `/api/coverage/import-navigator` (`dryRun`), `PATCH /api/sources/{id}`, `/api/imports?changed=`, `/api/maintenance/runs`, `/api/integrations`, `POST /api/integrations/{feed}/test`, `/api/audit-logs/stats?days=`. Şema değişikliği yalnızca aşama 1'de (`database/migrations/23_data_quality.sql`: yer tutucu aile sütunu, Sınıflandırılmamış türü, risk bantları, kaynak birimi görünümü); aşama 2–5 şemaya dokunmadı.
+
+**Açık kalanlar:** RAPOR.md "Bilinen sınırlamalar" bölümü.
+
+# ÖNCEKİ DURUM — 22 Kasım 2026, geliştirme turu 3
 
 Üçüncü turda tüm proje (arayüz, backend, SQL) gözden geçirildi ve bulgular 5 aşamada düzeltildi:
 

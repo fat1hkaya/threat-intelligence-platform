@@ -133,12 +133,15 @@
     const pages = Math.max(1, Math.ceil(list.length / GROUPS_PER_PAGE));
     st.page = Math.min(st.page, pages);
     const name = (id) => { const n = nodes.get(id); return n ? `${typeMark(n.type)}<a href="#" data-focus="${esc(id)}" class="${n.type === 'indicator' ? 'mono' : ''}" title="${esc(n.raw)}">${esc(short(n.raw, 48))}</a>` : esc(id); };
+    // özet satırının içinde etkileşimli öğe olmaz (nested-interactive): hedef adı düz metin
+    const plain = (id) => { const n = nodes.get(id); return n ? `${typeMark(n.type)}<span class="${n.type === 'indicator' ? 'mono' : ''}" title="${esc(n.raw)}">${esc(short(n.raw, 48))}</span>` : esc(id); };
     const confCell = (e) => e.conf != null ? conf(e.conf)
       : '<span class="faint" title="Kaynak (ör. MITRE ATT&CK) bu ilişki için güven puanı vermiyor">belirtilmemiş</span>';
     const kinds = (es) => { const c = {}; es.forEach((e) => { const t = nodes.get(e.from)?.type; c[t] = (c[t] || 0) + 1; });
       return Object.entries(c).map(([t, k]) => `${fmtN(k)} ${esc(COUNT_LABEL[t] || t)}`).join(', '); };
     box.innerHTML = rows.length ? `<div class="edge-groups">${list.slice((st.page - 1) * GROUPS_PER_PAGE, st.page * GROUPS_PER_PAGE).map(([to, es]) => `
-      <details class="edge-group"${list.length <= 4 ? ' open' : ''}><summary><span class="eg-target">${name(to)}</span><span class="eg-count">← ${kinds(es)}</span></summary>
+      <details class="edge-group"${list.length <= 4 ? ' open' : ''}><summary><span class="eg-target">${plain(to)}</span><span class="eg-count">← ${kinds(es)}</span></summary>
+        <p class="eg-focus"><button type="button" class="link-btn" data-focus="${esc(to)}">Düğümü grafikte göster</button></p>
         <table class="data eg-table"><caption class="sr-only">${esc(nodes.get(to)?.raw || to)} düğümüne gelen ilişkiler</caption>
           <thead class="sr-only"><tr><th scope="col">Kaynak</th><th scope="col">İlişki</th><th scope="col">Güven</th><th scope="col"><span class="sr-only">Kanıt</span></th></tr></thead>
           <tbody>${es.map((e) => `<tr class="clickable" data-edge-row="${esc(e.id)}" tabindex="0"><td><span class="node-ref">${name(e.from)}</span></td>

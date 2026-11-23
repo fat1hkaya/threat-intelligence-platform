@@ -13,19 +13,19 @@ Bir IOC'nin (IP, domain, URL, MD5/SHA-1/SHA-256) yalnızca kaydını değil, **z
 
 | Ekran | Ne yapar |
 |---|---|
-| Genel bakış | KPI'lar (indexed view'dan), önem/tip dağılımı, son N günde eklenen IOC'ler, son istihbarat, kaynak durumu, en çok kullanılan ATT&CK teknikleri |
+| Genel bakış | Dikkat gerektirenler, KPI'lar (indexed view'dan), risk bandı ve tip dağılımı, son N günde eklenen IOC'ler, son istihbarat, kaynak durumu (yeni/toplam), en çok kullanılan ATT&CK teknikleri |
 | Arama | Tüm varlıklarda tek kutudan arama; kanıt metinlerinde **tam metin arama** (FREETEXTTABLE, kurulu değilse LIKE) |
-| IOC araştırma | Tip/önem/kaynak/durum/güven aralığı/tarih filtresi, sıralama, sayfalama, toplu kontrol, detay paneli, IOC ekleme |
-| IOC detayı | Atıf zinciri (MATCH), kill chain, **açıklanabilir risk skoru**, **zaman yolculuğu** (temporal tablo), ağ bilgisi (ASN, /24 komşuları), STIX dışa aktarımı, vakaya ekleme |
-| Log avı | Yapıştırılan/yüklenen logdaki IP, domain, URL ve hash'leri bilinen IOC'lerle tek set tabanlı sorguda eşleştirir (retro-hunt); eşleşmeler görülme olarak kaydedilebilir |
-| Vakalar | Soruşturma çalışma alanı: varlıklar SQL Graph kenarıyla vakaya bağlanır, notlar, durum, **ortak bağlantı önerisi**, vaka grafı, STIX 2.1 paketi |
-| İlişki grafı | vis-network; derinlik 1/2/3, düğüm sınırı, tür filtresi, çift tıkla genişletme, kenar (kanıt) detayı, aktörler arası **SHORTEST_PATH**, vaka modu |
+| IOC araştırma | Tek satır, kendiliğinden uygulanan filtreler (adres çubuğunda saklanır), sütun öncelikleri, toplu seçim (vakaya ekle, durum değiştir, dışa aktar), toplu kontrol, detay paneli, IOC ekleme |
+| IOC detayı | En üstte atıf zinciri (MATCH; her halkada kanıt ve kaynak), alan bazında değişiklik geçmişi, kill chain, **açıklanabilir risk skoru**, **zaman yolculuğu** (temporal tablo), ağ bilgisi (ASN, /24 komşuları), STIX dışa aktarımı, vakaya ekleme |
+| Log avı | Yapıştırılan/yüklenen logdaki IP, domain, URL ve hash'leri bilinen IOC'lerle tek set tabanlı sorguda eşleştirir (retro-hunt); eşleşme log satırında vurgulanır, eşleşmeyen göstergeler ve tanınmayan satırlar ayrıca listelenir; eşleşmeler görülme olarak kaydedilebilir |
+| Vakalar | Soruşturma çalışma alanı: varlıklar SQL Graph kenarıyla vakaya bağlanır (küresel aramalı "Varlık ekle"), iş akışı düğmesi (Açık → İnceleniyor → Kapalı), durum + varlık + not etkinlik akışı, **ortak bağlantı önerisi**, vaka grafı, Markdown vaka raporu, STIX 2.1 paketi |
+| İlişki grafı | vis-network; **yönlü gezinme** (IOC → zararlı → kampanya/aktör → teknik; teknik ve zafiyet yaprak, tip başına sınır ve "+N" küme düğümü), katmanlı yerleşim, derinlik 1/2/3, düğüm sınırı, tür filtresi, çift tıkla genişletme, kenar (kanıt) detayı, gruplu ilişki tablosu, aktörler arası **SHORTEST_PATH**, vaka modu |
 | Altyapı | IP IOC'lerinin /24 alt ağ, ASN ve ülke bazında kümelenmesi: farklı ailelerin paylaştığı barındırma altyapısı |
 | Tehdit aktörleri / Kampanyalar / Zararlı yazılımlar | Liste + detay paneli; ATT&CK Navigator katmanı ve STIX 2.1 dışa aktarımı |
-| MITRE ATT&CK | Taktik kartları, teknik tablosu, matris görünümü, **tespit kapsamı** (kör noktalar, aktör bazında yüzde, ilişkisel bölme) |
-| Veri kaynakları | Kaynak sağlığı, içe aktarma işleri, dosyadan içe aktarma (katı mod = ROLLBACK), hata satırları, elle senkron |
-| Denetim kayıtları | Tetikleyicilerin yazdığı değişmez denetim izi, giriş denemeleri, günlük grafik, önceki/yeni değer karşılaştırması |
-| Ayarlar | Kullanıcı ve rol yönetimi, IOC saklama politikası, Query Store en pahalı sorgular, veritabanı nesneleri, graf tutarlılığı |
+| MITRE ATT&CK | Taktik kartları, teknik tablosu, matris görünümü (ısı lejantı, yapışkan başlık), **tespit kapsamı** (matriste tıklayarak işaretleme, Navigator katmanı içe aktarma, kör noktalar, aktör bazında yüzde, ilişkisel bölme) |
+| Veri kaynakları | Kaynak sağlığı (son işin yeni/güncellenen/hatalı satırları), kaynağı devre dışı bırakma, içe aktarma işleri (yalnızca değişiklik olanlar filtresi), dosyadan içe aktarma penceresi (katı mod = ROLLBACK), hata satırları, elle senkron |
+| Denetim kayıtları | Sekmeler: veri değişiklikleri (işlem türüne göre günlük grafik, 7/30/90 gün, alan bazında önce/sonra), giriş denemeleri (kilitlenme filtresi), bakım işleri (iş türüne göre gruplu) |
+| Ayarlar | Sekmeler: kullanıcılar ve roller (onaylı rol değişikliği), risk ve yaşam döngüsü (saklama süreleri Kaydet ile), entegrasyonlar (9 kaynak, bağlantı testi), bakım işleri; geliştirici modunda veritabanı (Query Store, nesneler, graf tutarlılığı) |
 
 ## Öne çıkan veritabanı özellikleri
 
@@ -137,7 +137,7 @@ Windows Görev Zamanlayıcı 6 saatte bir `pythonw.exe scripts\sync_feeds.py` ç
 .venv\Scripts\python -m pytest -q
 ```
 
-157 test vardır ve gerçek SQL Server'da çalışır. **Testler canlı veritabanına dokunmaz:** ayrı bir test veritabanında (`ThreatLens_Test`, `TL_DB_NAME_TEST` ile değiştirilebilir) çalışırlar; bu veritabanı her test oturumunun başında `setup_db.py` ile kurulur ya da güncellenir (birkaç saniye). `tests/test_zz_live_guard.py` oturumun başında ve sonunda canlı veritabanındaki satır sayılarını karşılaştırır. Ayrımdan önce canlıda kalmış test kayıtları için `python scripts/purge_test_artifacts.py` (önce rapor, `--apply` ile siler; `AuditLog`'a dokunmaz). Sunum öncesi adımlar: [docs/sunum_oncesi_kontrol.md](docs/sunum_oncesi_kontrol.md). Arayüz ekran görüntüleri ve otomatik düzen denetimi: `pip install -r requirements-dev.txt`, `python -m playwright install chromium`, `python scripts/ui_screenshots.py <klasör>` (`docs/ui-audit/`). GitHub Actions her push'ta aynı testleri SQL Server 2025 Linux kapsayıcısında çalıştırır (`.github/workflows/ci.yml`; beslemeler indirilmez, tam metin arama kapsayıcıda kurulu olmadığı için LIKE yedeği sınanır). Kapsadıkları:
+164 test vardır ve gerçek SQL Server'da çalışır. **Testler canlı veritabanına dokunmaz:** ayrı bir test veritabanında (`ThreatLens_Test`, `TL_DB_NAME_TEST` ile değiştirilebilir) çalışırlar; bu veritabanı her test oturumunun başında `setup_db.py` ile kurulur ya da güncellenir (birkaç saniye). `tests/test_zz_live_guard.py` oturumun başında ve sonunda canlı veritabanındaki satır sayılarını karşılaştırır. Ayrımdan önce canlıda kalmış test kayıtları için `python scripts/purge_test_artifacts.py` (önce rapor, `--apply` ile siler; `AuditLog`'a dokunmaz). Sunum öncesi adımlar: [docs/sunum_oncesi_kontrol.md](docs/sunum_oncesi_kontrol.md). Arayüz ekran görüntüleri ve otomatik düzen denetimi: `pip install -r requirements-dev.txt`, `python -m playwright install chromium`, `python scripts/ui_screenshots.py <klasör>` (`docs/ui-audit/`); erişilebilirlik denetimi (axe-core 4.10.2, yalnızca bu betikte, `scripts/vendor/`): `python scripts/a11y_audit.py <klasör> --all`. Arayüz iyileştirme raporu: [docs/ui-audit/RAPOR.md](docs/ui-audit/RAPOR.md). Bu iki betik giriş yaptığı için canlı veritabanı koruma testini etkiler: pytest ile aynı anda çalıştırmayın. GitHub Actions her push'ta aynı testleri SQL Server 2025 Linux kapsayıcısında çalıştırır (`.github/workflows/ci.yml`; beslemeler indirilmez, tam metin arama kapsayıcıda kurulu olmadığı için LIKE yedeği sınanır). Kapsadıkları:
 - **Normalleştirme:** 34 test.
 - **Kimlik doğrulama ve rol yetkileri:** izleyici yazma denemesinde 403 alır.
 - **IOC işlemleri:**
@@ -179,7 +179,8 @@ database/       T-SQL: schema, indexes, functions, views, graph, procedures, tri
                 migrations (10-22: yaşam döngüsü, Agent işleri, kimlik doğrulama, log avı, kapsama,
                 temporal, performans, tam metin, vakalar, ağ, bakım, ayarlama), demos, backup
 importers/      MITRE ATT&CK, abuse.ch, CISA KEV, Malpedia, iptoasn.com içe aktarıcıları
-scripts/        setup_db.py (kurulum), gen_docs.py (belge üretimi), sync_feeds.py (zamanlanmış, penceresiz senkron), sync_feeds.cmd (elle)
+scripts/        setup_db.py (kurulum), gen_docs.py (belge üretimi), sync_feeds.py (zamanlanmış, penceresiz senkron), sync_feeds.cmd (elle),
+                purge_test_artifacts.py, ui_screenshots.py ve a11y_audit.py (arayüz denetimi; vendor/axe.min.js yalnızca denetimde)
 .github/        CI iş akışı (SQL Server kapsayıcısında pytest, JS sözdizimi)
 tests/          pytest
 docs/           proje belgeleri ve tasarım referansları
@@ -191,6 +192,7 @@ _archive/       eski React prototipi ve eski betikler (yalnızca referans)
 - [docs/01_proje_ve_mimari.md](docs/01_proje_ve_mimari.md): amaç, kapsam, gereksinimler, mimari, SQL Graph tasarımı, güvenlik
 - [docs/02_normalizasyon_taslak.md](docs/02_normalizasyon_taslak.md): normalizasyon örnekleri (ekip için taslak)
 - [docs/03_test_ve_demo.md](docs/03_test_ve_demo.md): test sonuçları ve 8 demo senaryosunun sunum akışı
+- [docs/ui-audit/RAPOR.md](docs/ui-audit/RAPOR.md): arayüz iyileştirme raporu (madde madde durum, otomatik denetim ve erişilebilirlik sonuçları, önce/sonra ekran görüntüleri)
 - [docs/diyagramlar/](docs/diyagramlar/): Chen ER (Graphviz DOT) ve ilişkisel şema (Mermaid)
 - [docs/veritabani_nesneleri.md](docs/veritabani_nesneleri.md) ve [docs/api.md](docs/api.md): `python scripts/gen_docs.py` ile canlı sistemden üretilir
 

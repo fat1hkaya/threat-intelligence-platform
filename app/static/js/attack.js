@@ -134,7 +134,7 @@
       document.getElementById('matrixNote').innerHTML = `<span class="legend-box" aria-label="Renk: tekniği kullanan aktör sayısı">${HEAT.map(([, l], k) => `<span><i class="heat-${k}"></i>${l}</span>`).join('')}<span class="faint">aktör</span></span>
         <span class="legend-box"><span><i class="cov-line-2"></i>tam tespit</span><span><i class="cov-line-1"></i>kısmi</span>${hl ? '<span><i class="hl-mark"></i>seçili aktör/kampanya</span>' : ''}</span>`;
       document.getElementById('matrixHead').innerHTML = cols.map((c) => `<div class="mh-col"><b title="${esc(c.Name)}">${esc(c.Name)}</b><small>${c.techniques.length} teknik</small></div>`).join('');
-      box.innerHTML = cols.map((c) => `<div class="col" role="group" aria-label="${esc(c.Name)}"><h3 class="sr-only">${esc(c.Name)} (${c.techniques.length} teknik)</h3>
+      box.innerHTML = cols.map((c) => `<div class="col" role="group" aria-label="${esc(c.Name)}"><h2 class="sr-only">${esc(c.Name)} (${c.techniques.length} teknik)</h2>
         ${c.techniques.map((t) => `<button type="button" class="cell heat-${heatOf(t.ActorCount)} ${t.Highlighted ? 'hl' : ''}" data-id="${t.TechniqueID}" ${cov[t.TechniqueID] ? `data-cov="${cov[t.TechniqueID]}"` : ''}
           title="${esc(t.ExternalID)} ${esc(t.Name)}: ${t.ActorCount} aktör, ${t.MalwareCount} zararlı"><small>${esc(t.ExternalID)}</small><br>${esc(t.Name)}</button>`).join('')}</div>`).join('');
       syncHead();

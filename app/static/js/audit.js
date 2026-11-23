@@ -120,7 +120,7 @@
   function tabs() {
     const bar = document.getElementById('auditTabs'), loaded = {};
     const show = (id) => {
-      bar.querySelectorAll('[data-tab]').forEach((b) => { const on = b.dataset.tab === id; b.setAttribute('aria-selected', String(on)); b.setAttribute('aria-pressed', String(on)); b.tabIndex = on ? 0 : -1; });
+      bar.querySelectorAll('[data-tab]').forEach((b) => { const on = b.dataset.tab === id; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
       document.querySelectorAll('.tab-panel').forEach((p) => { p.hidden = p.id !== id; });
       TL.qs.set({ tab: id === 'changesTab' ? null : id.replace('Tab', '') });
       if (id === 'loginsTab' && !loaded.l) { loaded.l = 1; logins().catch((e) => TL.toast(e.message, 'err')); }

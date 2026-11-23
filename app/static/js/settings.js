@@ -16,7 +16,7 @@
     ['Parola özetlerini okuma|(kolon düzeyi DENY)', 0, 0, 0],
     ['Denetim kaydını değiştirme/silme|(INSTEAD OF tetikleyici)', 0, 0, 0],
   ];
-  const yes = (v) => v ? '<span class="perm-yes" aria-label="Evet"><i data-lucide="circle-check"></i></span>' : '<span class="perm-no" aria-label="Hayır"><i data-lucide="minus"></i></span>';
+  const yes = (v) => v ? '<span class="perm-yes" role="img" aria-label="Evet"><i data-lucide="circle-check"></i></span>' : '<span class="perm-no" role="img" aria-label="Hayır"><i data-lucide="minus"></i></span>';
 
   async function users() {
     const box = document.getElementById('users');
