@@ -258,31 +258,75 @@
       el.onclick = (e) => { const b = e.target.closest('[data-bulk]'); if (b) s.actions[+b.dataset.bulk].run(); if (e.target.closest('[data-bulk-clear]')) s.clear(); };
       icons(); return;
     }
-    el.className = 'table-bar';
-    const colsMenu = o.columns && o.key ? `<details class="more-menu cols-menu"><summary class="btn sm ghost"><i data-lucide="columns-3"></i>Sütunlar</summary><div class="menu-pop" role="group" aria-label="Görünen sütunlar"></div></details>` : '';
-    // shown: sayfadaki satır sayısı verilirse yalnızca "Gösterilen 25 / 190" (toplam başka yerde KPI olarak yazıyorsa)
+    // Görünüm menüsü (sütunlar, yoğunluk, sayfa başına satır): araç çubuğunun sağında; yoksa çubukta
+    const slot = el.closest('.content, main, body')?.querySelector('#filters .tb-view') || null;
     const total = o.shown != null ? `Gösterilen <b>${fmtN(o.shown)}</b> / ${fmtN(o.total)}` : `<b>${fmtN(o.total)}</b> ${esc(o.unit || 'sonuç')}`;
-    el.innerHTML = `${o.headUnit ? '' : `<span class="tb-total" role="status">${total}</span>`}
-      <div class="tb-actions">${colsMenu}${o.onSize ? `<label class="tb-size"><span>Sayfa başına</span><select class="input" aria-label="Sayfa başına satır">${[25, 50, 100].map((n) => `<option ${n === o.size ? 'selected' : ''}>${n}</option>`).join('')}</select></label>` : ''}</div>`;
+    const showTotal = !o.headUnit;
+    el.className = 'table-bar' + (slot && !showTotal ? ' empty' : '');
     el.onclick = null;
-    el.querySelector('.tb-size select')?.addEventListener('change', (e) => o.onSize(+e.target.value));
-    const cm = el.querySelector('.cols-menu');
-    cm?.addEventListener('toggle', () => {
-      if (!cm.open) return;
-      const host = el.parentElement, prefs = pref.get(`tl-cols:${o.key}`, {});
-      cm.querySelector('.menu-pop').innerHTML = o.columns.map((c, i) => ({ ...c, _id: colId(c, i) })).filter((c) => c.label).map((c) => {
-        const th = host.querySelector(`th[data-col="${CSS.escape(c._id)}"]`);
-        const vis = !!th && getComputedStyle(th).display !== 'none';
-        return `<label class="check"><input type="checkbox" data-col-toggle="${esc(c._id)}" ${vis ? 'checked' : ''} ${c.primary ? 'disabled' : ''}>${esc(c.label)}${c.hideIfAllZero && !th && prefs[c._id] !== 0 ? ' <small class="faint">(tümü boş)</small>' : ''}</label>`;
-      }).join('') + '<button type="button" class="btn sm ghost" data-col-reset>Varsayılana dön</button>';
-    });
-    cm?.addEventListener('change', (e) => {
-      const t = e.target.closest('[data-col-toggle]'); if (!t) return;
-      const prefs = pref.get(`tl-cols:${o.key}`, {}); prefs[t.dataset.colToggle] = t.checked ? 1 : 0;
-      pref.set(`tl-cols:${o.key}`, prefs); o.onCols && o.onCols();
-    });
-    cm?.addEventListener('click', (e) => { if (e.target.closest('[data-col-reset]')) { pref.set(`tl-cols:${o.key}`, null); cm.open = false; o.onCols && o.onCols(); } });
+    el.innerHTML = showTotal ? `<span class="tb-total" role="status">${total}</span><div class="tb-actions"></div>` : '<div class="tb-actions"></div>';
+    viewMenu(slot || el.querySelector('.tb-actions'), o);
     icons();
+  }
+
+  /** "Görünüm" menüsü: aynı panel yüzeyi, role="menu". Sütunları aç/kapat, yoğunluk (kompakt/rahat), sayfa başına satır. */
+  function viewMenu(host, o) {
+    if (!host) return;
+    const cols = o.columns && o.key ? o.columns.map((c, i) => ({ ...c, _id: colId(c, i) })).filter((c) => c.label) : [];
+    if (!cols.length && !o.onSize) { host.innerHTML = ''; return; }
+    const wasOpen = host.querySelector('.view-menu')?.open;
+    host.innerHTML = `<details class="more-menu view-menu"><summary class="btn ghost facet-menu" aria-haspopup="menu" aria-label="Tablo görünümü: sütunlar, yoğunluk ve sayfa başına satır" title="Tablo görünümü">
+      <i data-lucide="sliders-horizontal" aria-hidden="true"></i><span>Görünüm</span></summary><div class="menu-pop" role="menu" aria-label="Tablo görünümü"></div></details>`;
+    const d = host.querySelector('details'), pop = d.querySelector('.menu-pop'), summary = d.querySelector('summary');
+    const draw = () => {
+      const prefs = pref.get(`tl-cols:${o.key}`, {}), tableHost = document.getElementById('tbl') || document;
+      const dense = document.documentElement.classList.contains('comfortable');
+      pop.innerHTML = (cols.length ? `<div class="vm-h" role="presentation">Sütunlar</div>` + cols.map((c) => {
+        const th = tableHost.querySelector(`th[data-col="${CSS.escape(c._id)}"]`);
+        const vis = !!th && getComputedStyle(th).display !== 'none';
+        const empty_ = c.hideIfAllZero && !th && prefs[c._id] !== 0;
+        return `<button type="button" role="menuitemcheckbox" aria-checked="${vis}" data-col-toggle="${esc(c._id)}" ${c.primary ? 'aria-disabled="true"' : ''}>
+          <span class="fp-cb${vis ? ' on' : ''}" aria-hidden="true">${vis ? '<i data-lucide="check"></i>' : ''}</span>${esc(c.label)}${empty_ ? '<small>tümü boş</small>' : ''}</button>`;
+      }).join('') + '<button type="button" role="menuitem" data-col-reset><i data-lucide="rotate-ccw" aria-hidden="true"></i>Varsayılan sütunlar</button><div class="vm-sep" role="separator"></div>' : '')
+        + `<div class="vm-h" role="presentation">Yoğunluk</div>`
+        + [[false, 'Kompakt (36 px satır)'], [true, 'Rahat (44 px satır)']].map(([v, l]) => `<button type="button" role="menuitemradio" aria-checked="${dense === v}" data-dense="${v ? 1 : 0}"><span class="fp-radio${dense === v ? ' on' : ''}" aria-hidden="true"></span>${l}</button>`).join('')
+        + (o.onSize ? `<div class="vm-sep" role="separator"></div><div class="vm-h" role="presentation">Sayfa başına</div>`
+          + [25, 50, 100].map((n) => `<button type="button" role="menuitemradio" aria-checked="${n === o.size}" data-size="${n}"><span class="fp-radio${n === o.size ? ' on' : ''}" aria-hidden="true"></span>${n} satır</button>`).join('') : '');
+      icons();
+    };
+    const items = () => [...pop.querySelectorAll('[role^="menuitem"]')];
+    d.addEventListener('toggle', () => {
+      if (!d.open) return;
+      if (openPop) openPop.close(false);
+      draw(); summary.setAttribute('aria-expanded', 'true');
+      pop.classList.toggle('right', true);
+      items()[0]?.focus();
+    });
+    d.addEventListener('toggle', () => { if (!d.open) summary.setAttribute('aria-expanded', 'false'); });
+    pop.addEventListener('keydown', (e) => {
+      const list = items(), i = list.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown') { e.preventDefault(); list[(i + 1) % list.length]?.focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); list[(i - 1 + list.length) % list.length]?.focus(); }
+      else if (e.key === 'Home') { e.preventDefault(); list[0]?.focus(); }
+      else if (e.key === 'End') { e.preventDefault(); list[list.length - 1]?.focus(); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); d.open = false; summary.focus(); }
+      else if (e.key === 'Tab') d.open = false;
+    });
+    pop.addEventListener('click', (e) => {
+      const t = e.target.closest('[role^="menuitem"]'); if (!t || t.getAttribute('aria-disabled') === 'true') return;
+      if (t.dataset.colToggle) {
+        const prefs = pref.get(`tl-cols:${o.key}`, {}); prefs[t.dataset.colToggle] = t.getAttribute('aria-checked') === 'true' ? 0 : 1;
+        pref.set(`tl-cols:${o.key}`, prefs); o.onCols && o.onCols();
+        const again = document.querySelector(`.view-menu [data-col-toggle="${CSS.escape(t.dataset.colToggle)}"]`); (again || summary).focus();
+      } else if (t.hasAttribute('data-col-reset')) { pref.set(`tl-cols:${o.key}`, null); d.open = false; o.onCols && o.onCols(); }
+      else if (t.dataset.dense) {
+        const on = t.dataset.dense === '1'; document.documentElement.classList.toggle('comfortable', on);
+        try { on ? localStorage.setItem('tl-comfortable', '1') : localStorage.removeItem('tl-comfortable'); } catch { /* yok say */ }
+        document.getElementById('denseBtn')?.setAttribute('aria-checked', String(on));
+        document.querySelectorAll('.table-scroll').forEach((x) => x._shade?.()); draw(); pop.querySelector(`[data-dense="${on ? 1 : 0}"]`)?.focus();
+      } else if (t.dataset.size) { d.open = false; o.onSize(+t.dataset.size); }
+    });
+    if (wasOpen) d.open = true;
   }
 
   /** Satır seçimi: sayfalar arasında korunur. onChange(seçili kimlik kümesi) */
@@ -322,7 +366,192 @@
   /** form#filters: kendiliğinden uygulanır (metin 300 ms gecikmeli), etkin filtreler çıkarılabilir etiket olarak
       görünür, "Temizle" yalnızca etkin filtre varken görünür, durum adres çubuğundan geri yüklenir.
       Varsayılan değer: öğenin data-default özniteliği (yoksa boş / işaretsiz). data-chip="off" etiket üretmez. */
-  function filterBar(form, { onChange } = {}) {
+  // ---------- filtre düğmesi ve paneli (facet) ----------
+  /* Araç çubuğundaki yerel <select>'lerin yerine: <input type="hidden" name="type" data-facet="Tip" [data-multi] [data-kind]>.
+     Değer gizli alanda durur (virgülle çoklu seçim); filterBar adres çubuğu, sıfırlama ve sayımı aynı alandan yürütür.
+     kind: filter (kesik çizgili düğme + listbox), sort (Sırala menüsü), views (kayıtlı görünüm menüsü).
+     Klavye: ok tuşları seçenekler arasında gezer, Space/Enter seçer, Esc kapatıp odağı düğmeye verir; dış tıklama kapatır. */
+  let openPop = null;
+  document.addEventListener('mousedown', (e) => { if (openPop && !openPop.root.contains(e.target)) openPop.close(false); });
+  const FACET_ICON = { filter: 'circle-plus', sort: 'arrow-up-down', views: 'bookmark' };
+
+  const facetCfgOf = (input) => input._facetCfg || {};
+  function facet(input, cfg = {}) {
+    input._facetCfg = cfg;
+    const kind = input.dataset.kind || 'filter', multi = input.hasAttribute('data-multi');
+    const name = input.dataset.facet || input.name, uid = `fp-${input.name || input.id}`;
+    const isMenu = kind !== 'filter';
+    const root = document.createElement('span');
+    root.className = `facet-wrap kind-${kind}`;
+    root.innerHTML = `<button type="button" class="${isMenu ? 'btn ghost facet-menu' : 'facet'}" aria-haspopup="${isMenu ? 'menu' : 'listbox'}" aria-expanded="false" aria-controls="${uid}"></button>
+      <div class="facet-pop" id="${uid}" hidden>
+        <div class="fp-search" hidden><i data-lucide="search" aria-hidden="true"></i><input type="text" autocomplete="off" placeholder="${esc(name)} ara" aria-label="${esc(name)} seçeneklerinde ara"></div>
+        <ul class="fp-list" id="${uid}-list" role="${isMenu ? 'menu' : 'listbox'}" tabindex="-1" aria-label="${esc(cfg.title || name)}" ${!isMenu && multi ? 'aria-multiselectable="true"' : ''}></ul>
+        ${isMenu ? '' : '<div class="fp-foot"><button type="button" class="fp-clear">Filtreyi temizle</button></div>'}
+      </div>`;
+    input.after(root);
+    const btn = root.querySelector('button'), pop = root.querySelector('.facet-pop'), list = root.querySelector('.fp-list');
+    const sbox = root.querySelector('.fp-search'), sin = sbox.querySelector('input');
+    const fromAttr = input.dataset.options ? JSON.parse(input.dataset.options).map(([value, label]) => ({ value: String(value), label })) : [];
+    let options = (cfg.options || input._options || fromAttr).map((x) => ({ ...x, value: String(x.value) })), counts = null, act = -1, query = '';
+    const def = input.dataset.default ?? '';
+    const selected = () => (input.value ? (multi ? input.value.split(',') : [input.value]) : []);
+    const visible = () => options.filter((o) => !query || o.label.toLocaleLowerCase('tr').includes(query));
+    const labelOf = (v) => options.find((o) => String(o.value) === v)?.label ?? v;
+
+    function renderBtn() {
+      const sel = selected().filter((v) => v !== def);
+      if (kind === 'filter') {
+        const val = sel.length > 1 ? `${sel.length} seçili` : sel.length ? labelOf(sel[0]) : '';
+        btn.classList.toggle('on', !!sel.length);
+        btn.innerHTML = `<i data-lucide="${FACET_ICON.filter}" aria-hidden="true"></i><span>${esc(name)}</span>${val ? `<span class="f-sep" aria-hidden="true"></span><span class="f-val">${esc(val)}</span>` : ''}`;
+        btn.setAttribute('aria-label', val ? `${name} filtresi: ${val}` : `${name} filtresi`);
+      } else {
+        const cur = options.find((o) => String(o.value) === (input.value || def));
+        const text = kind === 'views' ? `${name}: ${cfg.current ? cfg.current() : cur?.label || 'Tümü'}` : (cur?.label || name);
+        btn.innerHTML = `<i data-lucide="${input.dataset.icon || FACET_ICON[kind]}" aria-hidden="true"></i><span>${esc(text)}</span>${kind === 'views' ? '<i data-lucide="chevron-down" aria-hidden="true"></i>' : ''}`;
+        btn.setAttribute('aria-label', kind === 'sort' ? `${name}: ${cur?.label || ''}` : `${cfg.title || name}: ${text}`);
+      }
+      icons();
+    }
+    function renderList() {
+      const vis = visible(), sel = new Set(selected());
+      const max = Math.max(1, ...vis.map((o) => (counts ? counts[o.value] || 0 : o.count || 0)));
+      sbox.hidden = isMenu || options.length <= 6;
+      list.innerHTML = vis.length ? vis.map((o, i) => {
+        const on = sel.has(String(o.value)) || (!input.value && String(o.value) === def && isMenu);
+        const n = counts ? counts[o.value] || 0 : o.count;
+        const dim = n === 0 && !on;
+        const mark = isMenu ? `<span class="fp-radio${on ? ' on' : ''}" aria-hidden="true"></span>`
+          : `<span class="${multi ? 'fp-cb' : 'fp-radio'}${on ? ' on' : ''}" aria-hidden="true">${multi && on ? '<i data-lucide="check"></i>' : ''}</span>`;
+        return `<li id="${uid}-o${i}" role="${isMenu ? 'menuitemradio' : 'option'}" ${isMenu ? `aria-checked="${on}"` : `aria-selected="${on}"`} data-v="${esc(o.value)}"
+            class="${dim ? 'dim' : ''}${i === act ? ' act' : ''}" ${o.hint ? `title="${esc(o.hint)}"` : ''}>${mark}<span class="fp-l">${esc(o.label)}</span>
+            ${n != null ? `<span class="fp-n">${fmtN(n)}</span>${!isMenu ? `<i class="fp-ratio" style="--r:${(n / max).toFixed(3)}" aria-hidden="true"></i>` : ''}` : ''}</li>`;
+      }).join('') : `<li class="fp-empty" role="presentation">Eşleşen seçenek yok</li>`;
+      if (act >= 0 && vis[act]) list.setAttribute('aria-activedescendant', `${uid}-o${act}`); else list.removeAttribute('aria-activedescendant');
+      icons();
+    }
+    function pick(v) {
+      if (kind === 'views') { cfg.onPick && cfg.onPick(v); close(true); return; }
+      if (multi) {
+        const sel = new Set(selected()); sel.has(v) ? sel.delete(v) : sel.add(v);
+        input.value = [...sel].join(',');
+      } else input.value = input.value === v && !isMenu ? '' : v;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      renderBtn();
+      if (multi) renderList(); else close(true);
+    }
+    function open() {
+      if (openPop && openPop !== api_) openPop.close(false);
+      openPop = api_; query = ''; sin.value = '';
+      const vis = visible(), firstSel = vis.findIndex((o) => selected().includes(String(o.value)));
+      act = firstSel >= 0 ? firstSel : 0;
+      pop.hidden = false; btn.setAttribute('aria-expanded', 'true'); root.classList.add('open');
+      renderList();
+      // panel ekrana sığmıyorsa sağa yaslanır
+      pop.classList.remove('right'); const r = pop.getBoundingClientRect(); if (r.right > innerWidth - 8) pop.classList.add('right');
+      (options.length > 10 && !sbox.hidden ? sin : list).focus();
+      cfg.onOpen && cfg.onOpen();
+    }
+    function close(focusBtn) {
+      if (pop.hidden) return;
+      pop.hidden = true; btn.setAttribute('aria-expanded', 'false'); root.classList.remove('open');
+      if (openPop === api_) openPop = null;
+      if (focusBtn) btn.focus();
+    }
+    const move = (d) => { const n = visible().length; if (!n) return; act = d === 'home' ? 0 : d === 'end' ? n - 1 : (act + d + n) % n; renderList(); list.querySelector('.act')?.scrollIntoView({ block: 'nearest' }); };
+    btn.addEventListener('click', () => (pop.hidden ? open() : close(true)));
+    btn.addEventListener('keydown', (e) => { if (e.key === 'ArrowDown' && pop.hidden) { e.preventDefault(); open(); } });
+    list.addEventListener('click', (e) => { const li = e.target.closest('li[data-v]'); if (li) pick(li.dataset.v); });
+    list.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); if (act === 0 && !sbox.hidden) sin.focus(); else move(-1); }
+      else if (e.key === 'Home') { e.preventDefault(); move('home'); }
+      else if (e.key === 'End') { e.preventDefault(); move('end'); }
+      else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); const o = visible()[act]; if (o) pick(String(o.value)); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); }
+      else if (e.key === 'Tab') close(false);
+      else if (!sbox.hidden && e.key.length === 1 && !e.ctrlKey && !e.metaKey) { sin.focus(); }
+    });
+    sin.addEventListener('input', () => { query = sin.value.trim().toLocaleLowerCase('tr'); act = 0; renderList(); });
+    sin.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); act = 0; renderList(); list.focus(); }
+      else if (e.key === 'Enter') { e.preventDefault(); const o = visible()[0]; if (o) pick(String(o.value)); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); }
+    });
+    root.querySelector('.fp-clear')?.addEventListener('click', () => { input.value = def; input.dispatchEvent(new Event('change', { bubbles: true })); renderBtn(); close(true); });
+    const api_ = {
+      root, input, close,
+      setOptions(o) { options = o.map((x) => ({ ...x, value: String(x.value) })); renderBtn(); if (!pop.hidden) renderList(); },
+      setCounts(c) { counts = c; if (!pop.hidden) renderList(); },
+      render: () => { renderBtn(); if (!pop.hidden) renderList(); },
+    };
+    input._facet = api_;
+    renderBtn();
+    return api_;
+  }
+
+  /** Seçenekleri ver: bileşen henüz yoksa alanda bekler (filterBar oluşturunca kullanır). opts: [{value, label, hint}] */
+  function facetOptions(input, opts) { if (!input) return; if (input._facet) input._facet.setOptions(opts); else input._options = opts; }
+
+  /** Tarih aralığı: aynı panel yüzeyi; iki tarih alanı ve hazır aralıklar. from/to gizli alanlar; hours (varsa) saat tabanlı aralık. */
+  function dateRange(form, cfg) {
+    const from = form.elements[cfg.from], to = form.elements[cfg.to], hours = cfg.hours ? form.elements[cfg.hours] : null;
+    if (!from || !to) return null;
+    const uid = `fp-${cfg.from}`;
+    const root = document.createElement('span'); root.className = 'facet-wrap kind-date';
+    const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Istanbul' });
+    const daysAgo = (n) => new Date(Date.now() - n * 864e5).toLocaleDateString('sv-SE', { timeZone: 'Europe/Istanbul' });
+    const presets = [[1, 'Son 24 saat'], [7, 'Son 7 gün'], [30, 'Son 30 gün']];
+    root.innerHTML = `<button type="button" class="facet" aria-haspopup="dialog" aria-expanded="false" aria-controls="${uid}"></button>
+      <div class="facet-pop fp-date" id="${uid}" role="dialog" aria-label="${esc(cfg.label)} aralığı" hidden>
+        <div class="fp-presets" role="group" aria-label="Hazır aralıklar">${presets.map(([n, l]) => `<button type="button" class="btn sm" data-days="${n}">${l}</button>`).join('')}</div>
+        <div class="fp-dates"><label><span>Başlangıç</span><input class="input" type="date" data-k="from"></label><label><span>Bitiş</span><input class="input" type="date" data-k="to"></label></div>
+        <div class="fp-foot"><button type="button" class="fp-clear">Filtreyi temizle</button></div>
+      </div>`;
+    (cfg.after || to).after(root);
+    const btn = root.querySelector('button.facet'), pop = root.querySelector('.facet-pop');
+    const fIn = pop.querySelector('[data-k=from]'), tIn = pop.querySelector('[data-k=to]');
+    const fmt = (d) => new Date(d + 'T00:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+    const text = () => {
+      if (hours && hours.value) return `Son ${hours.value} saat`;
+      const p = presets.find(([n]) => from.value === daysAgo(n) && !to.value);
+      if (p) return p[1];
+      if (from.value && to.value) return `${fmt(from.value)} – ${fmt(to.value)}`;
+      if (from.value) return `${fmt(from.value)} sonrası`;
+      if (to.value) return `${fmt(to.value)} öncesi`;
+      return '';
+    };
+    const render = () => {
+      const t = text();
+      btn.classList.toggle('on', !!t);
+      btn.innerHTML = `<i data-lucide="calendar" aria-hidden="true"></i><span>${esc(cfg.label)}</span>${t ? `<span class="f-sep" aria-hidden="true"></span><span class="f-val">${esc(t)}</span>` : ''}`;
+      btn.setAttribute('aria-label', t ? `${cfg.label} filtresi: ${t}` : `${cfg.label} filtresi`);
+      fIn.value = from.value; tIn.value = to.value; fIn.max = today(); tIn.max = today();
+      icons();
+    };
+    const commit = () => { from.dispatchEvent(new Event('change', { bubbles: true })); render(); };
+    const close = (focusBtn) => { if (pop.hidden) return; pop.hidden = true; btn.setAttribute('aria-expanded', 'false'); root.classList.remove('open'); if (openPop === api_) openPop = null; if (focusBtn) btn.focus(); };
+    const open = () => { if (openPop && openPop !== api_) openPop.close(false); openPop = api_; pop.hidden = false; btn.setAttribute('aria-expanded', 'true'); root.classList.add('open');
+      pop.classList.remove('right'); if (pop.getBoundingClientRect().right > innerWidth - 8) pop.classList.add('right'); pop.querySelector('button').focus(); };
+    btn.addEventListener('click', () => (pop.hidden ? open() : close(true)));
+    pop.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); } });
+    pop.addEventListener('click', (e) => {
+      const p = e.target.closest('[data-days]'); if (!p) return;
+      const n = +p.dataset.days;
+      if (n === 1 && hours) { hours.value = '24'; from.value = ''; } else { from.value = daysAgo(n); if (hours) hours.value = ''; }
+      to.value = ''; commit(); close(true);
+    });
+    fIn.addEventListener('change', () => { from.value = fIn.value; if (hours) hours.value = ''; commit(); });
+    tIn.addEventListener('change', () => { to.value = tIn.value; if (hours) hours.value = ''; commit(); });
+    pop.querySelector('.fp-clear').addEventListener('click', () => { from.value = ''; to.value = ''; if (hours) hours.value = ''; commit(); close(true); });
+    const api_ = { root, close, render };
+    from._facet = api_;
+    render();
+    return api_;
+  }
+
+  function filterBar(form, { onChange, counts, facets: facetCfg = {}, dates = [], views } = {}) {
     if (!form) return null;
     const named = () => [...form.elements].filter((el) => el.name && !['submit', 'button', 'reset'].includes(el.type));
     const defOf = (el) => el.type === 'checkbox' ? el.hasAttribute('data-default') : (el.dataset.default ?? '');
@@ -368,21 +597,25 @@
         chipsEl.innerHTML = current.map((c, i) => `<span class="chip fchip">${esc(c.text)}<button type="button" data-unchip="${i}" aria-label="Filtreyi kaldır: ${esc(c.text)}" title="Kaldır"><i data-lucide="x"></i></button></span>`).join('');
         chipsEl.hidden = !current.length;
       }
-      const n = current.length + named().filter((el) => el.type === 'hidden' && !el.dataset.label && isActive(el)).length;
+      const n = current.length + named().filter((el) => el.type === 'hidden' && !el.dataset.label && el.name !== 'view' && isActive(el)).length;
+      form.querySelectorAll('input[data-facet], input[data-date-from]').forEach((el) => el._facet?.render());
       if (clearBtn) clearBtn.hidden = !n;
       if (toggle) toggle.innerHTML = `<i data-lucide="sliders-horizontal"></i>Filtreler${current.length ? ` <span class="count">${current.length}</span>` : ''}`;
       if (moreCount) { const m = [...form.querySelectorAll('.more-filters [name]')].filter((el) => isActive(el)); const k = new Set(m.map((el) => el.closest('.range2') || el)).size;
         moreCount.textContent = k || ''; moreCount.hidden = !k; }
       icons();
     };
-    const apply = () => { render(); onChange && onChange(values()); };
+    let applyingView = false;
+    const apply = () => { render(); onChange && onChange(values()); loadCounts(); };
     const later = debounce(apply, 300);
     form.addEventListener('input', (e) => {
       const el = e.target; if (!el.name) return;
       if (el.type === 'range') { el.closest('.range2')?._sync?.(); return; }      // bırakınca (change) uygulanır
       if (['text', 'search', 'number'].includes(el.type) || el.tagName === 'TEXTAREA') later();
     });
-    form.addEventListener('change', (e) => { const el = e.target; if (!el.name) return; if (['text', 'search', 'number'].includes(el.type)) return; apply(); });
+    form.addEventListener('change', (e) => { const el = e.target; if (!el.name) return; if (['text', 'search', 'number'].includes(el.type)) return;
+      if (el.name !== 'view' && form.elements.view && !applyingView) form.elements.view.value = '';
+      apply(); });
     form.addEventListener('submit', (e) => { e.preventDefault(); apply(); closeSheet(); });
     form.addEventListener('reset', (e) => {
       e.preventDefault();
@@ -425,8 +658,39 @@
       mq.addEventListener('change', place);
       if (mq.matches) place();
     }
-    restore(); render();
-    return { values, activeCount, render, restore, reset: () => form.reset() };
+    // Filtre düğmeleri (yerel <select> yerine) ve tarih aralıkları
+    const facets = [...form.querySelectorAll('input[data-facet][name]')].map((el) => facet(el, facetCfg[el.name] || {}));
+    dates.forEach((d) => { const r = dateRange(form, d); if (r) form.elements[d.from].dataset.dateFrom = '1'; });
+    // Kayıtlı görünümler: seçim diğer filtreleri sıfırlar, görünümün değerlerini yazar; ad ve sayı sunucudan
+    const viewIn = form.elements.view;
+    if (views && viewIn?._facet) {
+      const reset = () => named().forEach((el) => { if (el.type === 'checkbox') el.checked = defOf(el); else el.value = defOf(el); el.closest('.range2')?._sync?.(); });
+      const applyView = (key) => {
+        const v = views.items.find((x) => x.key === key); if (!v) return;
+        reset(); Object.entries(v.params || {}).forEach(([k, val]) => { const el = form.elements[k]; if (!el) return; if (el.type === 'checkbox') el.checked = !!val; else el.value = val; });
+        viewIn.value = key === 'all' ? '' : key;
+        applyingView = true; apply(); applyingView = false;
+      };
+      views.current = () => (viewIn.value ? views.items.find((x) => x.key === viewIn.value)?.label : (activeCount() || named().some((el) => el.type === 'hidden' && el.name !== 'view' && isActive(el)) ? 'Özel' : 'Tümü'));
+      viewIn._facet.setOptions(views.items.map((x) => ({ value: x.key, label: x.label, hint: x.hint })));
+      Object.assign(facetCfgOf(viewIn), { onPick: applyView, current: views.current });
+      api(views.endpoint).then((c) => { viewIn._facet.setOptions(views.items.map((x) => ({ value: x.key, label: x.label, hint: x.hint, count: c[x.count || x.key] }))); }).catch(() => {});
+      // adresle gelen görünüm (ör. genel bakıştaki bağlantı): değerleri adreste yoksa görünümden yazılır
+      const k = qs.get('view');
+      if (k && !Object.keys(views.items.find((x) => x.key === k)?.params || {}).some((p) => qs.get(p) !== null)) {
+        const v = views.items.find((x) => x.key === k);
+        if (v) Object.entries(v.params).forEach(([p, val]) => { const el = form.elements[p]; if (el) { if (el.type === 'checkbox') el.checked = !!val; else el.value = val; } });
+      }
+    }
+    // Panel sayıları: her boyutun sayısı diğer etkin filtrelerle (sunucuda GROUP BY)
+    let countsSeq = 0;
+    function loadCounts() {
+      if (!counts) return;
+      const seq = ++countsSeq, p = values();
+      api(counts, { params: p }).then((d) => { if (seq !== countsSeq) return; facets.forEach((f) => { if (d[f.input.name]) f.setCounts(d[f.input.name]); }); }).catch(() => {});
+    }
+    restore(); render(); loadCounts();
+    return { values, activeCount, render, restore, reset: () => form.reset(), apply, facets: Object.fromEntries(facets.map((f) => [f.input.name, f])) };
   }
 
   /** Çift uçlu kaydırıcı: .range2[data-label] içinde iki input[type=range] (alt ve üst sınır) */
@@ -848,7 +1112,7 @@
     Chart.defaults.animation.duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 500;
   }
 
-  Object.assign(TL, { headCount, esc, fmtDT, fmtD, fmtN, fmtSize, ago, pct, midTruncate, clipList, unknown, num, SEV, NODE, TYPE_LABEL, sev, typeBadge, status, job, conf,
+  Object.assign(TL, { facet, facetOptions, dateRange, headCount, esc, fmtDT, fmtD, fmtN, fmtSize, ago, pct, midTruncate, clipList, unknown, num, SEV, NODE, TYPE_LABEL, sev, typeBadge, status, job, conf,
     sourceBadge, sourceShort, maintenanceRuns, copyBtn, iocCell, nodeIcon, techChip, entityUrl, graphUrl, refang, guessType, countTypes, api, icons, enhance, toast, loading, empty,
     failed, debounce, can, qs, pref, clampText, actions, table, bindTable, markRow, pageSize, tableBar, selection, pager, filterBar, panel, closePanel,
     panelHead, list, dialog, dropzone, dropText, formData, chartDefaults, meta, overflowActions, NARROW, PHONE, cssVar });

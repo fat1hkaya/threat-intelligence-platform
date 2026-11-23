@@ -102,7 +102,7 @@
   }
 
   const page = TL.listPage({
-    endpoint: '/api/techniques', title: 'Teknik detayı', unit: 'teknik', rowId: (r) => r.TechniqueID, size: 20,
+    endpoint: '/api/techniques', title: 'Teknik detayı', unit: 'teknik', rowId: (r) => r.TechniqueID, size: 20, filters: { counts: '/api/techniques/facets' },
     extra: () => ({ malware: qs.get('malware') }),
     columns: [
       { id: 'code', label: 'Teknik', render: (r) => `<span class="badge b-purple mono">${esc(r.ExternalID)}</span>` },
@@ -182,8 +182,8 @@
 
   document.addEventListener('DOMContentLoaded', async () => {
     const [actors, camps] = await Promise.all([api('/api/actors', { params: { size: 200, sort: 'name' } }), api('/api/campaigns', { params: { size: 100 } })]);
-    document.getElementById('actor').insertAdjacentHTML('beforeend', actors.items.map((a) => `<option value="${a.ActorID}">${esc(a.Name)}</option>`).join(''));
-    document.getElementById('campaign').insertAdjacentHTML('beforeend', camps.items.sort((a, b) => a.Name.localeCompare(b.Name, 'tr')).map((c) => `<option value="${c.CampaignID}">${esc(c.Name)}</option>`).join(''));
+    TL.facetOptions(document.getElementById('actor'), actors.items.map((a) => ({ value: a.ActorID, label: a.Name })));
+    TL.facetOptions(document.getElementById('campaign'), camps.items.sort((a, b) => a.Name.localeCompare(b.Name, 'tr')).map((c) => ({ value: c.CampaignID, label: c.Name })));
     const form = document.getElementById('filters');
     ['tactic', 'actor', 'campaign'].forEach((k) => { const v = qs.get(k); if (v) form.elements[k].value = v; });
     if (qs.get('subtechniques')) form.elements.subtechniques.checked = true;

@@ -1,6 +1,7 @@
 """MITRE ATT&CK uçları: taktikler, teknik listesi, teknik detayı, matris."""
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from .facets import facet_counts
 from ..db import Db, get_db
 from ..security import current_user
 
@@ -33,27 +34,47 @@ SORTS = {"id": "t.ExternalID", "name": "t.Name", "actors": "ActorCount DESC, t.E
          "campaigns": "CampaignCount DESC, t.ExternalID", "malware": "MalwareCount DESC, t.ExternalID"}
 
 
+USES = (("actor", "dbo.ActorTechnique", "ActorID"), ("campaign", "dbo.CampaignTechnique", "CampaignID"),
+        ("malware", "dbo.MalwareTechnique", "MalwareID"))
+
+
+def _technique_conds(q: str, tactic: int | None, actor: int | None, campaign: int | None, malware: int | None, subtechniques: bool):
+    out = []
+    if not subtechniques:
+        out.append(("sub", "t.ParentTechniqueID IS NULL", []))
+    if q.strip():
+        out.append(("q", "(t.ExternalID LIKE ? OR t.Name LIKE ?)", [f"{q.strip()}%", f"%{q.strip()}%"]))
+    if tactic:
+        out.append(("tactic", "EXISTS (SELECT 1 FROM dbo.TechniqueTactic AS tt WHERE tt.TechniqueID = t.TechniqueID AND tt.TacticID = ?)", [tactic]))
+    # Aktör/kampanya/zararlı filtresi: alt tekniklerden biri kullanılmışsa üst teknik de sayılır
+    for (dim, table, col), value in zip(USES, (actor, campaign, malware)):
+        if value:
+            out.append((dim, f"""EXISTS (SELECT 1 FROM {table} AS f JOIN dbo.Technique AS ft ON ft.TechniqueID = f.TechniqueID
+                        WHERE f.{col} = ? AND (ft.TechniqueID = t.TechniqueID OR ft.ParentTechniqueID = t.TechniqueID))""", [value]))
+    return out
+
+
+# Filtre paneli: aktör ve kampanya başına teknik sayısı (listeyle aynı kural: alt teknik kullanımı üst tekniği de sayar)
+TECHNIQUE_FACETS = {dim: (f"""JOIN (SELECT f.{col} AS FV, ft.TechniqueID AS TID, ft.ParentTechniqueID AS PID
+                                  FROM {table} AS f JOIN dbo.Technique AS ft ON ft.TechniqueID = f.TechniqueID) AS fx
+                             ON (fx.TID = t.TechniqueID OR fx.PID = t.TechniqueID)""", "fx.FV")
+                    for dim, table, col in USES[:2]}
+
+
+@router.get("/techniques/facets")
+def technique_facets(q: str = Query("", max_length=100), tactic: int | None = None, actor: int | None = None,
+                     campaign: int | None = None, malware: int | None = None, subtechniques: bool = False, db: Db = Depends(get_db)):
+    return facet_counts(db, "dbo.Technique AS t", _technique_conds(q, tactic, actor, campaign, malware, subtechniques),
+                        TECHNIQUE_FACETS, key="t.TechniqueID")
+
+
 @router.get("/techniques")
 def list_techniques(q: str = Query("", max_length=100), tactic: int | None = None, actor: int | None = None,
                     campaign: int | None = None, malware: int | None = None, subtechniques: bool = False,
                     sort: str = "actors", page: int = Query(1, ge=1), size: int = Query(20, ge=5, le=200),
                     db: Db = Depends(get_db)):
-    where, params = ["1 = 1"], []
-    if not subtechniques:
-        where.append("t.ParentTechniqueID IS NULL")
-    if q.strip():
-        where.append("(t.ExternalID LIKE ? OR t.Name LIKE ?)"); params += [f"{q.strip()}%", f"%{q.strip()}%"]
-    if tactic:
-        where.append("EXISTS (SELECT 1 FROM dbo.TechniqueTactic AS tt WHERE tt.TechniqueID = t.TechniqueID AND tt.TacticID = ?)")
-        params.append(tactic)
-    # Aktör/kampanya/zararlı filtresi: alt tekniklerden biri kullanılmışsa üst teknik de sayılır
-    for value, table, col in ((actor, "dbo.ActorTechnique", "ActorID"), (campaign, "dbo.CampaignTechnique", "CampaignID"),
-                              (malware, "dbo.MalwareTechnique", "MalwareID")):
-        if value:
-            where.append(f"""EXISTS (SELECT 1 FROM {table} AS f JOIN dbo.Technique AS ft ON ft.TechniqueID = f.TechniqueID
-                        WHERE f.{col} = ? AND (ft.TechniqueID = t.TechniqueID OR ft.ParentTechniqueID = t.TechniqueID))""")
-            params.append(value)
-    clause = "\n          AND ".join(where)
+    conds = _technique_conds(q, tactic, actor, campaign, malware, subtechniques)
+    clause = "\n          AND ".join(["1 = 1"] + [c[1] for c in conds]); params = [x for c in conds for x in c[2]]
     total = db.scalar(f"SELECT COUNT(*) AS Total FROM dbo.Technique AS t WHERE {clause};", tuple(params))
     items = db.query(
         f"""

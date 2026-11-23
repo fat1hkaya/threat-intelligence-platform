@@ -37,8 +37,7 @@
         return `<button type="button" class="btn sm icon ghost" data-feed="${s.Feed || ''}" ${can_ ? '' : 'disabled'} aria-label="${esc(why)}: ${esc(s.Name)}" title="${esc(why)}"><i data-lucide="refresh-cw"></i></button>
           <details class="more-menu row-menu"><summary class="btn sm icon ghost" aria-label="${esc(s.Name)}: diğer eylemler" title="Diğer eylemler"><i data-lucide="ellipsis"></i></summary><div class="menu-pop" role="menu">${menu}</div></details>`; } },
     ], d.sources, { caption: 'Kaynaklar' });
-    const opts = d.sources.filter((s) => s.LastJobID).map((s) => `<option value="${s.SourceID}">${esc(s.Name)}</option>`).join('');
-    const js = document.getElementById('jSrc'); if (js.options.length === 1) js.insertAdjacentHTML('beforeend', opts);
+    TL.facetOptions(document.getElementById('jSrc'), d.sources.filter((s) => s.LastJobID).map((s) => ({ value: s.SourceID, label: TL.sourceShort(s.Name), hint: s.Name })));
     icons();
   }
 
@@ -118,7 +117,8 @@
 
   document.addEventListener('DOMContentLoaded', async () => {
     const srcParam = qs.get('source');
-    await loadSources(); if (srcParam) { document.getElementById('jSrc').value = srcParam; document.getElementById('jChanged').checked = false; }
+    ['jSrc', 'jStatus'].forEach((id) => TL.facet(document.getElementById(id)));
+    await loadSources(); if (srcParam) { document.getElementById('jSrc').value = srcParam; document.getElementById('jSrc')._facet.render(); document.getElementById('jChanged').checked = false; }
     loadJobs();
     if (can('analyst')) { const ub = document.getElementById('uploadBtn'); ub.hidden = false; ub.onclick = () => uploadDialog(st.sources || []); }
     document.getElementById('jSrc').onchange = document.getElementById('jStatus').onchange = document.getElementById('jChanged').onchange = () => { st.page = 1; loadJobs(); };
@@ -126,7 +126,7 @@
     document.getElementById('srcTbl').addEventListener('click', async (e) => {
       const j = e.target.closest('[data-job]'); if (j) { jobDetail(j.dataset.job).catch((er) => toast(er.message, 'err')); return; }
       const of = e.target.closest('[data-jobs-of]');
-      if (of) { document.getElementById('jSrc').value = of.dataset.jobsOf; document.getElementById('jChanged').checked = false; st.page = 1; loadJobs(); document.getElementById('jobTbl').scrollIntoView({ block: 'start' }); return; }
+      if (of) { document.getElementById('jSrc').value = of.dataset.jobsOf; document.getElementById('jSrc')._facet.render(); document.getElementById('jChanged').checked = false; st.page = 1; loadJobs(); document.getElementById('jobTbl').scrollIntoView({ block: 'start' }); return; }
       const tg = e.target.closest('[data-toggle]');
       if (tg) {
         const on = tg.dataset.on === '1', src = st.sources.find((x) => String(x.SourceID) === tg.dataset.toggle);

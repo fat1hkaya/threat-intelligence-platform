@@ -2,7 +2,7 @@
 (() => {
   const { api, table, bindTable, markRow, pager, panel, panelHead, loading, empty, icons, qs, toast } = TL;
 
-  /** cfg: { endpoint, columns, rowId, unit, size, key, shownOf, detail(id) -> Promise<html>, title, extra(), onData(d) } */
+  /** cfg: { endpoint, columns, rowId, unit, size, key, shownOf, filters (filterBar: counts, views, dates), detail(id) -> Promise<html>, title, extra(), onData(d) } */
   TL.listPage = (cfg) => {
     const split = document.getElementById('split'), tbl = document.getElementById('tbl'), form = document.getElementById('filters');
     const key = cfg.key || cfg.endpoint.replace(/^\/api\//, '');
@@ -46,7 +46,7 @@
     TL.onPanelClose = () => { st.selected = null; qs.set({ id: null }); markRow(tbl, -1); };
     bindTable(tbl, { onRow: show });
     const start = async () => {
-      fb = TL.filterBar(form, { onChange: () => { st.page = 1; load(); } });
+      fb = TL.filterBar(form, { onChange: () => { st.page = 1; load(); }, ...(cfg.filters || {}) });
       await load(); if (st.selected) show(st.selected);
     };
     return { load, show, start, toast, filters: () => fb };

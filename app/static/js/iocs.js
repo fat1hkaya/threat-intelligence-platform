@@ -111,7 +111,7 @@
     Object.entries(filters()).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') q.set(k, v); });
     location.href = `/api/iocs/export?${q}`;
   });
-  bindTable(tbl, { onRow: show, onSort: (s) => { st.dir = st.sort === s && st.dir === 'desc' ? 'asc' : 'desc'; st.sort = s; st.page = 1; load(); } });
+  bindTable(tbl, { onRow: show, onSort: (s) => { st.dir = st.sort === s && st.dir === 'desc' ? 'asc' : 'desc'; st.sort = s; st.page = 1; TL.onSortSync?.(); load(); } });
 
   // ---------- toplu kontrol ----------
   document.getElementById('lookupBtn').addEventListener('click', () => {
@@ -148,10 +148,26 @@
     sel = TL.selection(tbl, renderBar);
     try {
       const m = await TL.meta();
-      document.getElementById('type').insertAdjacentHTML('beforeend', m.types.map((t) => `<option value="${t.Code}">${esc(t.Name)}</option>`).join(''));
-      document.getElementById('source').insertAdjacentHTML('beforeend', m.iocSources.map((s) => `<option value="${s.SourceID}">${esc(s.Name)}</option>`).join(''));
+      TL.facetOptions(document.getElementById('type'), m.types.map((t) => ({ value: t.Code, label: TL.TYPE_LABEL[t.Code] || t.Name })));
+      TL.facetOptions(document.getElementById('source'), m.iocSources.map((s) => ({ value: s.SourceID, label: TL.sourceShort(s.Name), hint: s.Name })));
     } catch (e) { toast(e.message, 'err'); }
-    fb = TL.filterBar(form, { onChange: () => { st.page = 1; sel.clear(); load(); } });
+    fb = TL.filterBar(form, {
+      onChange: () => { st.page = 1; sel.clear(); load(); },
+      counts: '/api/iocs/facets',
+      dates: [{ from: 'dateFrom', to: 'dateTo', hours: 'hours', label: 'Son görülme' }],
+      // Kayıtlı görünümler (B · Dosya): sayılar sunucudan; genel bakıştaki "Dikkat gerektirenler" bunlara bağlanır
+      views: { endpoint: '/api/iocs/views', items: [
+        { key: 'all', label: 'Tümü', params: {} },
+        { key: 'high24h', label: 'Son 24 saat · yüksek önem', params: { severity: 'high,critical', status: 'active', hours: '24' }, hint: 'Son 24 saatte görülen, önemi yüksek ya da kritik aktif IOC\'ler' },
+        { key: 'sighted', label: 'Kurumda görülen', params: { sighted: 'true' }, hint: 'Kurum içinde en az bir görülme kaydı olan IOC\'ler' },
+        { key: 'expiring', label: 'Süresi dolacak (7 gün)', params: { expiring: '7' }, hint: 'Geçerlilik süresi önümüzdeki 7 gün içinde dolacak aktif IOC\'ler' }] },
+    });
+    // Sırala menüsü: sütun başlıklarıyla aynı durum (st.sort, st.dir)
+    const sortIn = document.getElementById('iocSort');
+    const syncSort = () => { sortIn.value = `${st.sort}:${st.dir}`; sortIn._facet?.render(); };
+    TL.facet(sortIn); syncSort();
+    sortIn.addEventListener('change', () => { const [s2, d2] = sortIn.value.split(':'); st.sort = s2; st.dir = d2 || 'desc'; st.page = 1; load(); });
+    TL.onSortSync = syncSort;
     const mw = document.getElementById('malware');
     if (mw.value) api(`/api/malware/${mw.value}`).then((r) => { mw.dataset.text = r.malware.IsPlaceholder ? 'Ailesi belirlenmemiş' : r.malware.Name; fb.render(); }).catch(() => {});
     await load();

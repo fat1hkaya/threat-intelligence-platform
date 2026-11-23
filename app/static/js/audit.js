@@ -13,7 +13,8 @@
 
   // ---------- veri değişiklikleri ----------
   const page = TL.listPage({
-    endpoint: '/api/audit-logs', title: 'Olay detayı', unit: 'kayıt', shownOf: true, size: 25, rowId: (r) => r.AuditID,
+    endpoint: '/api/audit-logs', title: 'Olay detayı', unit: 'kayıt', shownOf: true, size: 25,
+    filters: { counts: '/api/audit-logs/facets', dates: [{ from: 'dateFrom', to: 'dateTo', label: 'Tarih' }] }, rowId: (r) => r.AuditID,
     // işaretsiz onay kutusu formda hiç gönderilmez: açıkça false gönderilir (API varsayılanı gizlemek)
     extra: () => ({ hideAutomation: hideAuto() === 'false' ? 'false' : null }),
     onData: (d) => { rows = d.items; },   // detay paneli satırı yeniden sorgulamadan gösterir
@@ -64,11 +65,8 @@
       failed == null ? kpi('users', '', 'Farklı kullanıcı', fmtN(t.Users), 'kayıt yazan hesap')
         : kpi('shield-alert', failed ? 'r' : '', 'Hatalı giriş', fmtN(failed), 'son 24 saat'),
     ].join('');
-    const tableSel = document.getElementById('table'), cur = tableSel.value;
-    tableSel.innerHTML = '<option value="">Tümü</option>' + s.byTable.map((x) => `<option value="${esc(x.TableName)}">${esc(TABLE[x.TableName] || x.TableName)} (${x.Total})</option>`).join('');
-    tableSel.value = cur;
-    const us = document.getElementById('user');
-    if (!us.dataset.filled) { us.dataset.filled = '1'; us.insertAdjacentHTML('beforeend', s.users.map((u) => `<option value="${u.UserID}">${esc(u.FullName)}</option>`).join('')); }
+    TL.facetOptions(document.getElementById('table'), s.byTable.map((x) => ({ value: x.TableName, label: TABLE[x.TableName] || x.TableName })));
+    TL.facetOptions(document.getElementById('user'), s.users.map((u) => ({ value: u.UserID, label: u.FullName })));
     drawChart(s.daily);
     TL.icons();
   }

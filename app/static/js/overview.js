@@ -21,12 +21,11 @@
     const box = document.getElementById('attention');
     let a;
     try { a = await api('/api/dashboard/attention'); } catch (e) { box.innerHTML = empty(e.message, 'circle-alert'); icons(); return; }
-    const since = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     // Her kart aynı biçimde: ikon, sayı, tek satır etiket, ok. 0 olanlar soluk; >0 olanların sol kenarı önem renginde.
     const items = [
       { icon: 'siren', tone: 'bad', n: a.HighSeverity24h, label: 'son 24 saatte yüksek önem', title: 'Son 24 saatte görülen, önemi yüksek ya da kritik olan aktif IOC sayısı',
-        href: `/iocs?severity=high,critical&status=active&dateFrom=${since}` },
-      { icon: 'eye', tone: 'warn', n: a.Sighted7d, label: 'kurumda görüldü · 7 gün', title: 'Son 7 günde kurum içinde görülen (görülme kaydı olan) IOC', href: '/hunt' },
+        href: '/iocs?view=high24h' },
+      { icon: 'eye', tone: 'warn', n: a.Sighted7d, label: 'kurumda görüldü · 7 gün', title: 'Son 7 günde kurum içinde görülen (görülme kaydı olan) IOC; bağlantı tüm kurumda görülenleri listeler', href: '/iocs?view=sighted' },
       { icon: 'briefcase', tone: 'info', n: a.OpenCases, label: a.InvestigatingCases ? `açık vaka · ${fmtN(a.InvestigatingCases)} inceleme` : 'açık vaka', title: 'Kapatılmamış vakalar', href: '/cases' },
       { icon: 'triangle-alert', tone: 'bad', n: a.FailedJobs7d, label: 'başarısız iş · 7 gün', title: 'Son 7 günde başarısız olan içe aktarma veya bakım işi', href: '/sources' },
       a.CoverageMarked
@@ -134,5 +133,5 @@
     bars(document.getElementById('topMal'), d.topMalware, (r) => r.Name, (r) => r.IndicatorCount, (r) => `/malware?id=${r.MalwareID}`);
     icons();
   }
-  document.addEventListener('DOMContentLoaded', () => { document.getElementById('days').addEventListener('change', load); attention(); load(); });
+  document.addEventListener('DOMContentLoaded', () => { const days = document.getElementById('days'); TL.facet(days); days.addEventListener('change', load); attention(); load(); });
 })();

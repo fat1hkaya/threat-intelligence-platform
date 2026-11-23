@@ -3,18 +3,16 @@
 <div class="page-head">
   <div class="ph-title"><h1>Kampanyalar</h1><span class="head-count" id="headCount" hidden></span><span class="page-help"><button type="button" class="btn icon ghost help-btn" aria-expanded="false" aria-controls="pageHelp" aria-label="Bu sayfa hakkında" title="Bu sayfa hakkında"><i data-lucide="circle-help"></i></button><span class="help-pop" id="pageHelp" role="note" hidden>Aktörlere atfedilen operasyonlar, kullandıkları zararlılar, teknikler ve gözlenen IOC'ler.</span></span></div>
 </div>
-<form class="toolbar" id="filters" role="search" aria-label="Kampanya filtreleri">
+<form class="toolbar facets" id="filters" role="search" aria-label="Kampanya filtreleri">
   <div class="tb-row">
     <div class="tb-search"><i data-lucide="search" aria-hidden="true"></i><label for="q" class="sr-only">Kampanya ara</label><input class="input" id="q" name="q" type="search" data-label="Arama" placeholder="Kampanya, aktör veya C kodu" autocomplete="off"></div>
-    <button type="button" class="btn filter-toggle" aria-expanded="false" aria-controls="campFilters"></button>
-    <div class="tb-filters" id="campFilters">
-      <div class="sheet-head"><h2>Filtreler</h2><button type="button" class="btn icon ghost sheet-close" aria-label="Filtreleri kapat"><i data-lucide="x"></i></button></div>
-      <label class="tb-field"><span>Durum</span><select class="input" id="ongoing" name="ongoing"><option value="">Tümü</option><option value="true">Devam ediyor</option><option value="false">Tamamlandı</option></select></label>
-      <div class="sheet-foot"><button type="reset" class="btn ghost">Tümünü temizle</button><button type="button" class="btn primary sheet-done">Sonuçları göster</button></div>
+    <div class="tb-filters">
+      <input type="hidden" name="ongoing" id="ongoing" data-facet="Durum" data-options="[[&quot;true&quot;, &quot;Devam ediyor&quot;], [&quot;false&quot;, &quot;Tamamlandı&quot;]]" data-chip="off">
+      <input type="hidden" name="attributed" id="attributed" data-facet="Atıf" data-options="[[&quot;true&quot;, &quot;Aktöre atfedilmiş&quot;], [&quot;false&quot;, &quot;Atfedilmemiş&quot;]]" data-chip="off">
     </div>
-    <button class="btn ghost tb-clear" type="reset" hidden><i data-lucide="filter-x"></i>Temizle</button>
+    <button class="btn ghost tb-clear" type="reset" hidden>Sıfırla<i data-lucide="x"></i></button>
+    <div class="tb-right"><span class="tb-view"></span></div>
   </div>
-  <div class="chips tb-chips" aria-label="Etkin filtreler" hidden></div>
 </form>
 <div class="split no-panel" id="split">
   <section class="card flush" aria-label="Kampanya listesi"><div id="tbl"></div><div class="pager" id="pager"></div></section>

@@ -5,6 +5,10 @@
 
   const page = TL.listPage({
     endpoint: '/api/actors', title: 'Aktör detayı', unit: 'aktör', rowId: (r) => r.ActorID,
+    filters: { counts: '/api/actors/facets', views: { endpoint: '/api/actors/views', items: [
+      { key: 'all', label: 'Tümü', params: {} },
+      { key: 'linked', label: "IOC'si olanlar", params: { linked: 'true' }, hint: 'IOC\'lerimizden en az biri zararlı ya da kampanya üzerinden atfedilen aktörler' },
+      { key: 'active90', label: 'Son 90 günde etkin', params: { active90: 'true' }, hint: 'Son 90 günde IOC\'si görülen ya da kampanyası süren aktörler' }] } },
     columns: [
       { id: 'name', label: 'Aktör', primary: true, render: (r) => `<span class="name-id"><b>${esc(r.Name)}</b>${r.ExternalID ? ` <span class="faint mono">${esc(r.ExternalID)}</span>` : ''}</span>` },
       { id: 'aliases', label: 'Takma adlar', priority: 3, render: (r) => `<span class="muted">${clipList(r.Aliases, 3)}</span>` },
@@ -38,7 +42,7 @@
 
   document.addEventListener('DOMContentLoaded', async () => {
     const m = await TL.meta();
-    const fill = (id, rows, v, l) => document.getElementById(id).insertAdjacentHTML('beforeend', rows.map((r) => `<option value="${esc(r[v])}">${esc(r[l])}</option>`).join(''));
+    const fill = (id, rows, v, l) => TL.facetOptions(document.getElementById(id), rows.map((r) => ({ value: r[v], label: r[l] })));
     fill('country', m.countries, 'CountryCode', 'Name'); fill('motivation', m.motivations, 'Name', 'Name'); fill('sector', m.sectors, 'SectorID', 'Name');
     page.start();
   });

@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from .facets import facet_counts
 from ..db import Db, get_db
 from ..security import current_user, require_analyst
 
@@ -14,22 +15,57 @@ def _page(page: int, size: int) -> tuple[int, int]:
 
 # ============================== Aktörler ==============================
 
+# Kayıtlı görünüm koşulları (sabit metin; parametresiz)
+ACTOR_LINKED = "EXISTS (SELECT 1 FROM dbo.vw_IndicatorAttribution AS ia WHERE ia.ActorID = v.ActorID)"
+ACTOR_ACTIVE90 = """(EXISTS (SELECT 1 FROM dbo.vw_IndicatorAttribution AS ia JOIN dbo.Indicator AS i ON i.IndicatorID = ia.IndicatorID
+                            WHERE ia.ActorID = v.ActorID AND i.LastSeen >= DATEADD(DAY, -90, SYSUTCDATETIME()))
+                    OR EXISTS (SELECT 1 FROM dbo.Campaign AS c WHERE c.ActorID = v.ActorID AND c.EndDate >= DATEADD(DAY, -90, SYSUTCDATETIME())))"""
+ACTOR_FACETS = {"country": "v.CountryCode", "motivation": "v.Motivation",
+                "sector": ("JOIN dbo.ActorTargetSector AS fs ON fs.ActorID = v.ActorID", "fs.SectorID")}
+
+
+def _actor_conds(q: str, country: str, motivation: str, sector: int | None, linked: bool = False, active90: bool = False):
+    out = []
+    if q.strip():
+        out.append(("q", """(v.Name LIKE ? OR v.ExternalID = ?
+               OR EXISTS (SELECT 1 FROM dbo.ActorAlias AS al WHERE al.ActorID = v.ActorID AND al.Alias LIKE ?))""",
+                    [f"%{q.strip()}%", q.strip(), f"%{q.strip()}%"]))
+    if country:
+        out.append(("country", "v.CountryCode = ?", [country]))
+    if motivation:
+        out.append(("motivation", "v.Motivation = ?", [motivation]))
+    if sector:
+        out.append(("sector", "EXISTS (SELECT 1 FROM dbo.ActorTargetSector AS ts WHERE ts.ActorID = v.ActorID AND ts.SectorID = ?)", [sector]))
+    if linked:
+        out.append(("linked", ACTOR_LINKED, []))
+    if active90:
+        out.append(("active90", ACTOR_ACTIVE90, []))
+    return out
+
+
+def _where(conds) -> tuple[str, list]:
+    return "\n          AND ".join(["1 = 1"] + [c[1] for c in conds]), [x for c in conds for x in c[2]]
+
+
+@router.get("/actors/facets")
+def actor_facets(q: str = "", country: str = "", motivation: str = "", sector: int | None = None, linked: bool = False,
+                 active90: bool = False, db: Db = Depends(get_db)):
+    return facet_counts(db, "dbo.vw_ActorSummary AS v", _actor_conds(q, country, motivation, sector, linked, active90),
+                        ACTOR_FACETS, key="v.ActorID")
+
+
+@router.get("/actors/views")
+def actor_views(db: Db = Depends(get_db)):
+    return db.one(f"""SELECT (SELECT COUNT(*) FROM dbo.vw_ActorSummary) AS [all],
+                             (SELECT COUNT(*) FROM dbo.vw_ActorSummary AS v WHERE {ACTOR_LINKED}) AS linked,
+                             (SELECT COUNT(*) FROM dbo.vw_ActorSummary AS v WHERE {ACTOR_ACTIVE90}) AS active90;""")
+
+
 @router.get("/actors")
 def list_actors(q: str = "", country: str = "", motivation: str = "", sector: int | None = None, sort: str = "techniques",
+                linked: bool = False, active90: bool = False,
                 page: int = Query(1, ge=1), size: int = Query(24, ge=5, le=200), db: Db = Depends(get_db)):
-    where, params = ["1 = 1"], []
-    if q.strip():
-        where.append("""(v.Name LIKE ? OR v.ExternalID = ?
-               OR EXISTS (SELECT 1 FROM dbo.ActorAlias AS al WHERE al.ActorID = v.ActorID AND al.Alias LIKE ?))""")
-        params += [f"%{q.strip()}%", q.strip(), f"%{q.strip()}%"]
-    if country:
-        where.append("v.CountryCode = ?"); params.append(country)
-    if motivation:
-        where.append("v.Motivation = ?"); params.append(motivation)
-    if sector:
-        where.append("EXISTS (SELECT 1 FROM dbo.ActorTargetSector AS ts WHERE ts.ActorID = v.ActorID AND ts.SectorID = ?)")
-        params.append(sector)
-    clause = "\n          AND ".join(where)
+    clause, params = _where(_actor_conds(q, country, motivation, sector, linked, active90))
     order = {"name": "v.Name", "malware": "v.MalwareCount DESC, v.Name", "iocs": "ISNULL(ioc.IndicatorCount, 0) DESC, v.Name",
              "campaigns": "v.CampaignCount DESC, v.Name"}.get(sort, "v.TechniqueCount DESC, v.Name")
     total = db.scalar(f"SELECT COUNT(*) AS Total FROM dbo.vw_ActorSummary AS v\n        WHERE {clause};", tuple(params))
@@ -176,26 +212,53 @@ def delete_actor(actor_id: int, user: dict = Depends(require_analyst), db: Db = 
 
 # =========================== Zararlı yazılım ==========================
 
-@router.get("/malware")
-def list_malware(q: str = "", type: str = "", linked: bool | None = None, placeholders: bool = False, sort: str = "indicators", attack: str = "",
-                 page: int = Query(1, ge=1), size: int = Query(30, ge=5, le=200), db: Db = Depends(get_db)):
-    where, params = ["1 = 1"], []
-    if not placeholders:                       # yer tutucu aileler varsayılan olarak gizli ("Yer tutucuları göster")
-        where.append("v.IsPlaceholder = 0")
+MALWARE_MATCHED = "(v.TechniqueCount > 0 OR v.ActorCount > 0)"
+MALWARE_FACETS = {"type": "v.TypeCode", "linked": "CASE WHEN v.IndicatorCount > 0 THEN 'true' ELSE 'false' END",
+                  "attack": f"CASE WHEN {MALWARE_MATCHED} THEN 'matched' ELSE 'unmatched' END"}
+
+
+def _malware_conds(q: str, type: str, linked: bool | None, placeholders: str, attack: str):
+    out = []
+    # yer tutucu aileler varsayılan olarak gizli; "true" hepsi, "only" yalnızca yer tutucular ("Ailesi belirlenmemiş" görünümü)
+    if placeholders == "only":
+        out.append(("placeholders", "v.IsPlaceholder = 1", []))
+    elif placeholders not in ("true", "1"):
+        out.append(("placeholders", "v.IsPlaceholder = 0", []))
     if q.strip():
-        where.append("""(v.Name LIKE ? OR v.ExternalID = ?
-               OR EXISTS (SELECT 1 FROM dbo.MalwareAlias AS al WHERE al.MalwareID = v.MalwareID AND al.Alias LIKE ?))""")
-        params += [f"%{q.strip()}%", q.strip(), f"%{q.strip()}%"]
+        out.append(("q", """(v.Name LIKE ? OR v.ExternalID = ?
+               OR EXISTS (SELECT 1 FROM dbo.MalwareAlias AS al WHERE al.MalwareID = v.MalwareID AND al.Alias LIKE ?))""",
+                    [f"%{q.strip()}%", q.strip(), f"%{q.strip()}%"]))
     if type:
-        where.append("v.TypeCode = ?"); params.append(type)
-    if linked:
-        where.append("v.IndicatorCount > 0")
+        out.append(("type", "v.TypeCode = ?", [type]))
+    if linked is True:
+        out.append(("linked", "v.IndicatorCount > 0", []))
+    elif linked is False:
+        out.append(("linked", "v.IndicatorCount = 0", []))
     # ATT&CK eşleşmesi: yazılım kataloğundan aktör ya da teknik ilişkisi gelmişse eşleşmiş sayılır
     if attack == "matched":
-        where.append("(v.TechniqueCount > 0 OR v.ActorCount > 0)")
+        out.append(("attack", MALWARE_MATCHED, []))
     elif attack == "unmatched":
-        where.append("v.TechniqueCount = 0 AND v.ActorCount = 0")
-    clause = "\n          AND ".join(where)
+        out.append(("attack", f"NOT {MALWARE_MATCHED}", []))
+    return out
+
+
+@router.get("/malware/facets")
+def malware_facets(q: str = "", type: str = "", linked: bool | None = None, placeholders: str = "", attack: str = "",
+                   db: Db = Depends(get_db)):
+    return facet_counts(db, "dbo.vw_MalwareSummary AS v", _malware_conds(q, type, linked, placeholders, attack), MALWARE_FACETS)
+
+
+@router.get("/malware/views")
+def malware_views(db: Db = Depends(get_db)):
+    return db.one(f"""SELECT (SELECT COUNT(*) FROM dbo.vw_MalwareSummary AS v WHERE v.IsPlaceholder = 0) AS [all],
+                             (SELECT COUNT(*) FROM dbo.vw_MalwareSummary AS v WHERE v.IsPlaceholder = 0 AND {MALWARE_MATCHED}) AS matched,
+                             (SELECT COUNT(*) FROM dbo.vw_MalwareSummary AS v WHERE v.IsPlaceholder = 1) AS placeholders;""")
+
+
+@router.get("/malware")
+def list_malware(q: str = "", type: str = "", linked: bool | None = None, placeholders: str = "", sort: str = "indicators", attack: str = "",
+                 page: int = Query(1, ge=1), size: int = Query(30, ge=5, le=200), db: Db = Depends(get_db)):
+    clause, params = _where(_malware_conds(q, type, linked, placeholders, attack))
     order = {"name": "v.Name", "actors": "v.ActorCount DESC, v.Name",
              "techniques": "v.TechniqueCount DESC, v.Name"}.get(sort, "v.IndicatorCount DESC, v.ActorCount DESC, v.Name")
     total = db.scalar(f"SELECT COUNT(*) AS Total FROM dbo.vw_MalwareSummary AS v\n        WHERE {clause};", tuple(params))
@@ -307,18 +370,33 @@ def delete_malware(malware_id: int, user: dict = Depends(require_analyst), db: D
 
 # ============================== Kampanyalar ===========================
 
-@router.get("/campaigns")
-def list_campaigns(q: str = "", ongoing: bool | None = None, actor: int | None = None, page: int = Query(1, ge=1),
-                   size: int = Query(30, ge=5, le=200), db: Db = Depends(get_db)):
-    where, params = ["1 = 1"], []
+CAMPAIGN_FACETS = {"ongoing": "CASE WHEN v.IsOngoing = 1 THEN 'true' ELSE 'false' END",
+                   "attributed": "CASE WHEN v.ActorID IS NULL THEN 'false' ELSE 'true' END"}
+
+
+def _campaign_conds(q: str, ongoing: bool | None, actor: int | None, attributed: bool | None = None):
+    out = []
     if q.strip():
-        where.append("(v.Name LIKE ? OR v.ActorName LIKE ? OR v.ExternalID = ?)")
-        params += [f"%{q.strip()}%", f"%{q.strip()}%", q.strip()]
+        out.append(("q", "(v.Name LIKE ? OR v.ActorName LIKE ? OR v.ExternalID = ?)", [f"%{q.strip()}%", f"%{q.strip()}%", q.strip()]))
     if ongoing is not None:
-        where.append("v.IsOngoing = ?"); params.append(int(ongoing))
+        out.append(("ongoing", "v.IsOngoing = ?", [int(ongoing)]))
     if actor:
-        where.append("v.ActorID = ?"); params.append(actor)
-    clause = "\n          AND ".join(where)
+        out.append(("actor", "v.ActorID = ?", [actor]))
+    if attributed is not None:
+        out.append(("attributed", "v.ActorID IS NOT NULL" if attributed else "v.ActorID IS NULL", []))
+    return out
+
+
+@router.get("/campaigns/facets")
+def campaign_facets(q: str = "", ongoing: bool | None = None, actor: int | None = None, attributed: bool | None = None,
+                    db: Db = Depends(get_db)):
+    return facet_counts(db, "dbo.vw_CampaignSummary AS v", _campaign_conds(q, ongoing, actor, attributed), CAMPAIGN_FACETS)
+
+
+@router.get("/campaigns")
+def list_campaigns(q: str = "", ongoing: bool | None = None, actor: int | None = None, attributed: bool | None = None,
+                   page: int = Query(1, ge=1), size: int = Query(30, ge=5, le=200), db: Db = Depends(get_db)):
+    clause, params = _where(_campaign_conds(q, ongoing, actor, attributed))
     total = db.scalar(f"SELECT COUNT(*) AS Total FROM dbo.vw_CampaignSummary AS v\n        WHERE {clause};", tuple(params))
     items = db.query(
         f"""

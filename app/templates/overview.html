@@ -3,10 +3,7 @@
 <div class="page-head">
   <div class="ph-title"><h1>Genel bakış</h1><span class="head-count" id="headCount" hidden></span><span class="page-help"><button type="button" class="btn icon ghost help-btn" aria-expanded="false" aria-controls="pageHelp" aria-label="Bu sayfa hakkında" title="Bu sayfa hakkında"><i data-lucide="circle-help"></i></button><span class="help-pop" id="pageHelp" role="note" hidden>Bakılması gerekenler, özet göstergeler, risk ve tip dağılımı, son istihbarat ve kaynak durumu.<span class="tech"> Tüm sayılar SQL Server'daki canlı sorgulardan geliyor.</span></span></span></div>
   <div class="page-actions">
-    <label class="sr-only" for="days">Dönem</label>
-    <select class="input" id="days" style="width:auto">
-      <option value="7">Son 7 gün</option><option value="30" selected>Son 30 gün</option><option value="90">Son 90 gün</option>
-    </select>
+    <input type="hidden" id="days" value="30" data-default="30" data-facet="Dönem" data-kind="sort" data-icon="calendar" data-options="[[&quot;7&quot;, &quot;Son 7 gün&quot;], [&quot;30&quot;, &quot;Son 30 gün&quot;], [&quot;90&quot;, &quot;Son 90 gün&quot;]]">
   </div>
 </div>
 

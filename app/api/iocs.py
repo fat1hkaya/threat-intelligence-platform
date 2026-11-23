@@ -5,6 +5,7 @@ from datetime import date, datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from .facets import facet_counts
 from ..db import Db, get_db
 from ..security import current_user, require_analyst
 from ..services.normalize import InvalidIndicator, guess_type, normalize
@@ -28,55 +29,78 @@ def _search_term(q: str) -> str:
     return term.lower()
 
 
-def _ioc_filter(q: str, type: str, severity: str, source: int | None, status: str, malware: int | None, tag: str,
-                minConfidence: int, maxConfidence: int, dateFrom: date | None, dateTo: date | None,
-                minRisk: int = 0, maxRisk: int = 100) -> tuple[str, list]:
-    """IOC listesi ve dışa aktarma için ortak WHERE koşulu.
-    Koşullar sabit parçalardan kurulur; kullanıcı girdisi yalnızca parametre (?) olarak geçer."""
-    where, params = ["1 = 1"], []
+def _csv(v: str) -> list[str]:
+    """Çoklu seçim: virgülle ayrılmış değerler (boşlar atılır)."""
+    return [x.strip() for x in (v or "").split(",") if x.strip()]
+
+
+def _in(col: str, values: list) -> str:
+    return f"{col} IN ({','.join('?' * len(values))})"
+
+
+def _ioc_conds(q: str, type: str, severity: str, source: str, status: str, malware: int | None, tag: str,
+               minConfidence: int, maxConfidence: int, dateFrom: date | None, dateTo: date | None,
+               minRisk: int = 0, maxRisk: int = 100, sighted: bool = False, expiring: int = 0, hours: int = 0) -> list[tuple[str, str, list]]:
+    """IOC koşulları boyutlarıyla: [(boyut, koşul, parametreler)]. Filtre paneli sayıları bir boyutun kendi koşulunu dışarıda
+    bırakır (diğer etkin filtreler uygulanır). Koşullar sabit parçalardan kurulur; kullanıcı girdisi yalnızca parametre (?)."""
+    out: list[tuple[str, str, list]] = []
     if q.strip():
-        where.append("v.Value LIKE ? ESCAPE '\\'")
         term = _search_term(q).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_").replace("[", "\\[")
-        params.append(f"%{term}%")
-    if type:
-        where.append("v.TypeCode = ?"); params.append(type)
-    if severity:
-        sev = [s for s in severity.split(",") if s]
-        where.append(f"v.SeverityCode IN ({','.join('?' * len(sev))})"); params += sev
-    if source:
-        where.append("v.SourceID = ?"); params.append(source)
-    if status:
-        where.append("v.Status = ?"); params.append(status)
+        out.append(("q", "v.Value LIKE ? ESCAPE '\\'", [f"%{term}%"]))
+    if _csv(type):
+        out.append(("type", _in("v.TypeCode", _csv(type)), _csv(type)))
+    if _csv(severity):
+        out.append(("severity", _in("v.SeverityCode", _csv(severity)), _csv(severity)))
+    sources = [int(x) for x in _csv(str(source or "")) if x.isdigit()]
+    if sources:
+        out.append(("source", _in("v.SourceID", sources), sources))
+    if _csv(status):
+        out.append(("status", _in("v.Status", _csv(status)), _csv(status)))
     if minConfidence > 0 or maxConfidence < 100:
-        where.append("v.Confidence BETWEEN ? AND ?"); params += [minConfidence, maxConfidence]
+        out.append(("confidence", "v.Confidence BETWEEN ? AND ?", [minConfidence, maxConfidence]))
     if minRisk > 0 or maxRisk < 100:
-        where.append("v.RiskScore BETWEEN ? AND ?"); params += [minRisk, maxRisk]
+        out.append(("risk", "v.RiskScore BETWEEN ? AND ?", [minRisk, maxRisk]))
+    if hours:                                     # "Son 24 saat": saat tabanlı aralık
+        out.append(("date", "v.LastSeen >= DATEADD(HOUR, -?, SYSUTCDATETIME())", [hours]))
     if dateFrom:
-        where.append("v.LastSeen >= ?"); params.append(dateFrom)
+        out.append(("date", "v.LastSeen >= ?", [dateFrom]))
     if dateTo:
-        where.append("v.LastSeen < DATEADD(DAY, 1, CAST(? AS DATE))"); params.append(dateTo)
+        out.append(("date", "v.LastSeen < DATEADD(DAY, 1, CAST(? AS DATE))", [dateTo]))
     if malware:
-        where.append("EXISTS (SELECT 1 FROM dbo.MalwareIndicator AS mi WHERE mi.IndicatorID = v.IndicatorID AND mi.MalwareID = ?)")
-        params.append(malware)
+        out.append(("malware", "EXISTS (SELECT 1 FROM dbo.MalwareIndicator AS mi WHERE mi.IndicatorID = v.IndicatorID AND mi.MalwareID = ?)", [malware]))
     if tag:
-        where.append("""EXISTS (SELECT 1 FROM dbo.IndicatorTag AS it JOIN dbo.Tag AS tg ON tg.TagID = it.TagID
-                    WHERE it.IndicatorID = v.IndicatorID AND tg.Name = ?)""")
-        params.append(tag)
-    return "\n          AND ".join(where), params
+        out.append(("tag", """EXISTS (SELECT 1 FROM dbo.IndicatorTag AS it JOIN dbo.Tag AS tg ON tg.TagID = it.TagID
+                    WHERE it.IndicatorID = v.IndicatorID AND tg.Name = ?)""", [tag]))
+    if sighted:                                   # kayıtlı görünüm: kurumda görülenler
+        out.append(("sighted", "EXISTS (SELECT 1 FROM dbo.Sighting AS g WHERE g.IndicatorID = v.IndicatorID)", []))
+    if expiring:                                  # kayıtlı görünüm: süresi N gün içinde dolacak aktif IOC'ler
+        out.append(("expiring", "v.Status = 'active' AND v.ExpiresAt >= SYSUTCDATETIME() AND v.ExpiresAt < DATEADD(DAY, ?, SYSUTCDATETIME())", [expiring]))
+    return out
+
+
+def _join(conds: list[tuple[str, str, list]], skip: str = "") -> tuple[str, list]:
+    use = [c for c in conds if c[0] != skip]
+    return ("\n          AND ".join(["1 = 1"] + [c[1] for c in use]), [x for c in use for x in c[2]])
+
+
+def _ioc_filter(*args, **kw) -> tuple[str, list]:
+    """IOC listesi ve dışa aktarma için ortak WHERE koşulu."""
+    return _join(_ioc_conds(*args, **kw))
 
 
 @router.get("")
 def list_iocs(
-    q: str = Query("", max_length=400), type: str = "", severity: str = "", source: int | None = None,
+    q: str = Query("", max_length=400), type: str = "", severity: str = "", source: str = "",
     status: str = "", malware: int | None = None, tag: str = "",
     minConfidence: int = Query(0, ge=0, le=100), maxConfidence: int = Query(100, ge=0, le=100),
     dateFrom: date | None = None, dateTo: date | None = None,
     minRisk: int = Query(0, ge=0, le=100), maxRisk: int = Query(100, ge=0, le=100),
+    sighted: bool = False, expiring: int = Query(0, ge=0, le=365), hours: int = Query(0, ge=0, le=720),
     sort: str = "lastSeen", dir: str = "desc", page: int = Query(1, ge=1), size: int = Query(25, ge=5, le=200),
     db: Db = Depends(get_db),
 ):
     clause, params = _ioc_filter(q, type, severity, source, status, malware, tag, minConfidence, maxConfidence, dateFrom, dateTo,
-                                 minRisk, maxRisk)
+                                 minRisk, maxRisk, sighted, expiring, hours)
     order = f"{SORTS.get(sort, 'v.LastSeen')} {'ASC' if dir == 'asc' else 'DESC'}, v.IndicatorID DESC"
 
     total = db.scalar(f"SELECT COUNT(*) AS Total FROM dbo.vw_Indicator AS v\n        WHERE {clause};", tuple(params))
@@ -85,13 +109,48 @@ def list_iocs(
         SELECT v.IndicatorID, v.Value, v.TypeCode, v.TypeName, v.Confidence, v.SeverityCode, v.SeverityName, v.TLPCode,
                v.SourceID, v.SourceName, v.FirstSeen, v.LastSeen, v.Status, v.SightingCount, v.RiskScore,
                (SELECT TOP (1) dbo.fn_MalwareLabel(m.Name, m.ExternalID) FROM dbo.MalwareIndicator AS mi JOIN dbo.Malware AS m ON m.MalwareID = mi.MalwareID
-                 WHERE mi.IndicatorID = v.IndicatorID ORDER BY m.IsPlaceholder, mi.Confidence DESC, m.Name) AS MalwareName
+                 WHERE mi.IndicatorID = v.IndicatorID ORDER BY m.IsPlaceholder, mi.Confidence DESC, m.Name) AS MalwareName,
+               (SELECT TOP (1) a.Name FROM dbo.MalwareIndicator AS mi JOIN dbo.ActorMalware AS am ON am.MalwareID = mi.MalwareID
+                       JOIN dbo.ThreatActor AS a ON a.ActorID = am.ActorID
+                 WHERE mi.IndicatorID = v.IndicatorID ORDER BY am.Confidence DESC, a.Name) AS ActorName
         FROM dbo.vw_Indicator AS v
         WHERE {clause}
         ORDER BY {order}
         OFFSET ? ROWS FETCH NEXT ? ROWS ONLY;      -- sayfalama
         """, tuple(params) + ((page - 1) * size, size))
     return {"items": items, "total": total, "page": page, "size": size}
+
+
+FACETS = {"type": "v.TypeCode", "severity": "v.SeverityCode", "source": "v.SourceID", "status": "v.Status"}
+
+
+@router.get("/facets")
+def ioc_facets(
+    q: str = Query("", max_length=400), type: str = "", severity: str = "", source: str = "",
+    status: str = "", malware: int | None = None, tag: str = "",
+    minConfidence: int = Query(0, ge=0, le=100), maxConfidence: int = Query(100, ge=0, le=100),
+    dateFrom: date | None = None, dateTo: date | None = None,
+    minRisk: int = Query(0, ge=0, le=100), maxRisk: int = Query(100, ge=0, le=100),
+    sighted: bool = False, expiring: int = Query(0, ge=0, le=365), hours: int = Query(0, ge=0, le=720), db: Db = Depends(get_db),
+):
+    """Filtre paneli sayıları: her boyut için GROUP BY; sayım diğer etkin filtreleri uygular, kendi boyutunu uygulamaz."""
+    conds = _ioc_conds(q, type, severity, source, status, malware, tag, minConfidence, maxConfidence, dateFrom, dateTo,
+                       minRisk, maxRisk, sighted, expiring, hours)
+    return facet_counts(db, "dbo.vw_Indicator AS v", conds, FACETS)
+
+
+@router.get("/views")
+def ioc_views(db: Db = Depends(get_db)):
+    """Kayıtlı görünümlerin sayıları (tek satırda skaler alt sorgular)."""
+    return db.one(
+        """
+        DECLARE @now DATETIME2(0) = SYSUTCDATETIME();
+        SELECT (SELECT COUNT(*) FROM dbo.Indicator) AS [all],
+               (SELECT COUNT(*) FROM dbo.Indicator AS i JOIN dbo.SeverityLevel AS s ON s.SeverityID = i.SeverityID
+                 WHERE i.Status = 'active' AND s.Code IN ('high', 'critical') AND i.LastSeen >= DATEADD(HOUR, -24, @now)) AS high24h,
+               (SELECT COUNT(DISTINCT IndicatorID) FROM dbo.Sighting) AS sighted,
+               (SELECT COUNT(*) FROM dbo.Indicator WHERE Status = 'active' AND ExpiresAt >= @now AND ExpiresAt < DATEADD(DAY, 7, @now)) AS expiring;
+        """)
 
 
 EXPORT_LIMIT = 50000
@@ -106,11 +165,12 @@ def _csv_cell(v) -> str:
 @router.get("/export")
 def export_iocs(
     format: str = Query("csv", pattern="^(csv|txt)$"),
-    q: str = Query("", max_length=400), type: str = "", severity: str = "", source: int | None = None,
+    q: str = Query("", max_length=400), type: str = "", severity: str = "", source: str = "",
     status: str = "", malware: int | None = None, tag: str = "",
     minConfidence: int = Query(0, ge=0, le=100), maxConfidence: int = Query(100, ge=0, le=100),
     dateFrom: date | None = None, dateTo: date | None = None,
     minRisk: int = Query(0, ge=0, le=100), maxRisk: int = Query(100, ge=0, le=100),
+    sighted: bool = False, expiring: int = Query(0, ge=0, le=365), hours: int = Query(0, ge=0, le=720),
     ids: str = Query("", max_length=20000, description="Virgülle IOC kimlikleri: yalnızca seçili satırlar"),
     db: Db = Depends(get_db),
 ):
@@ -129,7 +189,7 @@ def export_iocs(
         clause, params = "v.IndicatorID IN (SELECT CAST([value] AS BIGINT) FROM OPENJSON(?))", [json.dumps(id_list)]
     else:
         clause, params = _ioc_filter(q, type, severity, source, status, malware, tag, minConfidence, maxConfidence,
-                                     dateFrom, dateTo, minRisk, maxRisk)
+                                     dateFrom, dateTo, minRisk, maxRisk, sighted, expiring, hours)
     rows = db.query(
         f"""
         SELECT TOP ({EXPORT_LIMIT}) v.Value, v.TypeCode, v.SeverityCode, v.Confidence, v.RiskScore, v.Status, v.TLPCode,

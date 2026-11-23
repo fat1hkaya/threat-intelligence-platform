@@ -1,6 +1,7 @@
 """API ve veritabanı davranış testleri (gerçek SQL Server üzerinde).
 Oluşturulan test IOC'leri test sonunda silinir; AuditLog ve ImportJob satırları tasarım gereği kalır (yalnızca eklenebilir)."""
 import json
+import uuid
 
 import pytest
 
@@ -815,3 +816,72 @@ def test_sync_status_matches_active_sources_last_jobs(viewer, admin):
     active = {s["Name"]: s for s in admin.get("/api/sources").json()["sources"] if s["IsActive"]}
     assert all(name in active and active[name]["LastRunStatus"] == "failed" for name in r["failing"])
     assert sorted(n for n, s in active.items() if s["LastRunStatus"] == "failed") == r["failing"]
+
+
+# ------------------------------------------------------------------ Konsol aşama 4: filtre paneli sayıları
+@pytest.fixture
+def facet_iocs(analyst, linked_ioc):
+    """Test verisi: farklı tip ve önemde iki IOC (test veritabanında besleme yok); test sonunda silinir."""
+    made = []
+    for typ, value, sev in (("domain", f"facet-{uuid.uuid4().hex[:10]}.example", "critical"), ("ipv4", "198.51.100.%d" % (uuid.uuid4().int % 250 + 1), "high")):
+        r = analyst.post("/api/iocs", json={"type": typ, "value": value, "sourceId": 7, "severity": sev, "confidence": 70,
+                                            "description": "pytest facet"})
+        if r.status_code == 201:
+            made.append(r.json()["IndicatorID"])
+    yield made
+    for iid in made:
+        analyst.delete(f"/api/iocs/{iid}")
+
+
+def test_ioc_facets_match_list_totals(viewer, facet_iocs):
+    """Her seçeneğin sayısı, o seçenekle (diğer filtreler korunarak) listenin toplamına eşit; kendi boyutu sayımı daraltmaz."""
+    base = {"severity": "high,critical"}
+    f = viewer.get("/api/iocs/facets", params=base).json()
+    assert len(f["type"]) >= 2 and f["source"] and f["severity"]
+    for t, n in list(f["type"].items())[:3]:
+        assert viewer.get("/api/iocs", params={**base, "type": t, "size": 5}).json()["total"] == n
+    for sid, n in f["source"].items():
+        assert viewer.get("/api/iocs", params={**base, "source": sid, "size": 5}).json()["total"] == n
+    total = viewer.get("/api/iocs", params={**base, "size": 5}).json()["total"]
+    assert sum(f["type"].values()) == total
+    # önem boyutu kendi filtresini uygulamaz: tüm önem düzeyleri listelenir
+    assert sum(f["severity"].values()) == viewer.get("/api/iocs", params={"size": 5}).json()["total"]
+    # çoklu seçim: iki tipin toplamı
+    if len(f["type"]) >= 2:
+        a, b = list(f["type"])[:2]
+        assert viewer.get("/api/iocs", params={**base, "type": f"{a},{b}", "size": 5}).json()["total"] == f["type"][a] + f["type"][b]
+
+
+def test_malware_and_actor_facets_match_counts(viewer):
+    f = viewer.get("/api/malware/facets").json()
+    assert f["type"] and f["attack"]
+    for code, n in list(f["type"].items())[:4]:
+        assert viewer.get("/api/malware", params={"type": code, "size": 5}).json()["total"] == n
+    assert f["attack"].get("unmatched", 0) == viewer.get("/api/malware", params={"attack": "unmatched", "size": 5}).json()["total"]
+    a = viewer.get("/api/actors/facets").json()
+    for sector, n in list(a["sector"].items())[:4]:
+        assert viewer.get("/api/actors", params={"sector": sector, "size": 5}).json()["total"] == n
+    for country, n in list(a["country"].items())[:4]:
+        assert viewer.get("/api/actors", params={"country": country, "size": 5}).json()["total"] == n
+
+
+def test_technique_and_campaign_facets_match_counts(viewer):
+    f = viewer.get("/api/techniques/facets").json()
+    assert len(f["actor"]) > 10 and f["campaign"]
+    for actor, n in list(f["actor"].items())[:4]:
+        assert viewer.get("/api/techniques", params={"actor": actor, "size": 5}).json()["total"] == n
+    c = viewer.get("/api/campaigns/facets").json()
+    for v, n in c["ongoing"].items():
+        assert viewer.get("/api/campaigns", params={"ongoing": v, "size": 5}).json()["total"] == n
+
+
+def test_saved_view_counts_match_lists(viewer):
+    v = viewer.get("/api/iocs/views").json()
+    assert v["sighted"] == viewer.get("/api/iocs", params={"sighted": True, "size": 5}).json()["total"]
+    assert v["expiring"] == viewer.get("/api/iocs", params={"expiring": 7, "size": 5}).json()["total"]
+    m = viewer.get("/api/malware/views").json()
+    assert m["placeholders"] == viewer.get("/api/malware", params={"placeholders": "only", "size": 5}).json()["total"]
+    assert m["matched"] == viewer.get("/api/malware", params={"attack": "matched", "size": 5}).json()["total"]
+    a = viewer.get("/api/actors/views").json()
+    assert a["linked"] == viewer.get("/api/actors", params={"linked": True, "size": 5}).json()["total"]
+    assert a["active90"] == viewer.get("/api/actors", params={"active90": True, "size": 5}).json()["total"]

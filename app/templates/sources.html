@@ -16,8 +16,8 @@
   <div class="card-head"><div><h2>İçe aktarma işleri</h2><p>Satıra tıklayınca işin ayrıntısı ve hatalı satırları açılır<span class="tech"> · ImportJob, ImportJobError</span></p></div>
     <div class="head-actions">
       <label class="check" title="Hiçbir satırı değiştirmeyen başarılı işler (ör. her senkronda tekrarlanan '0 yeni') gizlenir"><input type="checkbox" id="jChanged" checked>Yalnızca değişiklik olanlar ve hatalılar</label>
-      <label class="sr-only" for="jSrc">Kaynak</label><select class="input" id="jSrc" style="width:auto"><option value="">Tüm kaynaklar</option></select>
-      <label class="sr-only" for="jStatus">Durum</label><select class="input" id="jStatus" style="width:auto"><option value="">Tüm durumlar</option><option value="success">Başarılı</option><option value="partial">Kısmi</option><option value="failed">Hatalı</option></select></div></div>
+      <input type="hidden" id="jSrc" data-facet="Kaynak">
+      <input type="hidden" id="jStatus" data-facet="Durum" data-options="[[&quot;success&quot;, &quot;Başarılı&quot;], [&quot;partial&quot;, &quot;Kısmi&quot;], [&quot;failed&quot;, &quot;Hatalı&quot;]]"></div></div>
   <div id="jobTbl"></div><div class="pager" id="jobPager"></div>
 </article>
 {% endblock %}

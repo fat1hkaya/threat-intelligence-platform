@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from pydantic import BaseModel, Field
 
 from .. import config
+from .facets import facet_counts
 from ..db import Db, get_db
 from ..security import current_user, hash_password, require_admin, require_analyst
 from ..services.importer import parse_file, run_import
@@ -220,26 +221,41 @@ AUTOMATION_AUDIT = "(" + " OR ".join(
                        AND ad.ChangedAt >= ai.ChangedAt AND ad.ChangedAt < DATEADD(MINUTE, 5, ai.ChangedAt)))"""
 
 
+def _audit_conds(table: str, action: str, user: int | None, record: int | None, dateFrom: str | None, dateTo: str | None,
+                 hideAutomation: bool):
+    out = []
+    if hideAutomation:
+        out.append(("auto", f"NOT {AUTOMATION_AUDIT}", []))
+    if table:
+        out.append(("table", "l.TableName = ?", [table]))
+    if action in ("I", "U", "D"):
+        out.append(("action", "l.Action = ?", [action]))
+    if user:
+        out.append(("user", "l.ChangedBy = ?", [user]))
+    if record:
+        out.append(("record", "l.RecordID = ?", [record]))
+    if dateFrom:
+        out.append(("date", "l.ChangedAt >= ?", [dateFrom]))
+    if dateTo:
+        out.append(("date", "l.ChangedAt < DATEADD(DAY, 1, CAST(? AS DATE))", [dateTo]))
+    return out
+
+
+@router.get("/audit-logs/facets")
+def audit_facets(table: str = "", action: str = "", user: int | None = None, record: int | None = None,
+                 dateFrom: str | None = None, dateTo: str | None = None, hideAutomation: bool = True, db: Db = Depends(get_db)):
+    """Denetim filtre paneli sayıları (yalnızca okuma)."""
+    return facet_counts(db, "dbo.AuditLog AS l LEFT JOIN dbo.AppUser AS u ON u.UserID = l.ChangedBy",
+                        _audit_conds(table, action, user, record, dateFrom, dateTo, hideAutomation),
+                        {"table": "l.TableName", "action": "l.Action", "user": "l.ChangedBy"})
+
+
 @router.get("/audit-logs")
 def audit_logs(table: str = "", action: str = "", user: int | None = None, record: int | None = None,
                dateFrom: str | None = None, dateTo: str | None = None, hideAutomation: bool = True,
                page: int = Query(1, ge=1), size: int = Query(25, ge=5, le=200), db: Db = Depends(get_db)):
-    where, params = ["1 = 1"], []
-    if hideAutomation:
-        where.append(f"NOT {AUTOMATION_AUDIT}")
-    if table:
-        where.append("l.TableName = ?"); params.append(table)
-    if action in ("I", "U", "D"):
-        where.append("l.Action = ?"); params.append(action)
-    if user:
-        where.append("l.ChangedBy = ?"); params.append(user)
-    if record:
-        where.append("l.RecordID = ?"); params.append(record)
-    if dateFrom:
-        where.append("l.ChangedAt >= ?"); params.append(dateFrom)
-    if dateTo:
-        where.append("l.ChangedAt < DATEADD(DAY, 1, CAST(? AS DATE))"); params.append(dateTo)
-    clause = " AND ".join(where)
+    conds = _audit_conds(table, action, user, record, dateFrom, dateTo, hideAutomation)
+    clause = " AND ".join(["1 = 1"] + [c[1] for c in conds]); params = [x for c in conds for x in c[2]]
     total = db.scalar(f"""SELECT COUNT(*) AS Total FROM dbo.AuditLog AS l LEFT JOIN dbo.AppUser AS u ON u.UserID = l.ChangedBy
                           WHERE {clause};""", tuple(params))
     items = db.query(

@@ -17,22 +17,19 @@
     <div class="chart-box" style="height:200px"><canvas id="daily" role="img" aria-label="Günlük denetim olayları grafiği" aria-describedby="dailySummary"></canvas></div>
     <p class="sr-only" id="dailySummary"></p>
   </article>
-  <form class="toolbar" id="filters" role="search" aria-label="Denetim filtreleri">
+  <form class="toolbar facets" id="filters" role="search" aria-label="Denetim filtreleri">
     <div class="tb-row">
-      <button type="button" class="btn filter-toggle" aria-expanded="false" aria-controls="auditFilters"></button>
-      <div class="tb-filters" id="auditFilters">
-        <div class="sheet-head"><h2>Filtreler</h2><button type="button" class="btn icon ghost sheet-close" aria-label="Filtreleri kapat"><i data-lucide="x"></i></button></div>
-        <label class="tb-field"><span>Tablo</span><select class="input" id="table" name="table"><option value="">Tümü</option></select></label>
-        <label class="tb-field"><span>İşlem</span><select class="input" id="action" name="action"><option value="">Tümü</option><option value="I">Ekleme</option><option value="U">Güncelleme</option><option value="D">Silme</option></select></label>
-        <label class="tb-field"><span>Kullanıcı</span><select class="input" id="user" name="user"><option value="">Tümü</option></select></label>
-        <label class="tb-field"><span>Başlangıç</span><input class="input" id="dateFrom" name="dateFrom" type="date"></label>
-        <label class="tb-field"><span>Bitiş</span><input class="input" id="dateTo" name="dateTo" type="date"></label>
+      
+      <div class="tb-filters">
+        <input type="hidden" name="table" id="table" data-facet="Tablo" data-chip="off">
+        <input type="hidden" name="action" id="action" data-facet="İşlem" data-options="[[&quot;I&quot;, &quot;Ekleme&quot;], [&quot;U&quot;, &quot;Güncelleme&quot;], [&quot;D&quot;, &quot;Silme&quot;]]" data-chip="off">
+        <input type="hidden" name="user" id="user" data-facet="Kullanıcı" data-chip="off">
+        <input type="hidden" name="dateFrom" id="dateFrom" data-label="Başlangıç"><input type="hidden" name="dateTo" id="dateTo" data-label="Bitiş">
         <label class="check tb-check" title="Testlerin canlı veritabanına yazdığı eski kayıtlar silinemez; yalnızca görünümden çıkarılır"><input type="checkbox" id="hideAutomation" name="hideAutomation" value="true" checked data-default><span id="hideAutoLabel">Otomasyon kayıtlarını gizle</span></label>
-        <div class="sheet-foot"><button type="reset" class="btn ghost">Tümünü temizle</button><button type="button" class="btn primary sheet-done">Sonuçları göster</button></div>
       </div>
-      <button class="btn ghost tb-clear" type="reset" hidden><i data-lucide="filter-x"></i>Temizle</button>
+      <button class="btn ghost tb-clear" type="reset" hidden>Sıfırla<i data-lucide="x"></i></button>
+      <div class="tb-right"><span class="tb-view"></span></div>
     </div>
-    <div class="chips tb-chips" aria-label="Etkin filtreler" hidden></div>
   </form>
   <div class="split no-panel" id="split">
     <section class="card flush" aria-label="Denetim kayıtları"><div id="tbl"></div><div class="pager" id="pager"></div></section>

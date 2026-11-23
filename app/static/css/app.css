@@ -379,7 +379,7 @@ tr:hover .cell-ioc .copy, .cell-ioc:focus-within .copy, .cell-ioc .copy:focus-vi
 .scroll-host.scroll-x .data tbody tr:hover td.primary { background: color-mix(in srgb, var(--purple) 6%, var(--card)); }
 /* tablo başlık çubuğu: toplam, sütunlar, sayfa boyutu; seçim varken toplu işlemler */
 .table-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; min-height: 52px; padding: 8px var(--cell-px) 8px var(--card-p); border-bottom: 1px solid var(--line); }
-.table-bar:empty { display: none; }
+.table-bar:empty, .table-bar.empty { display: none; }
 .table-bar.bulk { background: var(--purple-soft); }
 .tb-total { color: var(--text-2); font-size: 13px; }
 .tb-total b { color: var(--text); font-variant-numeric: tabular-nums; font-size: 14px; }
@@ -1047,6 +1047,89 @@ mark { background: color-mix(in srgb, var(--medium) 28%, transparent); color: va
   .toolbar.sheet-open .more-filters > summary { display: none; }
   .toolbar.sheet-open .more-pop { position: static; width: auto; padding: 4px 0; border: 0; box-shadow: none; background: none; }
   .sheet-scrim { z-index: 85; }
+}
+
+/* ---------- filtre düğmesi ve paneli (facet; araç çubuğundaki yerel <select>'lerin yerine) ----------
+   Kapalı: kesik çizgili düğme "⊕ Tip"; değer seçilince çizgi düzleşir ve "| ThreatFox" ya da "| 2 seçili" eklenir.
+   Açık: 268 px --elev panel; arama (6'dan çok seçenekte), onay kutulu seçenekler, sağda sayı ve 2 px oran çubuğu, altta temizle. */
+.toolbar.facets .tb-row { gap: 8px; flex-wrap: wrap; }
+.toolbar.facets .tb-search { flex: 0 1 250px; min-width: 180px; }
+.toolbar.facets .tb-search .input { height: 30px; }
+.facet-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
+.facet { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px dashed var(--line-strong); border-radius: var(--radius-ctl);
+  background: transparent; color: var(--text-2); font: inherit; font-weight: 500; white-space: nowrap; cursor: pointer;
+  transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover); }
+.facet:hover { color: var(--text); border-color: var(--ctl-line); }
+.facet.on { border-style: solid; color: var(--text); }
+.facet svg { width: 15px; height: 15px; }
+.facet .f-sep { width: 1px; height: 14px; background: var(--line-strong); }
+.facet .f-val { max-width: 160px; overflow: hidden; text-overflow: ellipsis; padding: 0 6px; border-radius: 4px; background: var(--elev); font-size: 12px; color: var(--text); }
+.facet-wrap.open > .facet, .facet-wrap.open > .facet-menu { color: var(--text); border-color: var(--ctl-line); }
+.btn.facet-menu { height: 30px; padding: 0 10px; color: var(--text-2); }
+.btn.facet-menu:hover { color: var(--text); }
+.btn.facet-menu svg { width: 15px; height: 15px; }
+.tb-right { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.facet-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 46; width: 268px; overflow: hidden;
+  background: var(--elev); border: 1px solid var(--line-strong); border-radius: var(--radius-pop); box-shadow: var(--shadow-pop); animation: tl-pop var(--t-pop) ease-out; }
+.facet-pop.right { left: auto; right: 0; }
+.kind-sort .facet-pop { width: 240px; }
+.kind-views .facet-pop { width: 300px; }
+.fp-search { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border-bottom: 1px solid var(--line); color: var(--text-3); }
+.fp-search[hidden] { display: none; }
+.fp-search svg { width: 15px; height: 15px; flex-shrink: 0; }
+.fp-search input { flex: 1; min-width: 0; height: 34px; border: 0; background: none; color: var(--text); font: inherit; outline: none; }
+.fp-search input::placeholder { color: var(--text-3); }
+.fp-list { list-style: none; margin: 0; padding: 4px; max-height: min(320px, 55vh); overflow-y: auto; outline: none; }
+.fp-list li { position: relative; display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 8px; border-radius: 6px; color: var(--text); cursor: pointer; }
+.fp-list li:hover { background: var(--row-hover); }
+.fp-list:focus-visible li.act { background: var(--row-selected); box-shadow: inset 0 0 0 1px var(--accent); }
+.fp-list li.act { background: var(--row-hover); }
+.fp-list li.dim { color: var(--text-3); }
+.fp-list .fp-empty { color: var(--text-3); cursor: default; }
+.fp-l { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fp-n { margin-left: auto; color: var(--text-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.fp-ratio { position: absolute; left: 31px; right: 8px; bottom: 2px; height: 2px; border-radius: 1px; background: var(--line); pointer-events: none; }
+.fp-ratio::after { content: ""; position: absolute; inset: 0 auto 0 0; width: calc(var(--r) * 100%); border-radius: inherit; background: color-mix(in srgb, var(--accent) 55%, transparent); }
+.fp-cb, .fp-radio { display: grid; place-items: center; width: 15px; height: 15px; flex-shrink: 0; border: 1px solid var(--ctl-line); color: var(--on-accent); }
+.fp-cb { border-radius: 4px; }
+.fp-radio { border-radius: 50%; }
+.fp-cb.on { background: var(--accent-strong); border-color: var(--accent-strong); }
+.fp-radio.on { border-color: var(--accent); box-shadow: inset 0 0 0 3.5px var(--elev), inset 0 0 0 8px var(--accent); }
+.fp-cb svg { width: 11px; height: 11px; stroke-width: 3; }
+.fp-foot { padding: 4px; border-top: 1px solid var(--line); }
+.fp-clear { width: 100%; height: 28px; border: 0; border-radius: 6px; background: none; color: var(--text-2); font: inherit; font-size: 12.5px; cursor: pointer; }
+.fp-clear:hover { background: var(--row-hover); color: var(--text); }
+.fp-date { width: 300px; }
+.fp-presets { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 10px 0; }
+.fp-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
+.fp-dates label { display: grid; gap: 4px; color: var(--text-2); font-size: 12px; }
+.fp-dates .input { height: 30px; padding: 0 6px; }
+.toolbar.facets .tb-clear { order: 0; height: 30px; padding: 0 8px; color: var(--text-2); }
+.toolbar.facets .tb-check { height: 30px; border-style: dashed; background: transparent; color: var(--text-2); }
+.toolbar.facets .tb-check:has(input:checked) { border-style: solid; color: var(--text); border-color: var(--line-strong); }
+.toolbar.facets .more-filters > summary { height: 30px; border-style: dashed; color: var(--text-2); }
+/* Görünüm menüsü (tablo: sütunlar, yoğunluk, sayfa başına satır) */
+.view-menu .menu-pop { width: 260px; padding: 4px; gap: 0; }
+.view-menu .vm-h { padding: 8px 8px 4px; color: var(--text-3); font-size: 12px; }
+.view-menu .vm-sep { height: 1px; margin: 4px -4px; background: var(--line); }
+.view-menu [role^="menuitem"] { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 30px; padding: 0 8px; border: 0; border-radius: 6px;
+  background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.view-menu [role^="menuitem"]:hover, .view-menu [role^="menuitem"]:focus-visible { background: var(--row-hover); outline: none; box-shadow: inset 0 0 0 1px var(--accent); }
+.view-menu [role^="menuitem"][aria-disabled="true"] { color: var(--text-3); cursor: default; }
+.view-menu [role^="menuitem"] small { margin-left: auto; color: var(--text-3); font-size: 12px; }
+@media (max-width: 767px) {
+  /* telefon: filtre düğmeleri yatay kayan çip dizisi; panel alttan açılan sayfa */
+  .toolbar.facets .filter-toggle { display: none; }
+  .toolbar.facets .tb-search { flex: 1 1 100%; max-width: none; }
+  .toolbar.facets .tb-filters { display: flex; gap: 8px; width: 100%; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .toolbar.facets .tb-filters::-webkit-scrollbar { display: none; }
+  .toolbar.facets .tb-clear:not([hidden]) { display: inline-flex; }
+  .tb-right { margin-left: 0; }
+  .facet-pop, .facet-pop.right { position: fixed; left: 0; right: 0; top: auto; bottom: 0; width: auto; z-index: 90; border-radius: 14px 14px 0 0;
+    box-shadow: 0 -20px 50px var(--shadow); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .fp-list { max-height: 55vh; }
+  .fp-list li { min-height: 44px; }
+  .facet-wrap.open::before { content: ""; position: fixed; inset: 0; z-index: 89; background: var(--backdrop); }
 }
 
 /* ---------- çift uçlu kaydırıcı ---------- */

@@ -187,7 +187,7 @@
   function info(d) {
     const el = document.getElementById('gInfo');
     if (!d || !d.truncated) { el.hidden = true; return; }
-    const sel = document.getElementById('limit'), canRaise = sel.selectedIndex < sel.options.length - 1;
+    const LIMITS = ['40', '80', '150', '250'], canRaise = LIMITS.indexOf(document.getElementById('limit').value) < LIMITS.length - 1;
     el.hidden = false;
     el.innerHTML = `<i data-lucide="info" aria-hidden="true"></i><span>Düğüm sınırına ulaşıldı: ${fmtN(d.hidden)} düğüm gösterilmedi</span>
       ${canRaise ? `<button type="button" class="link-btn" data-info="raise">Sınırı artır</button>` : ''}<button type="button" class="link-btn" data-info="filter">Tipe göre filtrele</button>`;
@@ -382,6 +382,7 @@
   TL.graph = { get network() { return network; }, get nodes() { return nodes; }, get edges() { return edges; } };
 
   document.addEventListener('DOMContentLoaded', async () => {
+    TL.facet(document.getElementById('limit'));
     legend(); examples();
     document.getElementById('legend').addEventListener('click', (e) => {
       const b = e.target.closest('[data-type]'); if (!b) return;
@@ -392,7 +393,7 @@
     });
     document.getElementById('gInfo').addEventListener('click', (e) => {
       const b = e.target.closest('[data-info]'); if (!b) return;
-      if (b.dataset.info === 'raise') { const sel = document.getElementById('limit'); sel.selectedIndex = Math.min(sel.options.length - 1, sel.selectedIndex + 1); if (st.start) open(st.start.type, st.start.id); }
+      if (b.dataset.info === 'raise') { const lim = document.getElementById('limit'), L = ['40', '80', '150', '250']; lim.value = L[Math.min(L.length - 1, L.indexOf(lim.value) + 1)]; lim._facet?.render(); if (st.start) open(st.start.type, st.start.id); }
       else document.querySelector('#legend .type-chip')?.focus();
     });
     combo();

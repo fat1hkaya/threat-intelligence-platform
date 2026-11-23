@@ -6,7 +6,7 @@
   const ongoing = (r) => isOngoing(r) ? `<span class="badge b-ok" title="${r.EndDate ? 'Son 90 gün içinde görüldü' : 'Bitiş tarihi yok'}">Süren</span>` : '<span class="faint">Tamamlandı</span>';
 
   const page = TL.listPage({
-    endpoint: '/api/campaigns', title: 'Kampanya detayı', unit: 'kampanya', rowId: (r) => r.CampaignID,
+    endpoint: '/api/campaigns', title: 'Kampanya detayı', unit: 'kampanya', rowId: (r) => r.CampaignID, filters: { counts: '/api/campaigns/facets' },
     extra: () => ({ actor: qs.get('actor') }),
     columns: [
       { id: 'name', label: 'Kampanya', primary: true, render: (r) => `<span class="name-id"><b>${esc(r.Name)}</b>${r.ExternalID ? ` <span class="faint mono">${esc(r.ExternalID)}</span>` : ''}</span>` },
