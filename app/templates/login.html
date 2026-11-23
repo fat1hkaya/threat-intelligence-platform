@@ -33,7 +33,7 @@
       <div class="login-brand"><img src="/static/img/logo.svg" alt="" width="40" height="40"><span><b>ThreatLens</b><small>Tehdit istihbaratı</small></span></div>
       <div>
         <h2>Oturum açın</h2>
-        <p class="muted">Kurum hesabınızla devam edin.</p>
+        <p class="muted">ThreatLens hesabınızla giriş yapın.</p>
       </div>
       <div class="field">
         <label for="u">Kullanıcı adı</label>
@@ -90,7 +90,13 @@
       const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!r.ok) {
         err.textContent = (await r.json().catch(() => ({}))).detail || 'Giriş yapılamadı.';
-        busy(false); pw.select(); return;
+        const wait = r.status === 429 ? parseInt(r.headers.get('Retry-After') || '0', 10) : 0;
+        busy(false); pw.select();
+        if (wait > 0) {                                     // kilitliyken düğme süre dolana kadar kapalı
+          btn.disabled = true;
+          setTimeout(() => { btn.disabled = false; err.textContent = 'Kilit kalktı; tekrar deneyebilirsiniz.'; }, Math.min(wait, 3600) * 1000);
+        }
+        return;
       }
       const next = new URLSearchParams(location.search).get('next');
       location.href = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';

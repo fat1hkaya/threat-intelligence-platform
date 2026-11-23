@@ -1,7 +1,9 @@
 /* Kampanyalar: /api/campaigns */
 (() => {
   const { api, esc, fmtN, fmtD, list, typeBadge, sev, graphUrl, qs, num } = TL;
-  const ongoing = (r) => r.EndDate ? '<span class="badge b-muted">Tamamlandı</span>' : '<span class="badge b-ok">Devam ediyor</span>';
+  // "Süren": bitiş tarihi yok ya da son 90 gün içinde. Yalnızca bu vurgulanır; tamamlananlar soluk metin.
+  const isOngoing = (r) => !r.EndDate || new Date(r.EndDate) >= new Date(Date.now() - 90 * 864e5);
+  const ongoing = (r) => isOngoing(r) ? `<span class="badge b-ok" title="${r.EndDate ? 'Son 90 gün içinde görüldü' : 'Bitiş tarihi yok'}">Süren</span>` : '<span class="faint">Tamamlandı</span>';
 
   const page = TL.listPage({
     endpoint: '/api/campaigns', title: 'Kampanya detayı', unit: 'kampanya', rowId: (r) => r.CampaignID,
@@ -9,7 +11,7 @@
     columns: [
       { id: 'name', label: 'Kampanya', primary: true, render: (r) => `<span class="name-id"><b>${esc(r.Name)}</b>${r.ExternalID ? ` <span class="faint mono">${esc(r.ExternalID)}</span>` : ''}</span>` },
       // hep aynı değeri taşıyan sütun bilgi vermez: tüm satırlar tamamlandıysa varsayılan olarak gizli
-      { id: 'status', label: 'Durum', priority: 2, hideIfAllZero: (r) => !r.EndDate, render: ongoing },
+      { id: 'status', label: 'Durum', priority: 2, hideIfAllZero: isOngoing, render: ongoing },
       { id: 'start', label: 'Başlangıç', priority: 2, render: (r) => r.StartDate ? fmtD(r.StartDate) : '—' },
       { id: 'end', label: 'Bitiş', priority: 3, render: (r) => r.EndDate ? fmtD(r.EndDate) : '—' },
       { id: 'actor', label: 'Aktör', render: (r) => r.ActorName ? `<a href="/actors?id=${r.ActorID}">${esc(r.ActorName)}</a>` : '<span class="faint">Atfedilmemiş</span>' },

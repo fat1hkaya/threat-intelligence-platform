@@ -49,18 +49,125 @@ def graph_search(q: str = Query(..., min_length=2, max_length=400), db: Db = Dep
     return {"exact": exact, "candidates": candidates}
 
 
+# Yönlü gezinme: IOC -> zararlı -> (kampanya, aktör) -> teknik/zafiyet. Teknik ve zafiyet "yaprak"tır: çok sayıda aktöre
+# bağlı merkez düğümler olduklarından üzerlerinden genişlenirse ilgisiz aktörler grafa dolar ve asıl zincir kaybolur.
+RANK = {"indicator": 0, "malware": 1, "campaign": 2, "actor": 2, "technique": 3, "vulnerability": 3}
+LEAF = {"technique", "vulnerability"}
+CAPS = {"actor": 12, "indicator": 20, "technique": 15, "malware": 15, "campaign": 12, "vulnerability": 10}   # düğüm başına, tip başına
+
+
+def _edges_touching(db: Db, frontier: list[tuple[str, int]]) -> list[dict]:
+    """Sınırdaki düğümlere değen tüm kenarlar (iki yönde); düğüm listesi JSON olarak tek parametreyle gider."""
+    import json
+    js = json.dumps([{"t": t, "i": i} for t, i in frontier])
+    return db.query(
+        """
+        -- Yönlü komşuluk adımı: sınır düğümlerine değen kenarlar (vw_GraphEdge MATCH ile okur)
+        WITH f AS (SELECT t, i FROM OPENJSON(?) WITH (t VARCHAR(15) '$.t', i BIGINT '$.i'))
+        SELECT e.SourceType, e.SourceID, e.TargetType, e.TargetID, e.Relation, e.Confidence, e.EvidenceID,
+               f.t AS FromType, f.i AS FromID, e.TargetType AS OtherType, e.TargetID AS OtherID
+        FROM dbo.vw_GraphEdge AS e JOIN f ON f.t = e.SourceType AND f.i = e.SourceID
+        UNION ALL
+        SELECT e.SourceType, e.SourceID, e.TargetType, e.TargetID, e.Relation, e.Confidence, e.EvidenceID,
+               f.t, f.i, e.SourceType, e.SourceID
+        FROM dbo.vw_GraphEdge AS e JOIN f ON f.t = e.TargetType AND f.i = e.TargetID;
+        """, (js,))
+
+
+def _allowed(src: tuple[str, int], dst_type: str, start: tuple[str, int]) -> bool:
+    """Başlangıç düğümünden her yöne gidilir; diğer düğümlerden yalnızca zincirde ileri (ya da kampanya <-> aktör)."""
+    if src == start:
+        return True
+    a, b = RANK[src[0]], RANK[dst_type]
+    return b > a or (a == b and {src[0], dst_type} == {"campaign", "actor"})
+
+
 @router.get("/neighborhood")
 def neighborhood(type: str, id: int, depth: int = Query(2, ge=1, le=3), limit: int = Query(80, ge=10, le=300),
-                 techniques: bool = True, indicators: bool = True, db: Db = Depends(get_db)):
-    """sp_GetNeighborhood: başlangıç düğümünden genişlik öncelikli gezinme (en çok `limit` düğüm)."""
-    if type not in NODE_TYPES:
+                 techniques: bool = True, indicators: bool = True,
+                 only: str | None = Query(None, description="Yalnızca bu tipteki komşular (küme düğümünü açarken)"),
+                 offset: int = Query(0, ge=0), db: Db = Depends(get_db)):
+    """Başlangıç düğümünden yönlü, genişlik öncelikli gezinme.
+
+    - Teknik/zafiyet düğümleri yapraktır (başlangıç düğümü değilse genişletilmez).
+    - Ters yöndeki bağlantılar (aynı zararlıyı kullanan diğer IOC'ler gibi) yalnızca başlangıç düğümünün komşularıdır.
+    - Bir düğümün aynı tipteki komşuları CAPS ile sınırlıdır; fazlası tek bir küme olarak döner (clusters).
+    - Kenarlarda Main=1: başlangıçtan geçen asıl yol (gezinme ağacı); Main=0: dahil düğümler arasındaki çapraz kenar.
+    """
+    if type not in NODE_TYPES or (only and only not in NODE_TYPES):
         raise HTTPException(400, "Geçersiz düğüm tipi.")
-    sets = db.query_sets(
-        "EXEC dbo.sp_GetNeighborhood @NodeType = ?, @NodeID = ?, @Depth = ?, @IncludeTechniques = ?, @IncludeIndicators = ?, @MaxNodes = ?;",
-        (type, id, depth, int(techniques), int(indicators), limit))
-    nodes, edges = (sets + [[], []])[:2]
-    # Düğüm sınırına takılıp takılmadığını bildir: arayüz "genişlet" seçeneği sunar
-    return {"nodes": nodes, "edges": edges, "truncated": len(nodes) >= limit, "limit": limit, "depth": depth}
+    start = (type, id)
+    if not db.scalar("SELECT COUNT(*) FROM dbo.vw_GraphNode WHERE NodeType = ? AND NodeID = ?;", start):
+        raise HTTPException(404, "Düğüm bulunamadı.")
+    if only:
+        depth = 1
+    level: dict[tuple[str, int], int] = {start: 0}
+    main: set[tuple] = set()
+    edge_rows: dict[tuple, dict] = {}
+    clusters, hidden = [], 0
+    frontier = [start]
+    for lvl in range(depth):
+        if not frontier:
+            break
+        rows = _edges_touching(db, frontier)
+        groups: dict[tuple, list[dict]] = {}
+        for r in rows:
+            src, other = (r["FromType"], r["FromID"]), (r["OtherType"], r["OtherID"])
+            key = (r["SourceType"], r["SourceID"], r["TargetType"], r["TargetID"], r["Relation"])
+            edge_rows.setdefault(key, r)
+            if other in level or not _allowed(src, other[0], start):
+                continue
+            if only and other[0] != only:
+                continue
+            if (other[0] == "technique" and not techniques) or (other[0] == "indicator" and not indicators):
+                continue
+            groups.setdefault((src, other[0]), []).append(r)
+        nxt = []
+        for (src, t), cand in groups.items():
+            seen, uniq = set(), []
+            for r in sorted(cand, key=lambda r: (-(r["Confidence"] or 0), -r["OtherID"])):
+                o = (r["OtherType"], r["OtherID"])
+                if o not in seen and o not in level:
+                    seen.add(o)
+                    uniq.append(r)
+            cap = 60 if only else CAPS[t]
+            take = uniq[offset:offset + cap] if only else uniq[:cap]
+            for r in take:
+                o = (r["OtherType"], r["OtherID"])
+                if len(level) >= limit:
+                    hidden += 1
+                    continue
+                if o in level:
+                    continue
+                level[o] = lvl + 1
+                main.add((r["SourceType"], r["SourceID"], r["TargetType"], r["TargetID"], r["Relation"]))
+                if o[0] not in LEAF:
+                    nxt.append(o)
+            rest = len(uniq) - (offset if only else 0) - len(take)
+            if rest > 0:
+                clusters.append({"id": f"more:{src[0]}:{src[1]}:{t}", "parentType": src[0], "parentId": src[1], "childType": t,
+                                 "count": rest, "offset": (offset if only else 0) + len(take)})
+        frontier = nxt
+    import json
+    keys = json.dumps([{"t": t, "i": i} for t, i in level])
+    labels = {(n["NodeType"], n["NodeID"]): n for n in db.query(
+        """
+        SELECT g.NodeType, g.NodeID, g.Label, g.SubLabel
+        FROM dbo.vw_GraphNode AS g
+        JOIN OPENJSON(?) WITH (t VARCHAR(15) '$.t', i BIGINT '$.i') AS k ON k.t = g.NodeType AND k.i = g.NodeID;
+        """, (keys,))}
+    nodes = [{**labels[k], "Lvl": v} for k, v in sorted(level.items(), key=lambda kv: (kv[1], kv[0][0])) if k in labels]
+    # Dahil düğümler arasındaki tüm kenarlar (çapraz kenarlar da); sınırın son katmanının kenarları için ek sorgu
+    if frontier:
+        for r in _edges_touching(db, frontier):
+            edge_rows.setdefault((r["SourceType"], r["SourceID"], r["TargetType"], r["TargetID"], r["Relation"]), r)
+    edges = []
+    for k, r in edge_rows.items():
+        if (k[0], k[1]) in level and (k[2], k[3]) in level:
+            edges.append({"SourceType": k[0], "SourceID": k[1], "TargetType": k[2], "TargetID": k[3], "Relation": k[4],
+                          "Confidence": r["Confidence"], "EvidenceID": r["EvidenceID"], "Main": int(k in main)})
+    return {"nodes": nodes, "edges": edges, "clusters": clusters, "hidden": hidden,
+            "truncated": hidden > 0, "limit": limit, "depth": depth}
 
 
 @router.get("/node")

@@ -1,8 +1,16 @@
 /* Log avı: /api/hunt */
 (() => {
   const { api, esc, fmtN, fmtDT, sev, typeBadge, sourceBadge, table, empty, loading, icons, toast, can } = TL;
-  const KIND = { exact: ['Birebir', 'b-bad'], host: ['URL ana bilgisayarı', 'b-warn'], parent: ['Üst domain', 'b-muted'] };
-  let usingSample = false;
+  const KIND = { exact: ['Birebir', 'b-warn'], host: ['URL ana bilgisayarı', 'b-cyan'], parent: ['Üst domain', 'b-muted'] };
+  const HISTORY_SHOWN = 10;
+  let usingSample = false, allHistory = false;
+
+  /** Log satırında eşleşen değerin geçtiği yeri vurgular (büyük/küçük harf duyarsız) */
+  const highlight = (line, needle) => {
+    if (!line) return '<span class="faint">—</span>';
+    const i = needle ? line.toLowerCase().indexOf(String(needle).toLowerCase()) : -1;
+    return i < 0 ? esc(line) : `${esc(line.slice(0, i))}<mark>${esc(line.slice(i, i + needle.length))}</mark>${esc(line.slice(i + needle.length))}`;
+  };
 
   function show(d) {
     const s = d.summary || {};
@@ -17,28 +25,39 @@
     document.getElementById('resultNote').innerHTML = `${esc(fmtDT(s.StartedAt))} · ${esc(s.StartedBy || '')}<span class="tech"> · eşleme sp_RetroHunt ile tek set tabanlı sorguda yapıldı</span>`
       + (d.truncated ? ' · aday sınırına (20.000) ulaşıldı, logun bir kısmı taranmadı' : '');
     document.getElementById('matches').innerHTML = d.matches.length ? table([
-      { label: 'IOC', primary: true, render: (m) => `<a class="mono value" style="max-width:280px" href="/iocs/${m.IndicatorID}" title="${esc(m.Value)}">${esc(m.Value)}</a>` },
-      { label: 'Tip', render: (m) => typeBadge(m.TypeCode) },
-      { label: 'Önem', render: (m) => sev(m.SeverityCode) },
-      { label: 'Risk', num: true, render: (m) => m.RiskScore },
-      { label: 'Eşleşme', render: (m) => `<span class="badge ${KIND[m.MatchKind][1]}" title="Logdaki biçim: ${esc(m.LogValue)}">${KIND[m.MatchKind][0]}</span>` },
-      { label: 'Logda', render: (m) => `<b>${fmtN(m.Hits)}</b> kez · ilk satır ${fmtN(m.FirstLine)}` },
-      { label: 'Zararlı / aktör', render: (m) => m.MalwareName ? `${esc(m.MalwareName)}${m.ActorName ? ` <span class="faint">→</span> <b>${esc(m.ActorName)}</b>` : ''}` : '<span class="faint">—</span>' },
-      { label: 'Kaynak', render: (m) => sourceBadge(m.SourceName) },
-      { label: '', render: (m) => `<a class="btn sm icon ghost" href="${TL.graphUrl('indicator', m.IndicatorID)}" aria-label="İlişki grafında aç" title="İlişki grafında aç"><i data-lucide="share-2"></i></a>` },
-    ], d.matches, { caption: 'Av eşleşmeleri' }) + `<details style="padding:12px 16px"><summary class="muted" style="cursor:pointer">Eşleşen log satırları</summary>
-      <pre class="mono" style="white-space:pre-wrap;font-size:12px;color:var(--text-desc);margin-top:8px">${d.matches.map((m) => `${String(m.FirstLine).padStart(5)}  ${esc(m.SampleLine || '')}`).join('\n')}</pre></details>`
-      : empty('Bu logda veritabanındaki IOC\'lerden hiçbiri geçmiyor. İyi haber.', 'shield-check');
+      { label: 'Satır', num: true, render: (m) => `<span class="mono" title="${fmtN(m.Hits)} kez geçti">${fmtN(m.FirstLine)}</span>` },
+      { label: 'IOC', primary: true, render: (m) => TL.iocCell(m.Value, { href: `/iocs/${m.IndicatorID}` }) },
+      { label: 'Log satırındaki konum', priority: 2, render: (m) => `<span class="mono log-line" title="${esc(m.SampleLine || '')}">${highlight(m.SampleLine, m.LogValue)}</span>` },
+      { label: 'Eşleşme', priority: 3, render: (m) => `<span class="badge ${KIND[m.MatchKind][1]}" title="Logdaki biçim: ${esc(m.LogValue)}">${KIND[m.MatchKind][0]}</span>` },
+      { label: 'Risk', num: true, render: (m) => `<b>${m.RiskScore}</b>` },
+      { label: 'Aile / aktör', render: (m) => m.MalwareName ? `<span class="trunc" title="${esc([m.MalwareName, m.ActorName].filter(Boolean).join(' → '))}">${esc(m.MalwareName)}${m.ActorName ? ` <span class="faint">→</span> <b>${esc(m.ActorName)}</b>` : ''}</span>` : '<span class="faint">—</span>' },
+      { label: 'İşlemler', cls: 'actions', render: (m) => `${can('analyst') ? TL.caseBtn('indicator', m.IndicatorID, m.Value, 'btn sm') : ''}<a class="btn sm icon ghost" href="${TL.graphUrl('indicator', m.IndicatorID)}" aria-label="İlişki grafında aç" title="İlişki grafında aç"><i data-lucide="share-2"></i></a>` },
+    ], d.matches, { caption: 'Av eşleşmeleri' })
+      : empty('Bu logda veritabanındaki IOC\'lerden hiçbiri geçmiyor.', 'shield-check');
+    // Tanınan ama eşleşmeyen göstergeler ve tanınamayan satırlar (yalnızca av anında hesaplanır; geçmiş avlarda sayı yok)
+    const extra = document.getElementById('unmatched');
+    if (d.unmatched) {
+      extra.hidden = false;
+      extra.innerHTML = `<div class="card-head"><div><h2>Eşleşmeyen göstergeler</h2><p>Logda tanınan, veritabanında karşılığı olmayan ${fmtN(d.unmatchedCount)} değer · ${fmtN(d.unrecognizedLines)} satırda gösterge bulunamadı</p></div></div>
+        ${d.unmatched.length ? `<ul class="plain-list mono">${d.unmatched.map((u) => `<li><span class="faint">${String(u.line).padStart(5)}</span> ${typeBadge(u.type)} <span class="trunc" title="${esc(u.value)}">${esc(u.value)}</span></li>`).join('')}</ul>
+          ${d.unmatchedCount > d.unmatched.length ? `<p class="faint" style="padding:0 16px 12px;font-size:12px">İlk ${fmtN(d.unmatched.length)} değer gösteriliyor.</p>` : ''}`
+          : '<p class="faint" style="padding:0 16px 14px;font-size:13px">Tanınan her gösterge veritabanında eşleşti.</p>'}`;
+    } else extra.hidden = true;
     icons();
-    document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('result').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
   }
 
   async function history() {
     const rows = await api('/api/hunt');
-    document.getElementById('history').innerHTML = rows.length ? rows.map((h) => `<li><a href="#" data-hunt="${h.HuntID}">
+    const shown = allHistory ? rows : rows.slice(0, HISTORY_SHOWN);
+    // Eşleşmeli avlar turuncu, eşleşmesizler nötr: kırmızı yalnızca kritik/hata içindir
+    document.getElementById('history').innerHTML = rows.length ? shown.map((h) => `<li><a href="#" data-hunt="${h.HuntID}">
         <span><b>#${h.HuntID}</b> ${esc(h.Location)}<br><small>${fmtDT(h.StartedAt)} · ${fmtN(h.LinesScanned)} satır · ${esc(h.StartedBy || '')}</small></span>
-        <span class="badge ${h.Matches ? 'b-bad' : 'b-ok'}">${fmtN(h.Matches)} eşleşme</span></a></li>`).join('')
+        <span class="badge ${h.Matches ? 'b-warn' : 'b-muted'}">${fmtN(h.Matches)} eşleşme</span></a></li>`).join('')
       : '<li class="faint" style="font-size:13px">Henüz av yapılmadı.</li>';
+    const more = document.getElementById('historyAll');
+    more.hidden = rows.length <= HISTORY_SHOWN;
+    more.textContent = allHistory ? 'Son 10 avı göster' : `Tümünü gör (${fmtN(rows.length)})`;
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -72,6 +91,7 @@
       const a = e.target.closest('[data-hunt]'); if (!a) return; e.preventDefault();
       try { show(await api(`/api/hunt/${a.dataset.hunt}`)); } catch (err) { toast(err.message, 'err'); }
     });
+    document.getElementById('historyAll').onclick = () => { allHistory = !allHistory; history(); };
     history();
   });
 })();

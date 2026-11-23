@@ -1,11 +1,16 @@
 /* İlişki grafı: /api/graph/* (vis-network). Düğüm/kenarlar yalnızca veritabanından gelir. */
 (() => {
-  const { api, esc, fmtDT, fmtD, sev, conf, NODE, entityUrl, table, empty, loading, toast, icons, qs, sourceBadge } = TL;
+  const { api, esc, fmtN, fmtDT, fmtD, sev, conf, NODE, entityUrl, table, empty, loading, toast, icons, qs, sourceBadge, pager } = TL;
   const SHAPE = { indicator: 'dot', malware: 'diamond', campaign: 'square', actor: 'hexagon', technique: 'triangle', vulnerability: 'star' };
   const REL = { indicates: 'ilişkili', uses: 'kullanır', exploits: 'istismar eder', 'attributed-to': 'atfedilir', observed: 'içerir' };
-  const st = { depth: 2, start: null, hidden: new Set(), labels: false, group: true, layered: false, focus: null };
-  // Katmanlı yerleşimde düğüm türünün sütunu: IOC -> zararlı -> kampanya -> aktör -> teknik
-  const LEVEL = { indicator: 0, vulnerability: 0, malware: 1, campaign: 2, actor: 3, technique: 4 };
+  const st = { depth: 2, start: null, hidden: new Set(), group: true, layered: true, focus: null, hoverEdge: null, page: 1 };
+  // Katmanlı yerleşimde (varsayılan) düğüm türünün sütunu: IOC -> zararlı -> kampanya -> aktör -> teknik
+  const LEVEL = { indicator: 0, malware: 1, campaign: 2, actor: 3, technique: 4, vulnerability: 4 };
+  const SHAPE_ICON = { dot: 'circle', diamond: 'diamond', square: 'square', hexagon: 'hexagon', triangle: 'triangle', star: 'star' };
+  const typeMark = (t) => `<i data-lucide="${SHAPE_ICON[SHAPE[t]]}" class="type-mark" style="color:${NODE[t].color}" aria-hidden="true"></i><span class="sr-only">${esc(NODE[t].label)}: </span>`;
+  const GROUPS_PER_PAGE = 15;
+  // Sayı ile birlikte kullanılan küçük harfli ad ("45 aktör", "+22 ATT&CK tekniği")
+  const COUNT_LABEL = { indicator: 'IOC', malware: 'zararlı yazılım', campaign: 'kampanya', actor: 'tehdit aktörü', technique: 'ATT&CK tekniği', vulnerability: 'zafiyet' };
   const EDGE_COLOR = '#3B4D72', CLUSTER_ID = 'cluster:technique';
   // isCluster() olmayan düğümde konsola hata yazar; önce varlığı denetlenir
   const clustered = () => !!(network && network.body.nodes[CLUSTER_ID]);
@@ -24,9 +29,9 @@
   });
   const toEdge = (e) => ({
     id: `${nid(e.SourceType, e.SourceID)}>${e.Relation}>${nid(e.TargetType, e.TargetID)}`, from: nid(e.SourceType, e.SourceID), to: nid(e.TargetType, e.TargetID),
-    rel: e.Relation, conf: e.Confidence, lbl: REL[e.Relation] || e.Relation, label: st.labels ? (REL[e.Relation] || e.Relation) : '',
+    rel: e.Relation, conf: e.Confidence, lbl: REL[e.Relation] || e.Relation, label: '', main: e.Main !== 0,
     arrows: { to: { enabled: true, scaleFactor: 0.6 } },
-    color: { color: EDGE_COLOR, highlight: '#22D3EE', hover: '#94A3B8' }, width: e.Confidence != null ? 1 + e.Confidence / 50 : 1.2,
+    color: { color: EDGE_COLOR, highlight: '#22D3EE', hover: '#94A3B8', opacity: e.Main === 0 ? 0.35 : 1 }, width: e.Confidence != null ? 1 + e.Confidence / 50 : 1.2,
     font: { color: '#94A3B8', size: 10, strokeWidth: 3, strokeColor: '#0B1020', align: 'middle' }, smooth: { type: 'continuous' },
   });
 
@@ -35,12 +40,13 @@
     nodes = new vis.DataSet(); edges = new vis.DataSet();
     network = new vis.Network(document.getElementById('network'), { nodes, edges }, {
       interaction: { hover: true, tooltipDelay: 150, keyboard: { enabled: true, bindToWindow: false }, multiselect: false },
-      physics: { solver: 'forceAtlas2Based', forceAtlas2Based: { gravitationalConstant: -60, springLength: 110, springConstant: 0.06, avoidOverlap: 0.6 }, stabilization: { iterations: 220 } },
-      edges: { selectionWidth: 2 }, layout: { improvedLayout: true },
+      edges: { selectionWidth: 2 },
+      ...layoutOptions(),
     });
     network.on('stabilizationIterationsDone', () => network.setOptions({ physics: { enabled: false } }));
     network.on('click', (p) => {
       if (p.nodes.length && network.isCluster(p.nodes[0])) { clusterInfo(p.nodes[0]); return; }
+      if (p.nodes.length && nodes.get(p.nodes[0])?.type === 'more') { moreInfo(nodes.get(p.nodes[0])); return; }
       if (p.nodes.length) { st.focus = p.nodes[0]; highlight(st.focus); showNode(nodes.get(p.nodes[0])); }
       else if (p.edges.length) showEdge(edges.get(p.edges[0]));
       else { st.focus = null; highlight(null); }
@@ -48,31 +54,25 @@
     network.on('doubleClick', (p) => {
       if (!p.nodes.length) return;
       if (network.isCluster(p.nodes[0])) { network.openCluster(p.nodes[0]); st.group = false; syncTools(); return; }
-      expand(nodes.get(p.nodes[0]));
+      const n = nodes.get(p.nodes[0]);
+      n.type === 'more' ? openMore(n) : expand(n);
     });
     network.on('hoverNode', (p) => { if (!network.isCluster(p.node)) highlight(p.node); });
     network.on('blurNode', () => highlight(st.focus));
-    network.on('zoom', () => syncLabels());
+    // Kenar etiketi yalnızca seçili düğümün kenarlarında ve kenarın üzerine gelince
+    network.on('hoverEdge', (p) => { const e = edges.get(p.edge); if (e) edges.update({ id: e.id, label: e.lbl }); });
+    network.on('blurEdge', (p) => { const e = edges.get(p.edge); if (e && !(st.focus && network.getConnectedEdges(st.focus).includes(e.id))) edges.update({ id: e.id, label: '' }); });
   }
 
-  // Odak: düğüm ve komşuları tam görünür, gerisi soluklaşır (yoğun grafta ilişkiyi okumak için)
+  // Odak: düğüm ve komşuları tam görünür, gerisi soluklaşır. Odak yokken asıl yol tam, çapraz kenarlar %35.
   function highlight(id) {
     if (!nodes || !network) return;
     const keep = id && nodes.get(id) ? new Set([id, ...network.getConnectedNodes(id)]) : null;
     const ce = keep ? new Set(network.getConnectedEdges(id)) : null;
     nodes.update(nodes.get().map((n) => ({ id: n.id, opacity: !keep || keep.has(n.id) ? 1 : 0.15 })));
     edges.update(edges.get().map((e) => ({ id: e.id,
-      color: { color: ce && ce.has(e.id) ? '#22D3EE' : EDGE_COLOR, opacity: !ce || ce.has(e.id) ? 1 : 0.1, highlight: '#22D3EE', hover: '#94A3B8' },
-      label: (ce && ce.has(e.id)) || st.labels ? e.lbl : '' })));
-  }
-
-  // Kenar etiketleri: uzaktan bakışta gürültü; yakınlaştırınca ya da az kenarda görünür
-  function syncLabels(force = false) {
-    if (!network) return;
-    const want = edges.length <= 40 || network.getScale() >= 1.1;
-    if (want === st.labels && !force) return;
-    st.labels = want;
-    highlight(st.focus);
+      color: { color: ce && ce.has(e.id) ? '#22D3EE' : e.path ? '#22D3EE' : EDGE_COLOR, opacity: ce ? (ce.has(e.id) ? 1 : 0.1) : (e.main ? 1 : 0.35), highlight: '#22D3EE', hover: '#94A3B8' },
+      label: ce && ce.has(e.id) ? e.lbl : '' })));
   }
 
   // ATT&CK teknikleri tek kümede: onlarca üçgen yerine tek düğüm; çift tıklayınca açılır
@@ -95,46 +95,117 @@
       <p class="muted" style="margin-top:8px">Okunabilirlik için teknikler tek düğümde toplandı. Tek tek görmek için kümeye çift tıklayın ya da graf araçlarından gruplamayı kapatın. Teknik ilişkileri aşağıdaki ilişki tablosunda da listelenir.</p>`;
   }
 
+  function layoutOptions() {
+    return st.layered
+      ? { layout: { hierarchical: { enabled: true, direction: 'LR', levelSeparation: 240, nodeSpacing: 46, treeSpacing: 70, sortMethod: 'directed', shakeTowards: 'roots' } },
+          physics: { enabled: true, solver: 'hierarchicalRepulsion', hierarchicalRepulsion: { nodeDistance: 60, avoidOverlap: 0.9 }, stabilization: { iterations: 120 } } }
+      : { layout: { hierarchical: { enabled: false }, improvedLayout: true },
+          physics: { enabled: true, solver: 'forceAtlas2Based', forceAtlas2Based: { gravitationalConstant: -60, springLength: 110, springConstant: 0.06, avoidOverlap: 0.6 }, stabilization: { iterations: 220 } } };
+  }
   function setLayout() {
     if (!network) return;
-    network.setOptions(st.layered
-      ? { layout: { hierarchical: { enabled: true, direction: 'LR', levelSeparation: 260, nodeSpacing: 58, treeSpacing: 80, sortMethod: 'directed', shakeTowards: 'roots' } },
-          physics: { enabled: true, solver: 'hierarchicalRepulsion', hierarchicalRepulsion: { nodeDistance: 70, avoidOverlap: 0.9 }, stabilization: { iterations: 220 } } }
-      : { layout: { hierarchical: { enabled: false } },
-          physics: { enabled: true, solver: 'forceAtlas2Based', forceAtlas2Based: { gravitationalConstant: -60, springLength: 110, springConstant: 0.06, avoidOverlap: 0.6 }, stabilization: { iterations: 220 } } });
+    network.setOptions(layoutOptions());
     network.once('stabilizationIterationsDone', () => network.fit({ animation: { duration: 300 } }));
   }
 
   function syncTools() {
     const g = document.getElementById('gGroup'), l = document.getElementById('gLayout');
     if (g) g.setAttribute('aria-pressed', String(st.group));
-    if (l) l.setAttribute('aria-pressed', String(st.layered));
+    if (l) { l.setAttribute('aria-pressed', String(st.layered)); l.title = st.layered ? 'Katmanlı yerleşim açık: serbest (fizik) yerleşime geçmek için basın' : 'Serbest yerleşim: katmanlı yerleşime (IOC → zararlı → kampanya → aktör → teknik) geçmek için basın'; }
   }
 
   function status() {
-    const vis = nodes.get({ filter: (n) => !n.hidden }).length;
-    document.getElementById('gStatus').textContent = `${nodes.length} düğüm · ${edges.length} kenar${vis !== nodes.length ? ` · ${vis} görünür` : ''}`;
-    document.getElementById('gViewNote').textContent = `${nodes.length} düğüm, ${edges.length} ilişki`;
-    // erişilebilir ilişki tablosu
-    const label = (id) => { const n = nodes.get(id); return n ? `<span class="node-ref"><a href="#" data-focus="${esc(id)}" class="${n.type === 'indicator' ? 'mono' : ''}">${esc(short(n.raw, 40))}</a><span class="faint">${esc(NODE[n.type].label)}</span></span>` : esc(id); };
-    const rows = edges.get();
-    document.getElementById('edgeTable').innerHTML = rows.length ? table([
-      { label: 'Kaynak', primary: true, render: (e) => label(e.from) }, { label: 'İlişki', render: (e) => `<span class="badge b-muted">${esc(REL[e.rel] || e.rel)}</span>` },
-      { label: 'Hedef', render: (e) => label(e.to) }, { label: 'Güven', num: true, render: (e) => e.conf ?? '—' },
-      { label: '', render: (e) => `<button class="btn sm" data-edge="${esc(e.id)}">Kanıt</button>` }], rows.slice(0, 300), { caption: 'Graf kenarları' })
-      + (rows.length > 300 ? `<p class="faint" style="padding:10px 16px">İlk 300 kenar listelendi.</p>` : '') : empty('Graf boş.');
+    const real = nodes.get({ filter: (n) => n.type !== 'more' });
+    const vis = real.filter((n) => !n.hidden).length;
+    const realEdges = edges.get({ filter: (e) => !e.more });
+    document.getElementById('gStatus').textContent = `${fmtN(real.length)} düğüm · ${fmtN(realEdges.length)} kenar${vis !== real.length ? ` · ${fmtN(vis)} görünür` : ''}`;
+    document.getElementById('gViewNote').textContent = `${fmtN(real.length)} düğüm, ${fmtN(realEdges.length)} ilişki`;
+    edgeTable();
+  }
+
+  // İlişki tablosu: hedef düğüme göre gruplu ("System Network Configuration Discovery ← 45 aktör"), sayfalı
+  function edgeTable() {
+    const box = document.getElementById('edgeTable');
+    const rows = edges.get({ filter: (e) => !e.more });
+    const groups = new Map();
+    rows.forEach((e) => { if (!groups.has(e.to)) groups.set(e.to, []); groups.get(e.to).push(e); });
+    const list = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
+    const pages = Math.max(1, Math.ceil(list.length / GROUPS_PER_PAGE));
+    st.page = Math.min(st.page, pages);
+    const name = (id) => { const n = nodes.get(id); return n ? `${typeMark(n.type)}<a href="#" data-focus="${esc(id)}" class="${n.type === 'indicator' ? 'mono' : ''}" title="${esc(n.raw)}">${esc(short(n.raw, 48))}</a>` : esc(id); };
+    const confCell = (e) => e.conf != null ? conf(e.conf)
+      : '<span class="faint" title="Kaynak (ör. MITRE ATT&CK) bu ilişki için güven puanı vermiyor">belirtilmemiş</span>';
+    const kinds = (es) => { const c = {}; es.forEach((e) => { const t = nodes.get(e.from)?.type; c[t] = (c[t] || 0) + 1; });
+      return Object.entries(c).map(([t, k]) => `${fmtN(k)} ${esc(COUNT_LABEL[t] || t)}`).join(', '); };
+    box.innerHTML = rows.length ? `<div class="edge-groups">${list.slice((st.page - 1) * GROUPS_PER_PAGE, st.page * GROUPS_PER_PAGE).map(([to, es]) => `
+      <details class="edge-group"${list.length <= 4 ? ' open' : ''}><summary><span class="eg-target">${name(to)}</span><span class="eg-count">← ${kinds(es)}</span></summary>
+        <table class="data eg-table"><caption class="sr-only">${esc(nodes.get(to)?.raw || to)} düğümüne gelen ilişkiler</caption>
+          <thead class="sr-only"><tr><th scope="col">Kaynak</th><th scope="col">İlişki</th><th scope="col">Güven</th><th scope="col"><span class="sr-only">Kanıt</span></th></tr></thead>
+          <tbody>${es.map((e) => `<tr class="clickable" data-edge-row="${esc(e.id)}" tabindex="0"><td><span class="node-ref">${name(e.from)}</span></td>
+            <td><span class="badge b-muted">${esc(REL[e.rel] || e.rel)}</span></td><td>${confCell(e)}</td>
+            <td class="actions"><button type="button" class="btn sm icon ghost" data-edge="${esc(e.id)}" aria-label="Kanıtı göster" title="Kanıtı göster"><i data-lucide="file-search"></i></button></td></tr>`).join('')}</tbody></table>
+      </details>`).join('')}</div>` : empty('Graf boş.');
+    pager(document.getElementById('edgePager'), { page: st.page, pages, total: list.length, size: GROUPS_PER_PAGE }, (p) => { st.page = p; edgeTable(); }, 'hedef düğüm');
+    icons();
+  }
+
+  // Tip başına sınırı aşan komşular: "+48 aktör" küme düğümü; çift tıklayınca açılır
+  function moreNodes(clusters) {
+    const ns = [], es = [];
+    (clusters || []).forEach((c) => {
+      const t = NODE[c.childType];
+      ns.push({ id: c.id, type: 'more', parentType: c.parentType, parentId: c.parentId, childType: c.childType, count: c.count, offset: c.offset,
+        label: `+${fmtN(c.count)} ${COUNT_LABEL[c.childType]}`, title: `Gösterilmeyen ${fmtN(c.count)} ${COUNT_LABEL[c.childType]}: açmak için çift tıklayın`,
+        shape: SHAPE[c.childType], size: 14, level: LEVEL[c.childType], hidden: st.hidden.has(c.childType), borderWidth: 2, shapeProperties: { borderDashes: [3, 3] },
+        color: { background: '#0B1020', border: t.color, highlight: { background: '#1F2D48', border: '#FFFFFF' }, hover: { background: '#1F2D48', border: '#FFFFFF' } },
+        font: { color: '#CBD5E1', size: 12, face: 'Inter', strokeWidth: 4, strokeColor: '#0B1020' } });
+      es.push({ id: `${nid(c.parentType, c.parentId)}>more>${c.id}`, from: nid(c.parentType, c.parentId), to: c.id, more: true, lbl: '', label: '', main: true,
+        dashes: true, color: { color: EDGE_COLOR, opacity: 0.6 }, arrows: { to: { enabled: false } } });
+    });
+    nodes.update(ns); edges.update(es);
+  }
+  function moreInfo(n) {
+    document.getElementById('side').innerHTML = `<h2>${esc(n.label)}</h2>
+      <p class="muted" style="margin-top:8px;font-size:13px">Okunabilirlik için bir düğümün aynı tipteki komşuları sınırlıdır. Kalan ${fmtN(n.count)} kayıt bu kümede; çift tıklayarak ya da aşağıdaki düğmeyle 60'arlı gruplar hâlinde açabilirsiniz.</p>
+      <div class="chips" style="margin-top:12px"><button class="btn sm" id="moreOpen"><i data-lucide="plus-circle"></i>Kümeyi aç</button></div>`;
+    icons(); document.getElementById('moreOpen').onclick = () => openMore(n);
+  }
+  async function openMore(n) {
+    try {
+      const d = await api('/api/graph/neighborhood', { params: { type: n.parentType, id: n.parentId, only: n.childType, offset: n.offset, limit: 300 } });
+      nodes.remove(n.id); edges.remove(edges.get({ filter: (e) => e.to === n.id }).map((e) => e.id));
+      d.nodes.forEach((x) => { x.Lvl = Math.max(1, x.Lvl); });
+      const before = nodes.length; merge(d);
+      toast(`${fmtN(nodes.length - before)} düğüm eklendi.`);
+    } catch (e) { toast(e.message, 'err'); }
+  }
+
+  // Sınıra ulaşıldığında bilgi satırı: kaç düğüm gösterilmedi, sınırı artır, tipe göre filtrele
+  function info(d) {
+    const el = document.getElementById('gInfo');
+    if (!d || !d.truncated) { el.hidden = true; return; }
+    const sel = document.getElementById('limit'), canRaise = sel.selectedIndex < sel.options.length - 1;
+    el.hidden = false;
+    el.innerHTML = `<i data-lucide="info" aria-hidden="true"></i><span>Düğüm sınırına ulaşıldı: ${fmtN(d.hidden)} düğüm gösterilmedi</span>
+      ${canRaise ? `<button type="button" class="link-btn" data-info="raise">Sınırı artır</button>` : ''}<button type="button" class="link-btn" data-info="filter">Tipe göre filtrele</button>`;
+    icons();
   }
 
   function merge(data, focusId) {
     ensureNetwork();
     nodes.update(data.nodes.filter((n) => !nodes.get(nid(n.NodeType, n.NodeID)) || n.Lvl === 0 && !st.start).map(toNode));
     edges.update(data.edges.map(toEdge));
+    moreNodes(data.clusters);
     document.getElementById('gEmpty').hidden = nodes.length > 0;
     document.getElementById('gLayoutBox').classList.toggle('has-data', nodes.length > 0);
     network.setOptions({ physics: { enabled: true } });
-    applyGrouping(); syncLabels(true);
+    applyGrouping(); highlight(st.focus);
     status();
-    if (focusId) network.once('stabilizationIterationsDone', () => network.fit({ animation: { duration: 400 } }));
+    if (focusId) {
+      // Katmanlı yerleşimde konumlar hemen belli: önce hemen sığdır, kararlı hâle gelince yeniden
+      requestAnimationFrame(() => network.fit());
+      network.once('stabilizationIterationsDone', () => network.fit({ animation: { duration: 300 } }));
+    }
   }
 
   async function open(type, id) {
@@ -144,8 +215,8 @@
     try {
       const d = await api('/api/graph/neighborhood', { params: { type, id, depth: st.depth, limit: document.getElementById('limit').value,
         indicators: document.getElementById('incIoc').checked, techniques: document.getElementById('incTech').checked } });
-      ensureNetwork(); if (clustered()) network.openCluster(CLUSTER_ID); st.focus = null; nodes.clear(); edges.clear(); merge(d, true);
-      if (d.truncated) toast(`Düğüm sınırına (${d.limit}) ulaşıldı. Komşuları görmek için bir düğüme çift tıklayın veya sınırı artırın.`);
+      ensureNetwork(); if (clustered()) network.openCluster(CLUSTER_ID); st.focus = null; st.page = 1; nodes.clear(); edges.clear(); merge(d, true);
+      info(d);
       const s = nodes.get(nid(type, id)); if (s) showNode(s);
     } catch (e) { toast(e.message, 'err'); document.getElementById('gStatus').textContent = ''; }
   }
@@ -162,8 +233,8 @@
       edges.update(d.edges.map(toEdge));
       document.getElementById('gEmpty').hidden = nodes.length > 0;
       network.setOptions({ physics: { enabled: true } });
-      applyGrouping(); syncLabels(true);
-      status();
+      applyGrouping(); highlight(null);
+      status(); info(null);
       network.once('stabilizationIterationsDone', () => network.fit({ animation: { duration: 400 } }));
       const box = document.getElementById('side');
       box.innerHTML = `<div class="entity-title"><span class="ic" style="background:var(--purple-soft);color:var(--badge-purple-fg)"><i data-lucide="briefcase"></i></span><div style="min-width:0">
@@ -177,7 +248,7 @@
 
   async function expand(n) {
     try {
-      const d = await api('/api/graph/neighborhood', { params: { type: n.type, id: n.rid, depth: 1, limit: 60, indicators: document.getElementById('incIoc').checked || n.type !== 'indicator' } });
+      const d = await api('/api/graph/neighborhood', { params: { type: n.type, id: n.rid, depth: 1, limit: 300, indicators: document.getElementById('incIoc').checked || n.type !== 'indicator' } });
       const before = nodes.length; d.nodes.forEach((x) => { x.Lvl = Math.max(1, x.Lvl); }); merge(d);
       toast(`${nodes.length - before} yeni düğüm eklendi.`);
     } catch (e) { toast(e.message, 'err'); }
@@ -189,7 +260,7 @@
     let d; try { d = await api('/api/graph/node', { params: { type: n.type, id: n.rid } }); } catch (e) { side.innerHTML = empty(e.message); return; }
     const kv = (k, v) => (v == null || v === '' ? '' : `<dt>${k}</dt><dd>${v}</dd>`);
     const facts = {
-      indicator: () => kv('Tip', esc(d.TypeName)) + kv('Önem', sev(d.SeverityCode)) + kv('Güven', conf(d.Confidence)) + kv('Risk skoru', d.RiskScore) + kv('Kaynak', sourceBadge(d.SourceName)) + kv('Son görülme', fmtDT(d.LastSeen)),
+      indicator: () => kv('Tip', esc(d.TypeName)) + kv('Önem', sev(d.SeverityCode)) + kv('Güven', conf(d.Confidence)) + kv('Risk skoru', `${d.RiskScore} <a class="hint-q" href="/settings#risk" title="Risk skoru nasıl hesaplanır? Güven, önem ağırlığı ve kurum içi görülme sayısından taban puan; kaynak güvenilirliği ve tazelik çarpanları; aktif değilse yarıya iner." aria-label="Risk skoru nasıl hesaplanır?"><i data-lucide="circle-help"></i></a>`) + kv('Kaynak', sourceBadge(d.SourceName)) + kv('Son görülme', fmtDT(d.LastSeen)),
       malware: () => kv('Tür', esc(d.TypeName)) + kv('Platform', esc(d.Platforms)) + kv('Aktör', d.ActorCount) + kv('Teknik', d.TechniqueCount) + kv('IOC', d.IndicatorCount),
       actor: () => kv('Köken', esc(d.CountryName)) + kv('Motivasyon', esc(d.Motivation)) + kv('Zararlı/araç', d.MalwareCount) + kv('Teknik', d.TechniqueCount) + kv('Kampanya', d.CampaignCount),
       campaign: () => kv('Aktör', esc(d.ActorName)) + kv('Başlangıç', fmtD(d.StartDate)) + kv('Bitiş', d.EndDate ? fmtD(d.EndDate) : 'Devam ediyor') + kv('IOC', d.IndicatorCount) + kv('Teknik', d.TechniqueCount),
@@ -215,13 +286,38 @@
     side.innerHTML = `<h2>İlişki: ${esc(REL[d.Relation] || d.Relation)}</h2>
       <div class="chain" style="margin:12px 0"><span class="node n-${d.SourceType}"><b>${esc(short(d.SourceLabel, 34))}</b></span><span class="arrow">→</span><span class="node n-${d.TargetType}"><b>${esc(short(d.TargetLabel, 34))}</b></span></div>
       <dl class="kv"><dt>Anlamı</dt><dd>${esc(d.Meaning)}</dd><dt>Kenar tablosu</dt><dd class="mono">${esc(d.EdgeTable)}</dd>
-        ${d.Role ? `<dt>Rol</dt><dd>${esc(d.Role)}</dd>` : ''}<dt>Güven</dt><dd>${d.Confidence != null ? conf(d.Confidence) : '<span class="faint">belirtilmemiş</span>'}</dd>
+        ${d.Role ? `<dt>Rol</dt><dd>${esc(d.Role)}</dd>` : ''}<dt>Güven</dt><dd>${d.Confidence != null ? conf(d.Confidence) : '<span class="faint" title="Kaynak bu ilişki için güven puanı vermiyor (MITRE ATT&CK ilişkileri puansızdır)">belirtilmemiş</span>'}</dd>
         <dt>Doğrulama kaynağı</dt><dd>${d.EvidenceSource ? sourceBadge(d.EvidenceSource) + ` <span class="faint">(güvenilirlik ${esc(d.Reliability)})</span>` : '<span class="faint">kanıt kaydı yok</span>'}</dd>
         ${d.ExternalRef ? `<dt>Dış kimlik</dt><dd class="mono" style="font-size: 12px">${esc(d.ExternalRef)}</dd>` : ''}
         ${d.CollectedAt ? `<dt>Toplandı</dt><dd>${fmtDT(d.CollectedAt)}</dd>` : ''}</dl>
       <h3 style="margin-top:14px">Kanıt</h3><p class="desc" style="margin-top:6px">${esc(d.Evidence || 'Bu ilişki için kanıt metni yok.')}</p>
       ${d.EvidenceUrl && /^https?:\/\//i.test(d.EvidenceUrl) ? `<p style="margin-top:8px"><a href="${esc(d.EvidenceUrl)}" target="_blank" rel="noopener noreferrer">Kaynağı aç</a></p>` : ''}`;
-    network.selectEdges([e.id]);
+    if (network && edges.get(e.id)) network.selectEdges([e.id]);
+  }
+
+  function combo() {
+    const input = document.getElementById('gq'), list = document.getElementById('gqList');
+    let items = [], active = -1, timer;
+    const close = () => { list.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); active = -1; };
+    const paint = () => {
+      list.innerHTML = items.map((x, k) => `<li role="option" id="gq-o${k}" data-i="${k}" aria-selected="${k === active}"><span class="trunc">${typeMark(x.EntityType)}${esc(x.Title)}</span><small class="faint">${esc(NODE[x.EntityType]?.label || x.EntityType)}</small></li>`).join('');
+      list.hidden = !items.length; input.setAttribute('aria-expanded', String(!!items.length));
+      if (active >= 0) input.setAttribute('aria-activedescendant', `gq-o${active}`); icons();
+    };
+    const pick = (x) => { close(); input.value = x.Title; open(x.EntityType, x.EntityID); };
+    input.addEventListener('input', () => {
+      clearTimeout(timer); const q = input.value.trim();
+      if (q.length < 2) { items = []; close(); return; }
+      timer = setTimeout(async () => { try { items = (await api('/api/search', { params: { q } })).filter((x) => NODE[x.EntityType]).slice(0, 8); active = -1; paint(); } catch { items = []; close(); } }, 200);
+    });
+    input.addEventListener('keydown', (e) => {
+      if (list.hidden) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); active = (active + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length; paint(); }
+      else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); pick(items[active]); }
+      else if (e.key === 'Escape') { e.stopPropagation(); close(); }
+    });
+    list.addEventListener('mousedown', (e) => { const li = e.target.closest('[data-i]'); if (li) { e.preventDefault(); pick(items[+li.dataset.i]); } });
+    input.addEventListener('blur', () => setTimeout(close, 100));
   }
 
   async function search(q) {
@@ -240,7 +336,7 @@
 
   function legend() {
     document.getElementById('legend').innerHTML = Object.entries(NODE).map(([t, n]) =>
-      `<label><input type="checkbox" data-type="${t}" ${st.hidden.has(t) ? '' : 'checked'}><i style="background:${n.color}"></i>${esc(n.label)}</label>`).join('');
+      `<button type="button" class="type-chip" data-type="${t}" aria-pressed="${!st.hidden.has(t)}" title="${esc(n.label)}: göster/gizle"><i style="background:${n.color}" aria-hidden="true"></i>${esc(n.label)}</button>`).join('');
   }
 
   async function examples() {
@@ -274,6 +370,7 @@
       r.steps.forEach((s) => s.shared.slice(0, 5).forEach((m) => { ns.push({ NodeType: 'malware', NodeID: m.MalwareID, Label: m.Name, SubLabel: '', Lvl: 2 });
         es.push({ SourceType: 'actor', SourceID: s.from, TargetType: 'malware', TargetID: m.MalwareID, Relation: 'uses' }, { SourceType: 'actor', SourceID: s.to, TargetType: 'malware', TargetID: m.MalwareID, Relation: 'uses' }); }));
       merge({ nodes: ns, edges: es }, true);
+      edges.update(edges.get().map((x) => ({ id: x.id, path: true, width: 3 }))); highlight(null); info(null);
       icons();
     } catch (e) { out.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
   }
@@ -283,11 +380,19 @@
 
   document.addEventListener('DOMContentLoaded', async () => {
     legend(); examples();
-    document.getElementById('legend').addEventListener('change', (e) => {
-      const t = e.target.dataset.type; if (!t) return;
-      e.target.checked ? st.hidden.delete(t) : st.hidden.add(t);
-      if (nodes) { if (clustered()) network.openCluster(CLUSTER_ID); nodes.update(nodes.get().map((n) => ({ id: n.id, hidden: st.hidden.has(n.type) }))); applyGrouping(); status(); }
+    document.getElementById('legend').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-type]'); if (!b) return;
+      const t = b.dataset.type, on = st.hidden.has(t);
+      on ? st.hidden.delete(t) : st.hidden.add(t);
+      b.setAttribute('aria-pressed', String(on));
+      if (nodes) { if (clustered()) network.openCluster(CLUSTER_ID); nodes.update(nodes.get().map((n) => ({ id: n.id, hidden: st.hidden.has(n.type === 'more' ? n.childType : n.type) }))); applyGrouping(); status(); }
     });
+    document.getElementById('gInfo').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-info]'); if (!b) return;
+      if (b.dataset.info === 'raise') { const sel = document.getElementById('limit'); sel.selectedIndex = Math.min(sel.options.length - 1, sel.selectedIndex + 1); if (st.start) open(st.start.type, st.start.id); }
+      else document.querySelector('#legend .type-chip')?.focus();
+    });
+    combo();
     document.getElementById('depth').addEventListener('click', (e) => {
       const b = e.target.closest('button'); if (!b) return; st.depth = +b.dataset.v;
       document.querySelectorAll('#depth button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
@@ -310,10 +415,12 @@
       b.innerHTML = on ? '<i data-lucide="table-2"></i>Tabloyu göster' : '<i data-lucide="share-2"></i>Grafiği göster'; icons();
       if (on && network) requestAnimationFrame(() => { network.redraw(); network.fit(); });
     });
-    document.getElementById('edgeTable').addEventListener('click', (e) => {
-      const f = e.target.closest('[data-focus]'); if (f) { e.preventDefault(); network.focus(f.dataset.focus, { scale: 1.2, animation: true }); showNode(nodes.get(f.dataset.focus)); }
-      const b = e.target.closest('[data-edge]'); if (b) showEdge(edges.get(b.dataset.edge));
+    const et = document.getElementById('edgeTable');
+    et.addEventListener('click', (e) => {
+      const f = e.target.closest('[data-focus]'); if (f) { e.preventDefault(); network.focus(f.dataset.focus, { scale: 1.2, animation: true }); showNode(nodes.get(f.dataset.focus)); return; }
+      const b = e.target.closest('[data-edge], [data-edge-row]'); if (b) showEdge(edges.get(b.dataset.edge || b.dataset.edgeRow));
     });
+    et.addEventListener('keydown', (e) => { const r = e.target.closest('[data-edge-row]'); if (r && e.key === 'Enter') showEdge(edges.get(r.dataset.edgeRow)); });
     document.getElementById('pathForm').addEventListener('submit', path);
     api('/api/actors', { params: { size: 200, sort: 'name' } }).then((r) => {
       document.getElementById('actorList').innerHTML = r.items.map((a) => `<option value="${esc(a.Name)}" data-id="${a.ActorID}"></option>`).join('');

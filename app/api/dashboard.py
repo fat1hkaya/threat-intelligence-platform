@@ -72,7 +72,8 @@ def dashboard_summary(days: int = Query(30, ge=7, le=180), db: Db = Depends(get_
                 AND i.FirstSeen >= @start)                                               AS NewHighSeverityIOCs,
             (SELECT COUNT(*) FROM dbo.Campaign)                                          AS Campaigns,
             (SELECT COUNT(*) FROM dbo.Technique)                                         AS Techniques,
-            (SELECT ISNULL(SUM(Quantity), 0) FROM dbo.Sighting WHERE SightedAt >= DATEADD(DAY, -7, @now)) AS Sightings7d;
+            (SELECT ISNULL(SUM(Quantity), 0) FROM dbo.Sighting WHERE SightedAt >= DATEADD(DAY, -7, @now)) AS Sightings7d,
+            (SELECT CAST(MIN(StartedAt) AS DATE) FROM dbo.ImportJob WHERE JobType <> 'attack')   AS FirstImportDay;
         """, (days,))
     # Sayaçlar ve dağılımlar indexed view'dan (vw_IndicatorCounts, WITH NOEXPAND): satır taramadan, önceden toplanmış
     fast, by_severity, by_type = (db.query_sets("EXEC dbo.sp_IndicatorCountsFast;") + [[{}], [], []])[:3]
@@ -116,6 +117,8 @@ def dashboard_summary(days: int = Query(30, ge=7, le=180), db: Db = Depends(get_
         SELECT TOP (8) v.IndicatorID, v.Value, v.TypeCode, v.SeverityCode, v.SeverityName, v.Confidence, v.SourceName, v.LastSeen,
                (SELECT TOP (1) a.ViaName FROM dbo.vw_IndicatorAttribution AS a
                  WHERE a.IndicatorID = v.IndicatorID AND a.ViaType = 'malware') AS MalwareName,
+               (SELECT TOP (1) CAST(m.IsPlaceholder AS BIT) FROM dbo.MalwareIndicator AS mi JOIN dbo.Malware AS m ON m.MalwareID = mi.MalwareID
+                 WHERE mi.IndicatorID = v.IndicatorID ORDER BY m.IsPlaceholder) AS MalwarePlaceholder,
                (SELECT TOP (1) a.ViaName FROM dbo.vw_IndicatorAttribution AS a
                  WHERE a.IndicatorID = v.IndicatorID AND a.ViaType = 'campaign') AS CampaignName
         FROM dbo.vw_Indicator AS v
@@ -124,11 +127,11 @@ def dashboard_summary(days: int = Query(30, ge=7, le=180), db: Db = Depends(get_
     sources = db.query(
         """
         -- Birim: kaynak ne üretiyorsa o (IOC, zafiyet, teknik, IP aralığı, aile); "0 IOC" yanıltıcıydı
-        SELECT h.SourceID, h.Name, h.Reliability, h.IndicatorCount, h.EvidenceCount, h.LastJobID, h.LastRunAt, h.LastRunStatus,
+        -- Kapalı (devre dışı) kaynaklar da listelenir, en sonda
+        SELECT h.SourceID, h.Name, h.Reliability, h.IsActive, h.IndicatorCount, h.EvidenceCount, h.LastJobID, h.LastRunAt, h.LastRunStatus,
                h.LastRowsInserted, h.LastRowsUpdated, h.LastRowsFailed, u.UnitLabel, u.UnitCount, u.UnitDetail
         FROM dbo.vw_SourceHealth AS h JOIN dbo.vw_SourceUnit AS u ON u.SourceID = h.SourceID
-        WHERE h.IsActive = 1
-        ORDER BY CASE WHEN LastRunAt IS NULL THEN 1 ELSE 0 END, LastRunAt DESC, Name;
+        ORDER BY h.IsActive DESC, CASE WHEN LastRunAt IS NULL THEN 1 ELSE 0 END, LastRunAt DESC, Name;
         """)
     top_techniques = db.query(
         """

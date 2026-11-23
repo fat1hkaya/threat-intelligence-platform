@@ -31,10 +31,13 @@ def _attempt(db: Db, username: str, user_id: int | None, ok: bool, ip: str | Non
 @router.post("/login")
 def login(body: Login, request: Request, response: Response, db: Db = Depends(get_db)):
     username, ip = body.username.strip(), request.client.host if request.client else None
-    lock = db.one("SELECT RecentFailures, LockedUntil FROM dbo.fn_LoginLock(?, ?, ?);", (username, MAX_FAILURES, WINDOW_MINUTES), trace=False)
-    if lock and lock["LockedUntil"]:
+    lock = db.one("SELECT RecentFailures, LockedUntil, DATEDIFF(SECOND, SYSUTCDATETIME(), LockedUntil) AS SecondsLeft "
+                  "FROM dbo.fn_LoginLock(?, ?, ?);", (username, MAX_FAILURES, WINDOW_MINUTES), trace=False)
+    if lock and lock["LockedUntil"] and (lock["SecondsLeft"] or 0) > 0:
         _attempt(db, username, None, False, ip, "locked")
-        raise HTTPException(429, f"Çok fazla hatalı deneme. Bu hesap {WINDOW_MINUTES} dakika boyunca geçici olarak kilitlendi; daha sonra tekrar deneyin.")
+        minutes = max(1, -(-lock["SecondsLeft"] // 60))       # yukarı yuvarla
+        raise HTTPException(429, f"Çok fazla hatalı deneme. Bu hesap geçici olarak kilitlendi; {minutes} dakika sonra tekrar deneyin.",
+                            headers={"Retry-After": str(lock["SecondsLeft"])})
     user = db.one(
         """
         SELECT u.UserID, u.Username, u.FullName, u.PasswordHash, u.IsActive, r.Code AS Role, r.Name AS RoleName

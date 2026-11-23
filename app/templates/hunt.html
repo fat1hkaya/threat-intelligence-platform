@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Log avı</h1><p>Güvenlik duvarı, proxy, DNS veya EDR logunu yapıştırın: içindeki IP, domain, URL ve hash'ler bilinen tehditlerle eşleştirilir. Soru şu: bu tehditlerden hangileri bizim ağımızda görüldü?</p></div>
+  <div><h1>Log avı</h1><p>Güvenlik duvarı, proxy, DNS ya da EDR logunu yapıştırın. İçindeki IP, domain, URL ve hash'ler bilinen tehditlerle eşleştirilir.</p></div>
 </div>
 
 <div class="grid g-main-side">
@@ -20,12 +20,13 @@
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn primary" type="submit"><i data-lucide="radar"></i>Avla</button>
       <button class="btn" type="button" id="sampleBtn"><i data-lucide="file-text"></i>Örnek log yükle</button>
-      <button class="btn ghost" type="reset">Temizle</button>
+      <button class="btn" type="reset"><i data-lucide="eraser"></i>Temizle</button>
     </div>
   </form>
   <article class="card">
     <h2>Önceki avlar</h2>
     <ul class="list" id="history" style="margin-top:10px"></ul>
+    <button type="button" class="btn sm ghost" id="historyAll" style="margin-top:8px" hidden></button>
   </article>
 </div>
 
@@ -35,6 +36,7 @@
     <div class="card-head"><div><h2 id="resultTitle">Eşleşmeler</h2><p id="resultNote"></p></div></div>
     <div id="matches"></div>
   </article>
+  <article class="card flush" id="unmatched" style="margin-top:18px" hidden></article>
 </section>
 {% endblock %}
 {% block scripts %}<script src="/static/js/hunt.js?v={{ v }}"></script>{% endblock %}

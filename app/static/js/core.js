@@ -45,8 +45,11 @@
   const status = (s) => { const [l, c] = STATUS[s] || [s, 'b-muted']; return `<span class="badge ${c}">${esc(l)}</span>`; };
   const job = (s) => { const [l, c, i] = JOB[s] || [s, 'b-muted', 'circle']; return `<span class="badge ${c}"><i data-lucide="${i}" style="width:13px;height:13px"></i>${esc(l)}</span>`; };
   const conf = (n) => n == null ? '<span class="faint">—</span>' :
-    `<span class="conf"><span class="meter" aria-hidden="true"><i style="width:${n}%;background:${n >= 80 ? 'var(--low)' : n >= 50 ? 'var(--medium)' : 'var(--high)'}"></i></span>${n}</span>`;
-  const sourceBadge = (name) => esc(name || '—');
+    `<span class="conf"><b>${n}</b><span class="meter" aria-hidden="true"><i style="width:${n}%;background:${n >= 80 ? 'var(--low)' : n >= 50 ? 'var(--medium)' : 'var(--high)'}"></i></span></span>`;
+  /** Kaynağın kısa adı ("abuse.ch MalwareBazaar" → "MalwareBazaar"); tam ad ipucunda */
+  const sourceShort = (name) => String(name || '').replace(/^abuse\.ch\s+/i, '').replace(/\.com$/i, '');
+  const sourceBadge = (name) => { if (!name) return '<span class="faint">—</span>'; const s = sourceShort(name);
+    return s === name ? `<span class="src-name">${esc(name)}</span>` : `<span class="src-name" title="${esc(name)}">${esc(s)}</span>`; };
   const copyBtn = (v) => `<button type="button" class="btn sm icon ghost copy" data-copy="${esc(v)}" aria-label="Değeri kopyala" title="Kopyala"><i data-lucide="copy"></i></button>`;
   /** IOC değeri hücresi: kısaltılmış değer + sağda sabit konumlu kopyalama düğmesi */
   const iocCell = (v, { href, trunc = true } = {}) => {
@@ -154,7 +157,7 @@
     ? `<details class="more-menu"><summary class="btn sm" aria-label="Diğer eylemler" title="Diğer eylemler"><i data-lucide="ellipsis"></i>Diğer</summary><div class="menu-pop" role="menu">${more.filter(Boolean).join('')}</div></details>` : ''}</div>`;
 
   // ---------- render sonrası iyileştirmeler (her icons() çağrısında) ----------
-  const TRUNC = '.data .cell, .data .value, .name-id > b, .list li span, .list li small, .chain b, .bar-row span, .clip-list, .omni-results .t, .kv dd, .chip, .badge, .tactic b, .legend span, .node-ref > a';
+  const TRUNC = '.data .cell, .data .value, .name-id > b, .list li span, .list li small, .chain b, .bar-row span, .clip-list, .omni-results .t, .kv dd, .chip, .badge, .tactic b, .legend span, .node-ref > a, .trunc, .att-label, .log-line';
   function enhance(root = document) {
     // kesik metne ipucu: yalnızca gerçekten kesikse ve atalarında ipucu yoksa
     root.querySelectorAll(TRUNC).forEach((el) => {
@@ -774,7 +777,7 @@
   }
 
   Object.assign(TL, { esc, fmtDT, fmtD, fmtN, fmtSize, ago, pct, midTruncate, clipList, num, SEV, NODE, TYPE_LABEL, sev, typeBadge, status, job, conf,
-    sourceBadge, copyBtn, iocCell, nodeIcon, techChip, entityUrl, graphUrl, refang, guessType, countTypes, api, icons, enhance, toast, loading, empty,
+    sourceBadge, sourceShort, copyBtn, iocCell, nodeIcon, techChip, entityUrl, graphUrl, refang, guessType, countTypes, api, icons, enhance, toast, loading, empty,
     failed, debounce, can, qs, pref, clampText, actions, table, bindTable, markRow, pageSize, tableBar, selection, pager, filterBar, panel, closePanel,
     panelHead, list, dialog, dropzone, dropText, formData, chartDefaults, meta, overflowActions, NARROW, PHONE, cssVar });
   document.addEventListener('DOMContentLoaded', () => { initShell(); chartDefaults(); });

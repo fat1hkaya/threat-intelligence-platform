@@ -36,8 +36,13 @@ def run_hunt(text: str = Form(""), location: str = Form(..., max_length=100), re
         "EXEC dbo.sp_RetroHunt @Json = ?, @Location = ?, @Lines = ?, @FileName = ?, @Record = ?, @UserID = ?;",
         (json.dumps(candidates, ensure_ascii=False), location.strip(), ex.lines, file_name, int(record), user["UserID"])) + [[], [{}]])[:2]
     by_type = Counter(c["type"] for c in candidates)
+    # Tanınan ama veritabanında karşılığı olmayan göstergeler: logda birebir geçen değerler (üst domain türevleri hariç)
+    matched = {(m["TypeCode"], m["Value"]) for m in matches}
+    unmatched = [{"type": c["type"], "value": c["value"], "line": c["line"], "hits": c["hits"]}
+                 for c in candidates if c["kind"] == "exact" and (c["type"], c["value"]) not in matched]
     return {"summary": summary[0] if summary else {}, "matches": matches, "candidatesByType": dict(by_type),
-            "truncated": ex.truncated}
+            "truncated": ex.truncated, "unmatchedCount": len(unmatched), "unmatched": unmatched[:100],
+            "unrecognizedLines": ex.unrecognized_lines}
 
 
 @router.get("")

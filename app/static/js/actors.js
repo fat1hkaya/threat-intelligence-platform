@@ -9,7 +9,7 @@
       { id: 'name', label: 'Aktör', primary: true, render: (r) => `<span class="name-id"><b>${esc(r.Name)}</b>${r.ExternalID ? ` <span class="faint mono">${esc(r.ExternalID)}</span>` : ''}</span>` },
       { id: 'aliases', label: 'Takma adlar', priority: 3, render: (r) => `<span class="muted">${clipList(r.Aliases, 3)}</span>` },
       { id: 'country', label: 'Köken', priority: 2, render: (r) => r.CountryCode ? `<span class="badge b-muted" title="${esc(r.CountryName || r.CountryCode)}">${esc(r.CountryCode)}</span>` : '<span class="faint">—</span>' },
-      { id: 'motivation', label: 'Motivasyon', priority: 3, render: (r) => esc(r.Motivation || '—') },
+      { id: 'motivation', label: 'Motivasyon', priority: 3, render: (r) => r.Motivation ? `<span class="badge b-muted">${esc(r.Motivation)}</span>` : '<span class="faint">—</span>' },
       { id: 'campaigns', label: 'Kampanya', num: true, priority: 2, render: (r) => num(r.CampaignCount) },
       { id: 'malware', label: 'Araç', num: true, render: (r) => num(r.MalwareCount) },
       { id: 'techniques', label: 'Teknik', num: true, render: (r) => num(r.TechniqueCount) },

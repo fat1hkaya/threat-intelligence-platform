@@ -145,6 +145,21 @@ def test_neighborhood_edges_only_between_returned_nodes(admin, linked_ioc):
     assert d["edges"] and all((e["SourceType"], e["SourceID"]) in keys and (e["TargetType"], e["TargetID"]) in keys for e in d["edges"])
 
 
+def test_neighborhood_techniques_are_leaves(admin, linked_ioc):
+    """Derinlik 3'te bile hiçbir düğüm bir teknik/zafiyet üzerinden keşfedilmez; tip başına sınır aşılmaz."""
+    d = admin.get("/api/graph/neighborhood", params={"type": "indicator", "id": linked_ioc["IndicatorID"], "depth": 3}).json()
+    lvl = {(n["NodeType"], n["NodeID"]): n["Lvl"] for n in d["nodes"]}
+    main = [e for e in d["edges"] if e["Main"]]
+    for (t, i), l in lvl.items():
+        if l < 2:
+            continue
+        parents = [(e["SourceType"], e["SourceID"]) if (e["TargetType"], e["TargetID"]) == (t, i) else (e["TargetType"], e["TargetID"])
+                   for e in main if (t, i) in ((e["SourceType"], e["SourceID"]), (e["TargetType"], e["TargetID"]))]
+        assert any(lvl.get(p) == l - 1 and p[0] not in ("technique", "vulnerability") for p in parents), (t, i)
+    assert sum(1 for n in d["nodes"] if n["NodeType"] == "actor") <= 12 * max(1, sum(1 for n in d["nodes"] if n["NodeType"] in ("malware", "campaign")))
+    assert all(c["count"] > 0 for c in d["clusters"])
+
+
 def test_relationships_use_match_attribution(admin, linked_ioc):
     rel = admin.get(f"/api/iocs/{linked_ioc['IndicatorID']}/relationships").json()
     assert any(a["ViaType"] == "malware" and a["ViaName"] == linked_ioc["MalwareName"] and a["ActorName"] for a in rel["attribution"])

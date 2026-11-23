@@ -47,9 +47,17 @@ class Extraction:
     lines: int = 0
     candidates: dict = field(default_factory=dict)      # (type, value) -> Candidate
     truncated: bool = False
+    nonempty: int = 0                                    # boş olmayan satır sayısı
+    hit_lines: set = field(default_factory=set)          # en az bir aday çıkan satırlar
+
+    @property
+    def unrecognized_lines(self) -> int:
+        """İçinden hiçbir IP, domain, URL, e-posta ya da hash çıkmayan (boş olmayan) satır sayısı."""
+        return self.nonempty - len(self.hit_lines)
 
     def add(self, type_: str, value: str, kind: str, source: str, line_no: int, line: str) -> None:
         key = (type_, value)
+        self.hit_lines.add(line_no)
         c = self.candidates.get(key)
         if c is None:
             if len(self.candidates) >= MAX_CANDIDATES:
@@ -100,6 +108,7 @@ def extract(text: str) -> Extraction:
         ex.lines = n
         if not original.strip():
             continue
+        ex.nonempty += 1
         line = _refang_line(original)
         spans: list[tuple[int, int]] = []          # URL/e-posta içindeki parçaları ayrıca domain diye saymamak için
         for m in RX["url"].finditer(line):

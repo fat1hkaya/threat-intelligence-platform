@@ -1,6 +1,6 @@
 /* Genel bakış: /api/dashboard/summary */
 (() => {
-  const { api, esc, fmtN, fmtDT, ago, sev, typeBadge, job, sourceBadge, TYPE_LABEL, SEV, icons, empty, toast, pct } = TL;
+  const { api, esc, fmtN, fmtDT, ago, sev, typeBadge, job, sourceBadge, iocCell, TYPE_LABEL, SEV, icons, empty, toast, pct } = TL;
   const SEV_COLORS = { critical: '#F87171', high: '#FB923C', medium: '#FBBF24', low: '#34D399', info: '#60A5FA' };
   let sevChart, trendChart;
 
@@ -23,20 +23,24 @@
     let a;
     try { a = await api('/api/dashboard/attention'); } catch (e) { box.innerHTML = empty(e.message, 'circle-alert'); icons(); return; }
     const since = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+    // Her kart aynı biçimde: ikon, sayı, tek satır etiket, ok. 0 olanlar soluk; >0 olanların sol kenarı önem renginde.
     const items = [
-      { icon: 'siren', tone: a.HighSeverity24h ? 'bad' : 'ok', n: a.HighSeverity24h, label: 'yüksek önemli IOC son 24 saatte görüldü',
+      { icon: 'siren', tone: 'bad', n: a.HighSeverity24h, label: 'yüksek önemli · 24 saat', title: 'Son 24 saatte görülen, önemi yüksek ya da kritik aktif IOC',
         href: `/iocs?severity=high,critical&status=active&dateFrom=${since}` },
-      { icon: 'eye', tone: a.Sighted7d ? 'warn' : 'ok', n: a.Sighted7d, label: 'IOC son 7 günde kurum içinde görüldü', href: '/hunt' },
-      { icon: 'briefcase', tone: a.OpenCases ? 'info' : 'ok', n: a.OpenCases, label: a.InvestigatingCases ? `açık vaka, ${fmtN(a.InvestigatingCases)} tanesi inceleniyor` : 'açık vaka', href: '/cases' },
-      { icon: 'triangle-alert', tone: a.FailedJobs7d ? 'bad' : 'ok', n: a.FailedJobs7d, label: 'başarısız içe aktarma veya bakım işi (7 gün)', href: '/sources' },
+      { icon: 'eye', tone: 'warn', n: a.Sighted7d, label: 'kurumda görüldü · 7 gün', title: 'Son 7 günde kurum içinde görülen (görülme kaydı olan) IOC', href: '/hunt' },
+      { icon: 'briefcase', tone: 'info', n: a.OpenCases, label: a.InvestigatingCases ? `açık vaka · ${fmtN(a.InvestigatingCases)} inceleme` : 'açık vaka', title: 'Kapatılmamış vakalar', href: '/cases' },
+      { icon: 'triangle-alert', tone: 'bad', n: a.FailedJobs7d, label: 'başarısız iş · 7 gün', title: 'Son 7 günde başarısız olan içe aktarma veya bakım işi', href: '/sources' },
       a.CoverageMarked
-        ? { icon: 'shield-half', tone: a.BlindSpots ? 'warn' : 'ok', n: a.BlindSpots, label: 'kör nokta: 10+ aktörün kullandığı, tespit edilemeyen teknik', href: '/attack?view=coverage' }
-        : { icon: 'shield-half', tone: 'muted', n: null, label: 'Tespit kapsamı henüz girilmedi. Hangi teknikleri görebildiğinizi işaretleyin.', href: '/attack?view=coverage' },
+        ? { icon: 'shield-half', tone: 'warn', n: a.BlindSpots, label: 'kör nokta tekniği', title: '10 ya da daha fazla aktörün kullandığı, tespit edilemeyen teknik', href: '/attack?view=coverage' }
+        : { icon: 'shield-half', tone: 'action', n: '%0', label: 'tespit kapsamı', cta: 'Başla', title: 'Tespit kapsamı henüz girilmedi: hangi teknikleri görebildiğinizi işaretleyin', href: '/attack?view=coverage' },
     ];
-    box.innerHTML = items.map((i) => `<a class="att-item tone-${i.tone}" href="${i.href}">
+    box.innerHTML = items.map((i) => {
+      const zero = typeof i.n === 'number' && !i.n;
+      return `<a class="att-item ${zero ? 'is-zero' : `tone-${i.tone}`}" href="${i.href}" title="${esc(i.title)}">
         <span class="att-ic"><i data-lucide="${i.icon}"></i></span>
-        <span class="att-body">${i.n == null ? '' : `<b class="att-n">${fmtN(i.n)}</b>`}<span class="att-label">${esc(i.label)}</span></span>
-        <i data-lucide="chevron-right" class="att-go" aria-hidden="true"></i></a>`).join('');
+        <span class="att-body"><b class="att-n">${typeof i.n === 'number' ? fmtN(i.n) : esc(i.n)}</b><span class="att-label">${esc(i.label)}${i.cta ? ` · <span class="att-cta">${esc(i.cta)}</span>` : ''}</span></span>
+        <i data-lucide="chevron-right" class="att-go" aria-hidden="true"></i></a>`;
+    }).join('');
     document.getElementById('attSync').textContent = a.LastSyncAt ? `Son besleme senkronu ${ago(a.LastSyncAt)}` : 'Henüz besleme senkronu yok';
     icons();
   }
@@ -47,13 +51,13 @@
     try { d = await api('/api/dashboard/summary', { params: { days } }); } catch (e) { toast(e.message, 'err'); return; }
     const k = d.kpi;
     document.getElementById('kpis').innerHTML = [
-      ['database', '', "Toplam IOC", k.TotalIOCs, `${fmtN(k.ActiveIOCs)} aktif · ${fmtN(k.NewIOCs)} yeni${k.PrevNewIOCs ? ` · ${delta(k.NewIOCs, k.PrevNewIOCs)}` : ''}`],
+      ['database', '', "Toplam IOC", k.TotalIOCs, (k.ActiveIOCs === k.NewIOCs ? `${fmtN(k.ActiveIOCs)} aktif, tümü son ${days} günde eklendi`
+        : `${fmtN(k.ActiveIOCs)} aktif · ${fmtN(k.NewIOCs)} yeni`) + (k.PrevNewIOCs ? ` · ${delta(k.NewIOCs, k.PrevNewIOCs)}` : '')],
       ['users', 'r', 'Tehdit aktörü', k.Actors, `${fmtN(k.ActorsWithIOCs)} tanesi IOC'lerimizle ilişkili`],
       ['bug', 'c', 'Zararlı yazılım ailesi', k.MalwareFamilies, `${fmtN(k.FamiliesWithIOCs)} ailenin IOC'si var`],
       ['triangle-alert', 'a', 'Yüksek önemli IOC', k.HighSeverityIOCs, `önemi yüksek/kritik · yüksek riskli (skor ≥ ${k.HighRiskMin}): ${fmtN(k.HighRiskIOCs)}`],
     ].map(([icon, c, lbl, val, sub]) => `<article class="card kpi"><span class="ic ${c}"><i data-lucide="${icon}"></i></span>
       <div><div class="val">${fmtN(val)}</div><div class="lbl">${lbl}</div><div class="sub">${sub}</div></div></article>`).join('');
-    if (!k.PrevNewIOCs) document.querySelector('#kpis .kpi .sub')?.setAttribute('title', 'Önceki dönemde kayıt olmadığı için karşılaştırma yapılmadı');
 
     // Önem halkası
     // Risk skoru bantları (Ayarlar > Risk eşikleri). Sıfır olan bantlar da listelenir.
@@ -77,27 +81,57 @@
     document.getElementById('trendSummary').textContent = `Son ${days} günde toplam ${sum} IOC eklendi. En yoğun gün: ` +
       (() => { const m = d.trend.reduce((a, r) => (r.Added > a.Added ? r : a), d.trend[0] || { Added: 0 }); return m ? `${m.Day} (${m.Added})` : '-'; })();
     trendChart?.destroy();
+    const dayLbl = (day) => new Date(day + 'T00:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+    // İlk içe aktarmadan önceki günler boşsa o gün işaretlenir: boşluk "IOC yoktu" değil, "henüz veri çekilmiyordu" demektir
+    const firstIdx = k.FirstImportDay ? d.trend.findIndex((r) => r.Day >= k.FirstImportDay) : -1;
+    const markIdx = firstIdx > 0 && d.trend.slice(0, firstIdx).every((r) => !r.Added) ? firstIdx : -1;
+    const marker = {
+      id: 'firstImport',
+      afterDatasetsDraw(chart) {
+        if (markIdx < 0) return;
+        const { ctx, chartArea: ca, scales: { x } } = chart;
+        const px = x.getPixelForValue(markIdx) - (x.getPixelForValue(1) - x.getPixelForValue(0)) / 2;
+        const css = getComputedStyle(document.documentElement);
+        ctx.save(); ctx.strokeStyle = css.getPropertyValue('--text-3').trim() || '#64748B'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(px, ca.top); ctx.lineTo(px, ca.bottom); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = css.getPropertyValue('--text-2').trim() || '#94A3B8'; ctx.font = '12px Inter, system-ui, sans-serif';
+        const txt = `İlk içe aktarma: ${dayLbl(d.trend[markIdx].Day)}`, w = ctx.measureText(txt).width;
+        const right = px - ca.left > w + 8;
+        ctx.textAlign = right ? 'right' : 'left';
+        ctx.fillText(txt, right ? px - 6 : px + 6, ca.top + 12); ctx.restore();
+      },
+    };
     trendChart = new Chart(document.getElementById('trendChart'), {
       type: 'bar',
-      data: { labels: d.trend.map((r) => new Date(r.Day + 'T00:00:00').toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })),
+      data: { labels: d.trend.map((r) => dayLbl(r.Day)),
         datasets: [{ data: d.trend.map((r) => r.Added), backgroundColor: (c) => { const g = c.chart.ctx.createLinearGradient(0, 0, 0, 240); g.addColorStop(0, '#7C5CFC'); g.addColorStop(1, '#22D3EE'); return g; }, borderRadius: 3, maxBarThickness: 14 }] },
-      options: { maintainAspectRatio: false, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } }, y: { beginAtZero: true, ticks: { precision: 0 } } } },
+      options: { maintainAspectRatio: false, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 6, maxRotation: 0, minRotation: 0, autoSkipPadding: 12 } }, y: { beginAtZero: true, ticks: { precision: 0 } } } },
+      plugins: [marker],
     });
 
     document.getElementById('latest').innerHTML = d.latest.length ? TL.table([
-      { label: 'IOC', primary: true, render: (r) => `<span class="cell-ioc"><a class="mono value" style="max-width:240px" href="/iocs/${r.IndicatorID}" title="${esc(r.Value)}">${esc(r.Value)}</a></span>` },
+      { label: 'IOC', primary: true, render: (r) => iocCell(r.Value, { href: `/iocs/${r.IndicatorID}` }) },
       { label: 'Tip', render: (r) => typeBadge(r.TypeCode) },
       { label: 'Önem', render: (r) => sev(r.SeverityCode) },
-      { label: 'İlişkili varlık', render: (r) => r.MalwareName || r.CampaignName ? esc([r.MalwareName, r.CampaignName].filter(Boolean).join(' · ')) : '<span class="faint">—</span>' },
+      { label: 'Zararlı ailesi', priority: 2, render: (r) => { const v = [r.MalwareName, r.CampaignName].filter(Boolean).join(' · ');
+        return r.MalwarePlaceholder ? '<span class="faint">Ailesi belirlenmemiş</span>' : v ? `<span class="trunc" title="${esc(v)}">${esc(v)}</span>` : '<span class="faint">—</span>'; } },
       { label: 'Kaynak', render: (r) => sourceBadge(r.SourceName) },
-      { label: 'Son görülme', render: (r) => `<span title="${fmtDT(r.LastSeen)}">${ago(r.LastSeen)}</span>` },
+      { label: 'Son görülme', render: (r) => `<span class="nowrap" title="${fmtDT(r.LastSeen)}">${ago(r.LastSeen)}</span>` },
     ], d.latest, { caption: 'Son istihbarat' }) : empty('Henüz IOC yok. Veri kaynaklarından içe aktarma yapın.', 'inbox');
 
-    document.getElementById('sources').innerHTML = d.sources.map((s) => `<li><a href="/sources?source=${s.SourceID}">
-      <span><b>${esc(s.Name)}</b><br><small>${s.LastRunAt ? `Son iş: ${fmtDT(s.LastRunAt)}` : 'Henüz içe aktarma yapılmadı'} · ${fmtN(s.UnitCount || 0)} ${esc(s.UnitLabel || 'IOC')}</small></span>
-      ${s.LastRunStatus ? job(s.LastRunStatus) : '<span class="badge b-muted">Bekliyor</span>'}</a></li>`).join('');
+    // Her satırda durum rozeti; son işin getirdiği yeni kayıt ve kaynağın toplamı, kaynağın kendi birimiyle
+    const srcState = (x) => !x.IsActive ? '<span class="badge b-muted">Kapalı</span>' : x.LastRunStatus ? job(x.LastRunStatus) : '<span class="badge b-muted">Bekliyor</span>';
+    document.getElementById('sources').innerHTML = d.sources.map((x) => `<li class="${x.IsActive ? '' : 'is-off'}"><a href="/sources?source=${x.SourceID}">
+      <span><b>${esc(x.Name)}</b><br><small title="${x.LastRunAt ? `Son iş: ${fmtDT(x.LastRunAt)}` : ''}">${x.LastRunAt
+        ? `+${fmtN(x.LastRowsInserted || 0)} yeni · toplam ${fmtN(x.UnitCount || 0)} ${esc(x.UnitLabel || 'IOC')} · ${ago(x.LastRunAt)}`
+        : `Henüz içe aktarma yapılmadı · toplam ${fmtN(x.UnitCount || 0)} ${esc(x.UnitLabel || 'IOC')}`}</small></span>
+      ${srcState(x)}</a></li>`).join('');
 
-    bars(document.getElementById('topTech'), d.topTechniques, (r) => `${r.ExternalID} ${r.Name}`, (r) => r.ActorCount, (r) => `/attack?id=${r.TechniqueID}`);
+    // Teknik kodu ayrı dar sütunda, ad kesilmeden (gerekirse iki satıra sarılır)
+    const tmax = Math.max(1, ...d.topTechniques.map((r) => r.ActorCount));
+    document.getElementById('topTech').innerHTML = d.topTechniques.length ? d.topTechniques.map((r) => `<div class="bar-row tech-row">
+      <span class="mono tcode">${esc(r.ExternalID)}</span><a class="tname" href="/attack?id=${r.TechniqueID}">${esc(r.Name)}</a>
+      <span class="track" aria-hidden="true"><i style="width:${(r.ActorCount / tmax) * 100}%"></i></span><b>${fmtN(r.ActorCount)}</b></div>`).join('') : empty('Henüz veri yok.');
     bars(document.getElementById('topMal'), d.topMalware, (r) => r.Name, (r) => r.IndicatorCount, (r) => `/malware?id=${r.MalwareID}`);
     icons();
   }
