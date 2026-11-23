@@ -3,6 +3,7 @@
     python scripts/ui_screenshots.py before          # docs/ui-audit/before/<görünüm>/<sayfa>.png + report.json
     python scripts/ui_screenshots.py after
     python scripts/ui_screenshots.py after --only primary --pages overview,iocs
+    python scripts/ui_screenshots.py konsol-after --themes dark,light   # docs/ui-audit/konsol-after/<tema>/<görünüm>/
 
 Uygulama çalışıyor olmalı (python run.py). Giriş: fatih kullanıcısı; parola TL_SCREENSHOT_PASSWORD ortam
 değişkeninden, yoksa kurulumun yerel parolasından. Betik veritabanına YAZMAZ: yalnızca sayfaları açar,
@@ -172,22 +173,26 @@ def shoot(page, name: str, folder: Path, report: dict, errors: list) -> None:
     page.screenshot(path=str(folder / f"{name}.png"), full_page=True, animations="disabled")
 
 
-def run(phase: str, only: list[str] | None, only_pages: list[str] | None, base: str) -> dict:
+def run(phase: str, only: list[str] | None, only_pages: list[str] | None, base: str, themes: list[str] | None = None) -> dict:
+    """themes verilirse her tema için ayrı klasör ve rapor anahtarı: <aşama>/<tema>/<görünüm>/ ve "tema/görünüm".
+    Tema tl-theme ile zorlanır (işletim sistemi tercihi de aynı tema). Verilmezse eski davranış: koyu, <aşama>/<görünüm>/."""
     out_root = ROOT / "docs" / "ui-audit" / phase
     result: dict = {}
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
-        for vp, (w, h) in VIEWPORTS.items():
+        for theme, (vp, (w, h)) in [(t, v) for t in (themes or [None]) for v in VIEWPORTS.items()]:
             if only and vp not in only:
                 continue
             ctx = browser.new_context(viewport={"width": w, "height": h}, device_scale_factor=1, locale="tr-TR",
-                                      color_scheme="dark", timezone_id="Europe/Istanbul")
+                                      color_scheme=theme or "dark", timezone_id="Europe/Istanbul")
+            if theme:
+                ctx.add_init_script(f"try {{ localStorage.setItem('tl-theme', '{theme}'); }} catch (e) {{}}")
             page = ctx.new_page()
             errors: list[str] = []
             page.on("console", lambda m, e=errors: e.append(m.text[:200]) if m.type == "error" else None)
             page.on("pageerror", lambda exc, e=errors: e.append(f"pageerror: {exc}"[:200]))
             report: dict = {}
-            folder = out_root / vp
+            folder = out_root / theme / vp if theme else out_root / vp
             # giriş sayfası (oturumsuz)
             if not only_pages or "login" in only_pages:
                 page.goto(base + "/login")
@@ -215,9 +220,10 @@ def run(phase: str, only: list[str] | None, only_pages: list[str] | None, base: 
                 shoot(page, name, folder, report, errors)
                 if action:
                     page.keyboard.press("Escape")
-            result[vp] = report
+            key = f"{theme}/{vp}" if theme else vp
+            result[key] = report
             ctx.close()
-            print(f"{vp}: {len(report)} sayfa")
+            print(f"{key}: {len(report)} sayfa")
         browser.close()
     out_root.mkdir(parents=True, exist_ok=True)
     (out_root / "report.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -229,7 +235,7 @@ def summarize(result: dict) -> str:
     for vp, pages in result.items():
         ov = [p for p, a in pages.items() if a["overflow"]]
         sb = [p for p, a in pages.items() if a["sidebarScroll"]]
-        lines.append(f"{vp:8} taşma={len(ov)} {ov[:4]}  kenar-kaydırma={len(sb)}  "
+        lines.append(f"{vp:14} taşma={len(ov)} {ov[:4]}  kenar-kaydırma={len(sb)}  "
                      f"iç-kaydırma={sum(len(a['nestedScroll']) for a in pages.values())} (+izinli {sum(len(a.get('allowedScroll', [])) for a in pages.values())})  "
                      f"kesik-ipucusuz={sum(a['truncatedCount'] for a in pages.values())}  "
                      f"çakışma={sum(a['overlapCount'] for a in pages.values())}  "
@@ -245,7 +251,9 @@ if __name__ == "__main__":
     ap.add_argument("phase", help="klasör adı: before, asama1 ... after")
     ap.add_argument("--only", help="virgülle görünüm alanları: primary,wide,laptop,tablet,mobile")
     ap.add_argument("--pages", help="virgülle sayfa adları")
+    ap.add_argument("--themes", help="virgülle temalar: dark,light (verilirse <aşama>/<tema>/<görünüm>/)")
     ap.add_argument("--base", default=os.getenv("TL_BASE_URL", "http://127.0.0.1:8000"))
     a = ap.parse_args()
-    res = run(a.phase, a.only.split(",") if a.only else None, a.pages.split(",") if a.pages else None, a.base)
+    res = run(a.phase, a.only.split(",") if a.only else None, a.pages.split(",") if a.pages else None, a.base,
+              a.themes.split(",") if a.themes else None)
     print(summarize(res))

@@ -14,3 +14,8 @@ docs/ui-audit/*/wide/
 docs/ui-audit/*/laptop/
 docs/ui-audit/*/tablet/
 docs/ui-audit/*/mobile/
+# tema klasörlü düzen (--themes): <aşama>/<tema>/<görünüm>/; yalnızca primary saklanır
+docs/ui-audit/*/*/wide/
+docs/ui-audit/*/*/laptop/
+docs/ui-audit/*/*/tablet/
+docs/ui-audit/*/*/mobile/

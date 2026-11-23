@@ -1469,3 +1469,6 @@ dialog { border-radius: var(--radius-pop); box-shadow: var(--shadow-pop); }
 }
 .toolbar { grid-template-columns: minmax(0, 1fr); }
 #riskNote a { text-decoration: underline; text-underline-offset: 2px; }
+/* ATT&CK ısı haritası: yoğun hücrelerde teknik kodu ana metin renginde (4,5:1) */
+.matrix .cell.heat-2 small, .matrix .cell.heat-3 small, .matrix .cell.heat-4 small { color: var(--text); }
+.fp-n { color: var(--text-2); }

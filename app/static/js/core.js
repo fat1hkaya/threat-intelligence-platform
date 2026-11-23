@@ -845,7 +845,7 @@
       try {
         const tr = await api(`/api/trace/${t.id}`);
         tr.statements.forEach((s) => parts.push(`<div class="sql-item"><div class="meta"><span>${esc(tr.method)} ${esc(tr.path)}</span><span>${s.ms} ms · ${s.rows ?? '—'} satır</span></div>
-          <pre>${hl(s.sql)}</pre>${s.params && s.params.length ? `<div class="meta"><span>Parametreler (?): ${esc(JSON.stringify(s.params))}</span></div>` : ''}</div>`));
+          <pre class="force-dark">${hl(s.sql)}</pre>${s.params && s.params.length ? `<div class="meta"><span>Parametreler (?): ${esc(JSON.stringify(s.params))}</span></div>` : ''}</div>`));
       } catch { /* iz bellekten düşmüş olabilir */ }
     }
     TL.traces = TL.traces.filter((t) => !t.path.startsWith('/api/trace'));

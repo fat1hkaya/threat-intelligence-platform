@@ -191,7 +191,7 @@
     if (can('admin')) api('/api/system/queries').then((rows) => {
       document.getElementById('qsCard').hidden = false;
       document.getElementById('qsTbl').innerHTML = rows.length ? table([
-        { label: 'Sorgu', primary: true, render: (q) => `<details class="sql-clip"><summary><span class="mono trunc" title="${esc(q.QueryText.slice(0, 300))}">${esc(q.QueryText.replace(/\s+/g, ' ').trim())}</span><span class="link-btn">Göster</span></summary><pre class="mono">${esc(q.QueryText.trim())}</pre></details>` },
+        { label: 'Sorgu', primary: true, render: (q) => `<details class="sql-clip"><summary><span class="mono trunc" title="${esc(q.QueryText.slice(0, 300))}">${esc(q.QueryText.replace(/\s+/g, ' ').trim())}</span><span class="link-btn">Göster</span></summary><pre class="mono force-dark">${esc(q.QueryText.trim())}</pre></details>` },
         { label: 'Çalışma', num: true, render: (q) => fmtN(q.Executions) },
         { label: 'Ort. ms', num: true, render: (q) => Number(q.AvgMs).toLocaleString('tr-TR') },
         { label: 'En çok ms', num: true, render: (q) => Number(q.MaxMs).toLocaleString('tr-TR') },
