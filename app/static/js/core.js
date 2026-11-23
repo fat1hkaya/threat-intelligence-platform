@@ -157,7 +157,7 @@
     ? `<details class="more-menu"><summary class="btn sm" aria-label="Diğer eylemler" title="Diğer eylemler"><i data-lucide="ellipsis"></i>Diğer</summary><div class="menu-pop" role="menu">${more.filter(Boolean).join('')}</div></details>` : ''}</div>`;
 
   // ---------- render sonrası iyileştirmeler (her icons() çağrısında) ----------
-  const TRUNC = '.data .cell, .data .value, .name-id > b, .list li span, .list li small, .chain b, .bar-row span, .clip-list, .omni-results .t, .kv dd, .chip, .badge, .tactic b, .legend span, .node-ref > a, .trunc, .att-label, .log-line';
+  const TRUNC = '.data .cell, .data .value, .name-id > b, .list li span, .list li small, .chain b, .bar-row span, .clip-list, .omni-results .t, .kv dd, .chip, .badge, .tactic b, .legend span, .node-ref > a, .trunc, .att-label, .log-line, .rg-main small, .rh-msg, .test-out, .user-cell b';
   function enhance(root = document) {
     // kesik metne ipucu: yalnızca gerçekten kesikse ve atalarında ipucu yoksa
     root.querySelectorAll(TRUNC).forEach((el) => {
@@ -753,6 +753,29 @@
     };
     apply(); PHONE.addEventListener('change', apply);
   }
+  // Bakım işleri: iş türüne göre gruplu; her grupta son çalışma ve sonucu, geçmiş açılır (aynı satırlar listeyi doldurmasın)
+  const TASK_LABEL = { 'expire-indicators': ["Süresi dolan IOC'leri kapat", 'Her gece 02:00'], 'graph-maintenance': ['Graf bakımı', 'Her pazar 03:00'] };
+  const RUN_STATUS = { success: ['Başarılı', 'b-ok'], failed: ['Hatalı', 'b-bad'], running: ['Çalışıyor', 'b-cyan'] };
+  function maintenanceRuns(runs) {
+    if (!runs.length) return '<p class="faint" style="font-size:13px">Bakım işleri henüz çalışmadı.</p>';
+    const groups = new Map(); runs.forEach((r) => { if (!groups.has(r.Task)) groups.set(r.Task, []); groups.get(r.Task).push(r); });
+    const badge = (r) => { const [l, c] = RUN_STATUS[r.Status] || [r.Status, 'b-muted']; return `<span class="badge ${c}">${esc(l)}</span>`; };
+    return `<div class="run-groups">${[...groups.entries()].map(([task, rs]) => { const [name, when] = TASK_LABEL[task] || [task, ''], last = rs[0];
+      const fails = rs.filter((r) => r.Status === 'failed').length;
+      return `<details class="run-group"><summary><span class="rg-main"><b>${esc(name)}</b><small class="muted">${esc(when)}${when ? ' · ' : ''}son çalışma ${ago(last.StartedAt)} · ${esc(last.Message || (last.RowsAffected != null ? `${fmtN(last.RowsAffected)} satır` : ''))}</small></span>
+          <span class="rg-side">${fails ? `<span class="badge b-bad" title="Listelenen çalışmalarda hata">${fmtN(fails)} hata</span>` : ''}${badge(last)}</span></summary>
+        <ol class="run-hist">${rs.map((r) => `<li><span class="nowrap" title="${fmtDT(r.StartedAt)}">${fmtDT(r.StartedAt)}</span><span class="rh-msg">${esc(r.Message || '—')}</span>${badge(r)}</li>`).join('')}</ol></details>`; }).join('')}</div>`;
+  }
+
+  // Tablo satırındaki menü: kaydırma alanı tarafından kesilmesin diye sabit konumlanır, sayfa kayınca kapanır
+  document.addEventListener('toggle', (e) => {
+    const d = e.target; if (!(d instanceof HTMLDetailsElement) || !d.classList.contains('row-menu') || !d.open) return;
+    const r = d.querySelector('summary').getBoundingClientRect(), pop = d.querySelector('.menu-pop');
+    const below = innerHeight - r.bottom > 200;
+    pop.style.right = `${Math.max(8, innerWidth - r.right)}px`;
+    pop.style.top = below ? `${r.bottom + 6}px` : ''; pop.style.bottom = below ? '' : `${innerHeight - r.top + 6}px`;
+  }, true);
+  window.addEventListener('scroll', () => document.querySelectorAll('details.row-menu[open]').forEach((d) => { d.open = false; }), { passive: true });
   document.addEventListener('click', (e) => {
     document.querySelectorAll('details.more-menu[open], details.more-filters[open]').forEach((d) => {
       if (d.closest('.sheet-open')) return;                        // alttan açılan filtre panelinde açık kalır
@@ -777,7 +800,7 @@
   }
 
   Object.assign(TL, { esc, fmtDT, fmtD, fmtN, fmtSize, ago, pct, midTruncate, clipList, num, SEV, NODE, TYPE_LABEL, sev, typeBadge, status, job, conf,
-    sourceBadge, sourceShort, copyBtn, iocCell, nodeIcon, techChip, entityUrl, graphUrl, refang, guessType, countTypes, api, icons, enhance, toast, loading, empty,
+    sourceBadge, sourceShort, maintenanceRuns, copyBtn, iocCell, nodeIcon, techChip, entityUrl, graphUrl, refang, guessType, countTypes, api, icons, enhance, toast, loading, empty,
     failed, debounce, can, qs, pref, clampText, actions, table, bindTable, markRow, pageSize, tableBar, selection, pager, filterBar, panel, closePanel,
     panelHead, list, dialog, dropzone, dropText, formData, chartDefaults, meta, overflowActions, NARROW, PHONE, cssVar });
   document.addEventListener('DOMContentLoaded', () => { initShell(); chartDefaults(); });

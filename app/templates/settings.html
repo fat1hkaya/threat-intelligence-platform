@@ -1,14 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Ayarlar</h1><p>Kullanıcılar ve roller, yetki matrisi, risk puanlaması ve entegrasyon durumu.<span class="tech"> Geliştirici modunda veritabanı sekmesi de görünür.</span></p></div>
-  <div class="seg dev-only" role="tablist" aria-label="Ayar bölümleri" id="settingsTabs">
-    <button type="button" role="tab" id="tab-general" aria-controls="generalTab" aria-selected="true" aria-pressed="true" data-tab="generalTab">Genel</button>
-    <button type="button" role="tab" id="tab-db" aria-controls="dbTab" aria-selected="false" aria-pressed="false" data-tab="dbTab">Veritabanı</button>
-  </div>
+  <div><h1>Ayarlar</h1><p>Kullanıcılar ve roller, risk puanlaması ve IOC yaşam döngüsü, entegrasyonlar ve bakım işleri.<span class="tech"> Geliştirici modunda veritabanı sekmesi de görünür.</span></p></div>
 </div>
-<div id="generalTab" role="tabpanel" aria-labelledby="tab-general" class="tab-panel">
+<div class="tabs-bar" role="tablist" aria-label="Ayar bölümleri" id="settingsTabs">
+  <button type="button" role="tab" id="tab-users" aria-controls="usersTab" aria-selected="true" data-tab="usersTab"><i data-lucide="users"></i>Kullanıcılar ve roller</button>
+  <button type="button" role="tab" id="tab-risk" aria-controls="riskTab" aria-selected="false" data-tab="riskTab" tabindex="-1"><i data-lucide="gauge"></i>Risk ve yaşam döngüsü</button>
+  <button type="button" role="tab" id="tab-int" aria-controls="intTab" aria-selected="false" data-tab="intTab" tabindex="-1"><i data-lucide="plug"></i>Entegrasyonlar</button>
+  <button type="button" role="tab" id="tab-runs" aria-controls="runsTab" aria-selected="false" data-tab="runsTab" tabindex="-1"><i data-lucide="calendar-clock"></i>Bakım işleri</button>
+  <button type="button" role="tab" id="tab-db" aria-controls="dbTab" aria-selected="false" data-tab="dbTab" tabindex="-1" class="dev-only"><i data-lucide="database"></i>Veritabanı</button>
+</div>
 
+<div id="usersTab" role="tabpanel" aria-labelledby="tab-users" class="tab-panel">
 <div class="grid g-main-side">
   <article class="card flush">
     <div class="card-head"><div><h2>Kullanıcılar ve roller</h2><p>Hesaplar, roller ve son girişler<span class="tech"> · AppUser tablosu, değişiklikler trg_AppUser_Audit ile denetlenir</span></p></div>
@@ -24,9 +27,11 @@
       <tbody id="perm"></tbody></table></div>
   </article>
 </div>
+</div>
 
+<div id="riskTab" role="tabpanel" aria-labelledby="tab-risk" class="tab-panel" hidden>
 <div class="grid g-2">
-  <article class="card">
+  <article class="card" id="risk">
     <h2>Risk skoru nasıl hesaplanıyor?</h2>
     <p class="muted" style="font-size: 13px;margin:4px 0 12px"><span class="user-only">Skor saklanmaz; IOC her okunduğunda güncel verilerle yeniden hesaplanır.</span><span class="tech">dbo.fn_RiskScore skaler fonksiyonu (türetilmiş nitelik: saklanmaz, vw_Indicator içinde her okumada hesaplanır)</span></p>
     <ol class="timeline">
@@ -36,37 +41,40 @@
       <li><span class="dot"></span><div><b>Durum</b><br><small class="muted">aktif değilse puan yarıya iner; sonuç 0–100 arasına sınırlanır</small></div></li>
     </ol>
     <p class="faint" style="font-size:12px">Önem ağırlıkları<span class="tech"> (SeverityLevel tablosu)</span>: Bilgi 10, Düşük 30, Orta 55, Yüksek 80, Kritik 100.</p>
-    <h3 style="margin-top:14px">Risk bantları</h3>
-    <p class="muted" style="font-size: 13px;margin:2px 0 8px">"Yüksek riskli" skoru bu eşiklerin üstündeki IOC'dir; "yüksek önemli" ise önem düzeyi yüksek ya da kritik olan IOC'dir. İkisi farklı ölçülerdir.</p>
+  </article>
+  <article class="card">
+    <h2>Risk bantları</h2>
+    <p class="muted" style="font-size: 13px;margin:4px 0 8px">Genel bakıştaki risk dağılımı ve "yüksek riskli" sayıları bu eşiklerden okunur. "Yüksek riskli" skoru eşiğin üstündeki IOC'dir; "yüksek önemli" ise önem düzeyi yüksek ya da kritik olan IOC'dir. İkisi farklı ölçülerdir.<span class="tech"> · RiskBand tablosu</span></p>
     <ul class="legend" id="riskBands"></ul>
   </article>
-  <article class="card">
-    <h2>Entegrasyonlar</h2>
-    <ul class="list" id="integrations" style="margin-top:10px"></ul>
-  </article>
+</div>
+<article class="card flush">
+  <div class="card-head"><div><h2>IOC yaşam döngüsü</h2><p>Geçerlilik sonu = son görülme + süre. En özel kural kazanır (kaynak + tip &gt; kaynak &gt; tip &gt; genel).<span class="tech"> · RetentionPolicy tablosu</span></p></div>
+    <div class="head-actions"><span class="unsaved" id="retDirty" hidden role="status"></span><button class="btn sm" id="retReset" hidden>Vazgeç</button><button class="btn primary sm" id="retSave" hidden disabled><i data-lucide="save"></i>Kaydet</button></div></div>
+  <p class="muted" id="upcoming" style="font-size:13px;padding:0 18px 10px"></p>
+  <div id="retention"></div>
+</article>
 </div>
 
-<div class="grid g-main-side">
-  <article class="card flush">
-    <div class="card-head"><div><h2>IOC yaşam döngüsü</h2><p>Geçerlilik sonu = son görülme + süre. En özel kural kazanır (kaynak + tip &gt; kaynak &gt; tip &gt; genel).<span class="tech"> · RetentionPolicy tablosu</span></p></div></div>
-    <div id="retention"></div>
-  </article>
-  <article class="card">
-    <h2>Zamanlanmış bakım işleri</h2>
-    <p class="muted" style="font-size: 13px;margin:4px 0 10px">Her gece 02:00 süresi dolan IOC'ler kapatılır, her pazar 03:00 graf bakımı yapılır. Beslemeler 6 saatte bir çekilir.<span class="tech"> · SQL Server Agent işleri ve Windows Görev Zamanlayıcı</span></p>
-    <ul class="list" id="runs"></ul>
-    <p class="muted" style="font-size: 13px;margin-top:10px" id="upcoming"></p>
-  </article>
+<div id="intTab" role="tabpanel" aria-labelledby="tab-int" class="tab-panel" hidden>
+<article class="card flush">
+  <div class="card-head"><div><h2>Entegrasyonlar</h2><p>Kaynakların durumu, anahtar gereksinimi ve son başarılı senkron. Bağlantı testi veri indirmez, yalnızca sunucuya erişimi dener.</p></div></div>
+  <div id="integrations"></div>
+</article>
 </div>
 
+<div id="runsTab" role="tabpanel" aria-labelledby="tab-runs" class="tab-panel" hidden>
+<article class="card">
+  <div class="card-head"><div><h2>Zamanlanmış bakım işleri</h2><p>Her gece 02:00 süresi dolan IOC'ler kapatılır, her pazar 03:00 graf bakımı yapılır. Beslemeler 6 saatte bir çekilir.<span class="tech"> · SQL Server Agent işleri ve Windows Görev Zamanlayıcı</span></p></div></div>
+  <div id="runs"></div>
+</article>
 </div>
 
 <div id="dbTab" role="tabpanel" aria-labelledby="tab-db" class="tab-panel dev-only" hidden>
 <article class="card flush" id="qsCard" hidden>
-  <div class="card-head"><div><h2>En pahalı sorgular</h2><p>Veritabanında ortalama en uzun süren sorgular<span class="tech"> · Query Store (sys.query_store_*)</span></p></div></div>
+  <div class="card-head"><div><h2>En pahalı sorgular</h2><p>ThreatLens'in kendi sorguları, ortalama süreye göre; SSMS ve sistem sorguları süzülür<span class="tech"> · Query Store (sys.query_store_*)</span></p></div></div>
   <div id="qsTbl"></div>
 </article>
-
 <div class="grid g-2">
   <article class="card">
     <h2>Veritabanı</h2>

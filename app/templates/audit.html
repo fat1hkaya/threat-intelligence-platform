@@ -1,38 +1,61 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Denetim kayıtları</h1><p>Kullanıcı işlemleri ve veri değişiklikleri. Kayıtları veritabanı kendisi yazar; değiştirilemez ve silinemez.<span class="tech"> · AFTER tetikleyicileri yazar, INSTEAD OF tetikleyici değişikliği reddeder</span></p></div>
-</div>
-<section class="grid g-4" id="kpis" aria-label="Denetim özeti"></section>
-<article class="card">
-  <div class="card-head"><div><h2>Günlük olay sayısı (son 30 gün)</h2><p id="dailyNote"></p></div></div>
-  <div class="chart-box" style="height:200px"><canvas id="daily" role="img" aria-describedby="dailySummary"></canvas></div>
-  <p class="sr-only" id="dailySummary"></p>
-</article>
-<form class="toolbar" id="filters" role="search" aria-label="Denetim filtreleri">
-  <div class="tb-row">
-    <button type="button" class="btn filter-toggle" aria-expanded="false" aria-controls="auditFilters"></button>
-    <div class="tb-filters" id="auditFilters">
-      <div class="sheet-head"><h2>Filtreler</h2><button type="button" class="btn icon ghost sheet-close" aria-label="Filtreleri kapat"><i data-lucide="x"></i></button></div>
-      <label class="tb-field"><span>Tablo</span><select class="input" id="table" name="table"><option value="">Tümü</option></select></label>
-      <label class="tb-field"><span>İşlem</span><select class="input" id="action" name="action"><option value="">Tümü</option><option value="I">Ekleme</option><option value="U">Güncelleme</option><option value="D">Silme</option></select></label>
-      <label class="tb-field"><span>Kullanıcı</span><select class="input" id="user" name="user"><option value="">Tümü</option></select></label>
-      <label class="tb-field"><span>Başlangıç</span><input class="input" id="dateFrom" name="dateFrom" type="date"></label>
-      <label class="tb-field"><span>Bitiş</span><input class="input" id="dateTo" name="dateTo" type="date"></label>
-      <label class="check tb-check" title="Testlerin canlı veritabanına yazdığı eski kayıtlar silinemez; yalnızca görünümden çıkarılır"><input type="checkbox" id="hideAutomation" name="hideAutomation" value="true" checked data-default><span id="hideAutoLabel">Otomasyon kayıtlarını gizle</span></label>
-      <div class="sheet-foot"><button type="reset" class="btn ghost">Tümünü temizle</button><button type="button" class="btn primary sheet-done">Sonuçları göster</button></div>
-    </div>
-    <button class="btn ghost tb-clear" type="reset" hidden><i data-lucide="filter-x"></i>Temizle</button>
+  <div><h1>Denetim kayıtları</h1><p>Veri değişiklikleri, giriş denemeleri ve bakım işleri. Kayıtları veritabanı kendisi yazar; değiştirilemez ve silinemez.<span class="tech"> · AFTER tetikleyicileri yazar, INSTEAD OF tetikleyici değişikliği reddeder</span></p></div>
+  <div class="seg" role="tablist" aria-label="Denetim bölümleri" id="auditTabs">
+    <button type="button" role="tab" id="tab-changes" aria-controls="changesTab" aria-selected="true" data-tab="changesTab">Veri değişiklikleri</button>
+    <button type="button" role="tab" id="tab-logins" aria-controls="loginsTab" aria-selected="false" data-tab="loginsTab" tabindex="-1">Giriş denemeleri</button>
+    <button type="button" role="tab" id="tab-runs" aria-controls="runsTab" aria-selected="false" data-tab="runsTab" tabindex="-1">Bakım işleri</button>
   </div>
-  <div class="chips tb-chips" aria-label="Etkin filtreler" hidden></div>
-</form>
-<article class="card flush" id="loginCard" hidden>
-  <div class="card-head"><div><h2>Giriş denemeleri</h2><p id="loginNote">Yalnızca yönetici görür · 15 dakikada 5 hatalı deneme hesabı geçici olarak kilitler</p></div></div>
-  <div id="loginTbl"></div>
-</article>
-<div class="split no-panel" id="split">
-  <section class="card flush" aria-label="Denetim kayıtları"><div id="tbl"></div><div class="pager" id="pager"></div></section>
-  <aside class="card panel" tabindex="-1" aria-label="Olay detayı" hidden></aside>
+</div>
+
+<div id="changesTab" role="tabpanel" aria-labelledby="tab-changes" class="tab-panel">
+  <section class="grid g-4" id="kpis" aria-label="Denetim özeti"></section>
+  <article class="card">
+    <div class="card-head"><div><h2>Günlük olaylar</h2><p id="dailyNote"></p></div>
+      <div class="seg" role="group" aria-label="Dönem" id="period"><button type="button" data-v="7" aria-pressed="false">7 gün</button><button type="button" data-v="30" aria-pressed="true">30 gün</button><button type="button" data-v="90" aria-pressed="false">90 gün</button></div></div>
+    <div class="chart-box" style="height:200px"><canvas id="daily" role="img" aria-describedby="dailySummary"></canvas></div>
+    <p class="sr-only" id="dailySummary"></p>
+  </article>
+  <form class="toolbar" id="filters" role="search" aria-label="Denetim filtreleri">
+    <div class="tb-row">
+      <button type="button" class="btn filter-toggle" aria-expanded="false" aria-controls="auditFilters"></button>
+      <div class="tb-filters" id="auditFilters">
+        <div class="sheet-head"><h2>Filtreler</h2><button type="button" class="btn icon ghost sheet-close" aria-label="Filtreleri kapat"><i data-lucide="x"></i></button></div>
+        <label class="tb-field"><span>Tablo</span><select class="input" id="table" name="table"><option value="">Tümü</option></select></label>
+        <label class="tb-field"><span>İşlem</span><select class="input" id="action" name="action"><option value="">Tümü</option><option value="I">Ekleme</option><option value="U">Güncelleme</option><option value="D">Silme</option></select></label>
+        <label class="tb-field"><span>Kullanıcı</span><select class="input" id="user" name="user"><option value="">Tümü</option></select></label>
+        <label class="tb-field"><span>Başlangıç</span><input class="input" id="dateFrom" name="dateFrom" type="date"></label>
+        <label class="tb-field"><span>Bitiş</span><input class="input" id="dateTo" name="dateTo" type="date"></label>
+        <label class="check tb-check" title="Testlerin canlı veritabanına yazdığı eski kayıtlar silinemez; yalnızca görünümden çıkarılır"><input type="checkbox" id="hideAutomation" name="hideAutomation" value="true" checked data-default><span id="hideAutoLabel">Otomasyon kayıtlarını gizle</span></label>
+        <div class="sheet-foot"><button type="reset" class="btn ghost">Tümünü temizle</button><button type="button" class="btn primary sheet-done">Sonuçları göster</button></div>
+      </div>
+      <button class="btn ghost tb-clear" type="reset" hidden><i data-lucide="filter-x"></i>Temizle</button>
+    </div>
+    <div class="chips tb-chips" aria-label="Etkin filtreler" hidden></div>
+  </form>
+  <div class="split no-panel" id="split">
+    <section class="card flush" aria-label="Denetim kayıtları"><div id="tbl"></div><div class="pager" id="pager"></div></section>
+    <aside class="card panel" tabindex="-1" aria-label="Olay detayı" hidden></aside>
+  </div>
+</div>
+
+<div id="loginsTab" role="tabpanel" aria-labelledby="tab-logins" class="tab-panel" hidden>
+  <article class="card flush">
+    <div class="card-head"><div><h2>Giriş denemeleri</h2><p id="loginNote">15 dakikada 5 hatalı deneme hesabı geçici olarak kilitler</p></div>
+      <div class="head-actions">
+        <div class="seg" role="group" aria-label="Sonuç filtresi" id="loginFilter"><button type="button" data-v="" aria-pressed="true">Tümü</button><button type="button" data-v="failed" aria-pressed="false">Hatalı</button><button type="button" data-v="locked" aria-pressed="false">Kilitlenme</button><button type="button" data-v="ok" aria-pressed="false">Başarılı</button></div>
+        <label class="check" title="Testlerin yaptığı giriş denemeleri"><input type="checkbox" id="loginHideAuto" checked>Otomasyon kayıtlarını gizle</label>
+      </div></div>
+    <div id="loginTbl"></div><div class="pager" id="loginPager"></div>
+  </article>
+</div>
+
+<div id="runsTab" role="tabpanel" aria-labelledby="tab-runs" class="tab-panel" hidden>
+  <article class="card">
+    <div class="card-head"><div><h2>Bakım işleri</h2><p>İş türüne göre son çalışma ve sonucu; geçmişi görmek için satırı açın<span class="tech"> · MaintenanceRun, SQL Server Agent</span></p></div></div>
+    <div id="runs"></div>
+  </article>
 </div>
 {% endblock %}
 {% block scripts %}<script src="/static/vendor/chart.umd.min.js"></script><script src="/static/js/entities.js?v={{ v }}"></script><script src="/static/js/audit.js?v={{ v }}"></script>{% endblock %}

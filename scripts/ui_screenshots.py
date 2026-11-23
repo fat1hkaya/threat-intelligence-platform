@@ -138,7 +138,12 @@ def page_list(ids: dict) -> list[tuple[str, str, str | None]]:
         ("attack-coverage", "/attack?view=coverage", None),
         ("sources", "/sources", None),
         ("audit", "/audit", None),
+        ("audit-logins", "/audit?tab=logins", None),
+        ("audit-runs", "/audit?tab=runs", None),
         ("settings", "/settings", None),
+        ("settings-risk", "/settings?tab=risk", None),
+        ("settings-integrations", "/settings?tab=integrations", None),
+        ("settings-maintenance", "/settings?tab=maintenance", None),
     ]
     return [p for p in pages if p[1]]
 

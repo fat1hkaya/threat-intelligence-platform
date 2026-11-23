@@ -2,7 +2,11 @@
 (() => {
   const { api, esc, fmtN, fmtD, list, qs, panel, panelHead, loading, empty, icons, toast } = TL;
   const split = document.getElementById('split');
-  let view = qs.get('view') || 'list';
+  let view = qs.get('view') || 'list', brush = null;   // brush: matriste tıklayarak işaretleme düzeyi (null = kapalı)
+  // Isı lejantı: tekniği kullanan aktör sayısı kovaları
+  const HEAT = [[0, '0'], [1, '1–5'], [6, '6–20'], [21, '21–50'], [51, '50+']];
+  const heatOf = (n) => (n <= 0 ? 0 : n <= 5 ? 1 : n <= 20 ? 2 : n <= 50 ? 3 : 4);
+  const BLIND_PER_PAGE = 10;
 
   const LEVEL = ['Tespit edilemiyor', 'Kısmi tespit', 'Tam tespit'];
   const covBadge = (l) => `<span class="cov-pill cov-${l}"><i data-lucide="${['shield-x', 'shield-half', 'shield-check'][l]}" style="width:15px;height:15px"></i>${LEVEL[l]}</span>`;
@@ -38,6 +42,11 @@
   async function coverage() {
     let d; try { d = await api('/api/coverage'); } catch (e) { toast(e.message, 'err'); return; }
     const t = d.totals || {}; const pct = (x) => `%${Number(x ?? 0).toLocaleString('tr-TR')}`;
+    // Kapsam hiç girilmediyse grafik ve tablolar yerine başlangıç ekranı (her değer %0 olurdu)
+    const startBox = document.getElementById('covStart'), body = document.getElementById('covBody');
+    const none = !t.Marked;
+    startBox.hidden = !none; body.hidden = none;
+    if (none) { icons(); return; }
     document.getElementById('covKpis').innerHTML = [
       ['shield-check', '', 'İşaretlenen teknik', fmtN(t.Marked), 'kurumun beyanı'],
       ['grid-3x3', 'c', 'Üst tekniklerde tam tespit', fmtN(t.FullTop), `${fmtN(t.PartialTop || 0)} kısmi · toplam ${fmtN(t.TopTechniques || 0)}`],
@@ -65,7 +74,14 @@
       <p class="muted" style="font-size:13px">${fmtN(s.Techniques)} teknik: ${fmtN(s.FullCount)} tam, ${fmtN(s.PartialCount)} kısmi, <b class="cov-0">${fmtN(s.NoneCount)} kör nokta</b></p>
       <p style="margin-top:8px"><a class="btn sm" href="/api/export/navigator/actor/${id}?coverage=true" download title="Aktörün teknikleri kapsama renkleriyle (yeşil tam, sarı kısmi, kırmızı kör nokta)"><i data-lucide="download"></i>Navigator katmanı</a></p>
       <h3 style="margin-top:12px">Kör noktalar (en çok aktörün kullandığı önce)</h3>
-      ${blind.length ? `<ul class="list" style="max-height:300px;overflow:auto">${blind.slice(0, 40).map((t) => `<li><a href="/attack?id=${t.TechniqueID}"><span><span class="mono">${esc(t.ExternalID)}</span> ${esc(t.Name)}</span><small>${t.ActorCount} aktör</small></a></li>`).join('')}</ul>` : '<p class="cov-2" style="font-size:13px">Kör nokta yok.</p>'}`;
+      ${blind.length ? '<ul class="list" id="blindList"></ul><div class="pager" id="blindPager"></div>' : '<p class="cov-2" style="font-size:13px">Kör nokta yok.</p>'}`;
+    if (!blind.length) { icons(); return; }
+    const page = (p) => {
+      document.getElementById('blindList').innerHTML = blind.slice((p - 1) * BLIND_PER_PAGE, p * BLIND_PER_PAGE).map((t) => `<li><a href="/attack?id=${t.TechniqueID}"><span><span class="mono">${esc(t.ExternalID)}</span> ${esc(t.Name)}</span><small>${t.ActorCount} aktör</small></a></li>`).join('');
+      TL.pager(document.getElementById('blindPager'), { page: p, size: BLIND_PER_PAGE, total: blind.length }, page, 'kör nokta');
+      icons();
+    };
+    page(1);
   }
 
   async function detail(id) {
@@ -102,7 +118,7 @@
   async function tactics() {
     const rows = await api('/api/tactics'); const sel = document.getElementById('tactic').value;
     document.getElementById('tactics').innerHTML = rows.map((t) => `<button type="button" class="tactic" data-id="${t.TacticID}" aria-pressed="${String(t.TacticID) === sel}">
-      <small>${esc(t.ExternalID)}</small><b>${esc(t.Name)}</b><span class="cnt">${t.TechniqueCount} teknik · ${t.UsedByActors} kullanımda</span></button>`).join('');
+      <b>${esc(t.Name)}</b><span class="cnt" title="${t.TechniqueCount} teknikten ${t.UsedByActors} tanesini en az bir aktör kullanıyor">${t.TechniqueCount} teknik · aktörlerin kullandığı ${t.UsedByActors}</span></button>`).join('');
   }
 
   async function matrix() {
@@ -114,13 +130,40 @@
       const cov = Object.fromEntries(covRows.map((c) => [c.TechniqueID, c.Level]));
       const max = Math.max(1, ...cols.flatMap((c) => c.techniques.map((t) => t.ActorCount)));
       const hl = p.actor || p.campaign || p.malware;
-      document.getElementById('matrixNote').textContent = hl ? 'Çerçeveli hücreler seçili aktör/kampanya/zararlının kullandığı tekniklerdir. Renk yoğunluğu: tekniği kullanan aktör sayısı.'
-        : 'Renk yoğunluğu tekniği kullanan aktör sayısını gösterir. Bir aktör veya kampanya seçerek tekniklerini işaretleyin.';
-      document.getElementById('matrixNote').textContent += ' Hücre alt çizgisi: tespit kapsaması (yeşil tam, sarı kısmi).';
-      box.innerHTML = cols.map((c) => `<div class="col"><h3>${esc(c.Name)}<small>${c.techniques.length} teknik</small></h3>
-        ${c.techniques.map((t) => `<button type="button" class="cell ${t.Highlighted ? 'hl' : ''}" data-id="${t.TechniqueID}" ${cov[t.TechniqueID] ? `data-cov="${cov[t.TechniqueID]}"` : ''} style="--heat:${(t.ActorCount / max).toFixed(2)}"
+      void max;
+      document.getElementById('matrixNote').innerHTML = `<span class="legend-box" aria-label="Renk: tekniği kullanan aktör sayısı">${HEAT.map(([, l], k) => `<span><i class="heat-${k}"></i>${l}</span>`).join('')}<span class="faint">aktör</span></span>
+        <span class="legend-box"><span><i class="cov-line-2"></i>tam tespit</span><span><i class="cov-line-1"></i>kısmi</span>${hl ? '<span><i class="hl-mark"></i>seçili aktör/kampanya</span>' : ''}</span>`;
+      document.getElementById('matrixHead').innerHTML = cols.map((c) => `<div class="mh-col"><b title="${esc(c.Name)}">${esc(c.Name)}</b><small>${c.techniques.length} teknik</small></div>`).join('');
+      box.innerHTML = cols.map((c) => `<div class="col" role="group" aria-label="${esc(c.Name)}"><h3 class="sr-only">${esc(c.Name)} (${c.techniques.length} teknik)</h3>
+        ${c.techniques.map((t) => `<button type="button" class="cell heat-${heatOf(t.ActorCount)} ${t.Highlighted ? 'hl' : ''}" data-id="${t.TechniqueID}" ${cov[t.TechniqueID] ? `data-cov="${cov[t.TechniqueID]}"` : ''}
           title="${esc(t.ExternalID)} ${esc(t.Name)}: ${t.ActorCount} aktör, ${t.MalwareCount} zararlı"><small>${esc(t.ExternalID)}</small><br>${esc(t.Name)}</button>`).join('')}</div>`).join('');
+      syncHead();
     } catch (e) { box.innerHTML = empty(e.message); }
+  }
+
+  // Yapışkan sütun başlığı şeridi matrisle birlikte yatay kayar
+  function syncHead() {
+    const m = document.getElementById('matrix'), h = document.getElementById('matrixHead');
+    if (!m || !h) return;
+    h.style.gridTemplateColumns = getComputedStyle(m).gridTemplateColumns;
+    h.scrollLeft = m.scrollLeft;
+    const cols = m.querySelectorAll('.col'), vis = [...cols].filter((c) => c.offsetLeft - m.scrollLeft < m.clientWidth - 40 && c.offsetLeft + c.offsetWidth - m.scrollLeft > 40).length;
+    document.getElementById('matrixScroll').textContent = m.scrollWidth > m.clientWidth + 1 ? `${cols.length} taktikten ${vis} tanesi görünüyor · yana kaydırın` : '';
+  }
+  // Matriste tıklayarak işaretleme: seçilen düzey tıklanan tekniğe yazılır
+  function setBrush(v) {
+    brush = v;
+    document.querySelectorAll('#brush [data-brush]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.brush === String(v))));
+    document.getElementById('matrixView').classList.toggle('marking', v !== null);
+    document.getElementById('brushHint').textContent = v === null ? '' : 'İşaretleme açık: bir tekniğe tıklayınca seçili düzey kaydedilir.';
+  }
+  async function paint(cell) {
+    const id = cell.dataset.id;
+    try {
+      if (brush === 'clear') { await api(`/api/coverage/technique/${id}`, { method: 'DELETE' }); delete cell.dataset.cov; }
+      else { await api(`/api/coverage/technique/${id}`, { method: 'PUT', body: { level: +brush } }); if (+brush) cell.dataset.cov = brush; else delete cell.dataset.cov; }
+      cell.classList.add('painted'); setTimeout(() => cell.classList.remove('painted'), 600);
+    } catch (e) { toast(e.message, 'err'); }
   }
 
   function setView(v) {
@@ -160,7 +203,34 @@
       const a = e.target.closest('[data-cov-actor]'); if (!a) return; e.preventDefault();
       document.getElementById('covActor').value = a.dataset.covActor; actorCoverage(a.dataset.covActor);
     });
-    document.getElementById('matrix').addEventListener('click', (e) => { const c = e.target.closest('.cell'); if (c) showTech(c.dataset.id); });
+    document.getElementById('matrix').addEventListener('click', (e) => { const c = e.target.closest('.cell'); if (!c) return; brush !== null ? paint(c) : showTech(c.dataset.id); });
+    document.getElementById('matrix').addEventListener('scroll', syncHead, { passive: true });
+    window.addEventListener('resize', TL.debounce(syncHead, 150));
+    document.getElementById('brush')?.addEventListener('click', (e) => { const b = e.target.closest('[data-brush]'); if (!b) return; setBrush(brush === b.dataset.brush ? null : b.dataset.brush); });
+    if (!TL.can('analyst')) {   // izleyici kapsama işaretleyemez
+      ['covMark', 'covImport'].forEach((k) => { const el = document.getElementById(k); if (el) { el.disabled = true; el.title = 'Kapsama işaretlemek için analist yetkisi gerekir'; } });
+      document.querySelector('.brush-wrap').hidden = true;
+    }
+    // Kapsam başlangıç ekranı: işaretlemeye başla / Navigator katmanı içe aktar
+    document.getElementById('covMark')?.addEventListener('click', () => { setView('matrix'); setBrush('2'); document.getElementById('matrixView').scrollIntoView({ block: 'start' }); });
+    const navFile = document.getElementById('navFile');
+    document.getElementById('covImport')?.addEventListener('click', () => navFile.click());
+    navFile?.addEventListener('change', async () => {
+      const f = navFile.files[0]; navFile.value = ''; if (!f) return;
+      let layer; try { layer = JSON.parse(await f.text()); } catch { toast('Dosya geçerli bir JSON değil.', 'err'); return; }
+      try {
+        const pre = await api('/api/coverage/import-navigator', { method: 'POST', params: { dryRun: true }, body: layer });
+        if (!pre.matched) { toast('Katmanda tam ya da kısmi tespit olarak yorumlanabilecek teknik bulunamadı.', 'err'); return; }
+        const d = TL.dialog(`<div class="dlg"><div class="dlg-head"><h2>Navigator katmanını içe aktar</h2><button type="button" class="btn icon ghost" data-dismiss aria-label="Kapat"><i data-lucide="x"></i></button></div>
+          <p><b>${fmtN(pre.matched)}</b> teknik tam ya da kısmi tespit olarak işaretlenecek${pre.skipped ? `; ${fmtN(pre.skipped)} teknik atlanacak (kapalı, kırmızı ya da düşük skorlu)` : ''}.</p>
+          <p class="muted" style="font-size:13px;margin-top:6px">Yeşil = tam, sarı = kısmi; başka araçların katmanlarında skor ≥ 67 tam, ≥ 34 kısmi sayılır. Var olan işaretlerin düzeyi güncellenir.</p>
+          <div class="dlg-foot"><button class="btn" data-dismiss>Vazgeç</button><button class="btn primary" id="navYes">İçe aktar</button></div></div>`);
+        d.querySelector('#navYes').onclick = async () => {
+          try { const r = await api('/api/coverage/import-navigator', { method: 'POST', body: layer }); d.close(); toast(`${fmtN(r.applied)} teknik işaretlendi.`); coverage(); }
+          catch (x) { toast(x.message, 'err'); }
+        };
+      } catch (x) { toast(x.message, 'err'); }
+    });
     await page.start();
     const linked = qs.get('actor') || qs.get('campaign') || qs.get('malware');
     if (view !== 'list') setView(view); else if (linked) setView('matrix');

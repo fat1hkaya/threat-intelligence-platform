@@ -2,6 +2,7 @@
 {% block content %}
 <div class="page-head">
   <div><h1>Veri kaynakları</h1><p>İstihbarat kaynaklarının durumu, içe aktarma işleri ve dosyadan IOC yükleme.</p></div>
+  <div class="page-actions"><button class="btn primary" id="uploadBtn" hidden><i data-lucide="upload"></i>Dosya içe aktar</button></div>
 </div>
 <section class="grid g-4" id="kpis" aria-label="Kaynak özeti"></section>
 <p class="notice" id="keyNotice" hidden><i data-lucide="key-round"></i><span>ThreatFox, MalwareBazaar ve URLhaus için ücretsiz abuse.ch anahtarı gerekir (<a href="https://auth.abuse.ch" target="_blank" rel="noopener noreferrer">auth.abuse.ch</a>). Anahtarı <code>.env</code> dosyasına <code>ABUSECH_AUTH_KEY=...</code> olarak yazıp uygulamayı yeniden başlatın. Anahtar yokken uygulama ATT&amp;CK, CISA KEV ve Feodo Tracker verisiyle çalışmaya devam eder.</span></p>
@@ -11,25 +12,13 @@
   <div id="srcTbl"></div>
 </article>
 
-<div class="grid g-main-side">
-  <article class="card flush">
-    <div class="card-head"><div><h2>İçe aktarma işleri</h2><p>Eklenen, güncellenen, atlanan ve hatalı satırlar<span class="tech"> · ImportJob tablosu</span></p></div>
-      <div style="display:flex;gap:8px"><label class="sr-only" for="jSrc">Kaynak</label><select class="input" id="jSrc" style="width:auto"><option value="">Tüm kaynaklar</option></select>
+<article class="card flush">
+  <div class="card-head"><div><h2>İçe aktarma işleri</h2><p>Satıra tıklayınca işin ayrıntısı ve hatalı satırları açılır<span class="tech"> · ImportJob, ImportJobError</span></p></div>
+    <div class="head-actions">
+      <label class="check" title="Hiçbir satırı değiştirmeyen başarılı işler (ör. her senkronda tekrarlanan '0 yeni') gizlenir"><input type="checkbox" id="jChanged" checked>Yalnızca değişiklik olanlar ve hatalılar</label>
+      <label class="sr-only" for="jSrc">Kaynak</label><select class="input" id="jSrc" style="width:auto"><option value="">Tüm kaynaklar</option></select>
       <label class="sr-only" for="jStatus">Durum</label><select class="input" id="jStatus" style="width:auto"><option value="">Tüm durumlar</option><option value="success">Başarılı</option><option value="partial">Kısmi</option><option value="failed">Hatalı</option></select></div></div>
-    <div id="jobTbl"></div><div class="pager" id="jobPager"></div>
-  </article>
-  <article class="card" id="uploadCard">
-    <h2>Dosyadan IOC içe aktar</h2>
-    <p class="muted" style="font-size:13px;margin:6px 0 14px">CSV (başlık satırında en az <code>value</code>) veya JSON. Satırlar normalleştirilir, doğrulanır ve tek seferde yazılır.<span class="tech"> · sp_BulkImportIndicators, tek transaction</span></p>
-    <form id="upForm" class="grid" style="gap:12px">
-      <div class="field"><label for="file">Dosya</label><input id="file" name="file" type="file" accept=".csv,.json,.txt" required></div>
-      <div class="field"><label for="upSrc">Kaynak</label><select class="input" id="upSrc" name="sourceId"></select></div>
-      <label class="check"><input type="checkbox" name="strict" value="true"><span>Katı mod: tek hatalı satır varsa hiçbir satırı kaydetme<span class="tech"> (ROLLBACK)</span></span></label>
-      <button class="btn primary" type="submit"><i data-lucide="upload"></i>İçe aktar</button>
-      <p class="faint" style="font-size: 13px">Örnek dosyalar: <a href="/static/samples/ornek_gecerli.csv" download>geçerli CSV</a>, <a href="/static/samples/ornek_hatali.csv" download>hatalı CSV</a>, <a href="/static/samples/ornek.json" download>JSON</a></p>
-    </form>
-    <div id="upOut" style="margin-top:14px"></div>
-  </article>
-</div>
+  <div id="jobTbl"></div><div class="pager" id="jobPager"></div>
+</article>
 {% endblock %}
 {% block scripts %}<script src="/static/js/sources.js?v={{ v }}"></script>{% endblock %}

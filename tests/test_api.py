@@ -754,3 +754,35 @@ def test_ioc_check_bulk_status_export_and_case_batch(analyst, viewer, unique):
             analyst.delete(f"/api/cases/{cid}")
         for i in ids:
             analyst.delete(f"/api/iocs/{i}")
+
+
+# ------------------------------------------------------------------ aşama 4 uçları
+def test_integrations_list_all_sources(admin):
+    rows = admin.get("/api/integrations").json()
+    names = {r["Name"] for r in rows}
+    assert {"Malpedia", "iptoasn.com", "MITRE ATT&CK", "CISA KEV"} <= names
+    assert all(("KeyDefined" in r) and ("LastSuccessAt" in r) for r in rows)
+
+
+def test_maintenance_runs_endpoint(admin):
+    assert isinstance(admin.get("/api/maintenance/runs", params={"limit": 10}).json(), list)
+
+
+def test_navigator_import_dry_run_writes_nothing(admin):
+    before = admin.get("/api/coverage/levels").json()
+    layer = {"name": "t", "techniques": [{"techniqueID": "T1059", "color": "#34D399"}, {"techniqueID": "T1566", "score": 50},
+                                         {"techniqueID": "T1027", "color": "#F87171"}, {"techniqueID": "T9999", "score": 90}]}
+    r = admin.post("/api/coverage/import-navigator", params={"dryRun": True}, json=layer).json()
+    assert r["dryRun"] and r["applied"] == 0 and r["matched"] == 2 and r["skipped"] == 1
+    assert admin.get("/api/coverage/levels").json() == before
+
+
+def test_case_detail_has_status_events(admin):
+    cases = admin.get("/api/cases").json()
+    if cases:
+        assert "statusEvents" in admin.get(f"/api/cases/{cases[0]['InvestigationID']}").json()
+
+
+def test_imports_changed_filter(admin):
+    d = admin.get("/api/imports", params={"changed": True, "size": 50}).json()
+    assert all(j["RowsInserted"] + j["RowsUpdated"] + j["RowsFailed"] > 0 or j["Status"] != "success" for j in d["items"])

@@ -26,6 +26,17 @@
 </form>
 
 <section id="coverageView" hidden aria-label="Tespit kapsama haritası">
+  <article class="card cov-start" id="covStart" hidden>
+    <span class="ic"><i data-lucide="shield-half"></i></span>
+    <div><h2>Kurumunuzun hangi teknikleri tespit edebildiğini işaretleyin</h2>
+      <p class="muted">Kapsam kurumun kendi beyanıdır; henüz hiçbir teknik işaretlenmedi. İşaretledikçe kör noktalarınız, aktörlere göre kapsamanız ve taktik bazında oranlar burada hesaplanır.</p>
+      <div class="chips" style="margin-top:12px">
+        <button type="button" class="btn primary" id="covMark"><i data-lucide="mouse-pointer-click"></i>Teknikleri işaretlemeye başla</button>
+        <button type="button" class="btn" id="covImport"><i data-lucide="upload"></i>Navigator katmanı içe aktar</button>
+        <input type="file" id="navFile" accept=".json,application/json" hidden>
+      </div></div>
+  </article>
+  <div id="covBody">
   <p class="notice"><i data-lucide="shield-half"></i><span>Kurumunuzun her tekniği ne düzeyde tespit edebildiğini teknik detayında işaretleyin. Alt teknik işaretlenmemişse üst tekniğin düzeyini devralır. Kapsama kurumun kendi beyanıdır; başlangıçta hiçbir teknik işaretli değildir.</span>
     <a class="btn sm" style="margin-left:auto;flex-shrink:0" href="/api/export/navigator/coverage" download title="MITRE ATT&amp;CK Navigator katmanı"><i data-lucide="download"></i>Navigator'a aktar</a></p>
   <section class="grid g-4" id="covKpis" style="margin-top:18px"></section>
@@ -42,13 +53,22 @@
       <p class="faint" style="font-size:12px">Kullandığı her tekniği en az kısmen tespit edebildiğimiz aktörler<span class="tech"> · ilişkisel bölme (çift NOT EXISTS)</span></p>
       <div id="covFull" style="margin-top:8px"></div></article>
   </div>
+  </div>
 </section>
 
 <div class="split no-panel" id="split">
   <section class="card flush" aria-label="Teknikler">
     <div id="listView"><div id="tbl"></div><div class="pager" id="pager"></div></div>
     <div id="matrixView" hidden style="padding:16px">
-      <p class="muted" id="matrixNote" style="font-size: 13px;margin-bottom:10px"></p>
+      <div class="matrix-bar">
+        <div class="matrix-legend" id="matrixNote"></div>
+        <p class="faint matrix-scroll" id="matrixScroll" aria-live="polite"></p>
+        <div class="brush-wrap"><span class="faint" id="brushHint" aria-live="polite"></span>
+          <div class="seg" role="group" aria-label="Tıklayarak kapsama işaretle" id="brush">
+            <button type="button" data-brush="2" aria-pressed="false">Tam</button><button type="button" data-brush="1" aria-pressed="false">Kısmi</button><button type="button" data-brush="0" aria-pressed="false">Yok</button><button type="button" data-brush="clear" aria-pressed="false">İşareti kaldır</button>
+          </div></div>
+      </div>
+      <div class="matrix-head" id="matrixHead" aria-hidden="true"></div>
       <div class="matrix" id="matrix"></div>
     </div>
   </section>
