@@ -14,7 +14,7 @@
       { id: 'status', label: 'Durum', priority: 2, hideIfAllZero: isOngoing, render: ongoing },
       { id: 'start', label: 'Başlangıç', priority: 2, render: (r) => r.StartDate ? fmtD(r.StartDate) : '—' },
       { id: 'end', label: 'Bitiş', priority: 3, render: (r) => r.EndDate ? fmtD(r.EndDate) : '—' },
-      { id: 'actor', label: 'Aktör', render: (r) => r.ActorName ? `<a href="/actors?id=${r.ActorID}">${esc(r.ActorName)}</a>` : '<span class="faint">Atfedilmemiş</span>' },
+      { id: 'actor', label: 'Aktör', hint: '— : kaynakta bir aktöre atfedilmemiş', render: (r) => r.ActorName ? `<a href="/actors?id=${r.ActorID}">${esc(r.ActorName)}</a>` : TL.unknown('Atfedilmemiş') },
       { id: 'malware', label: 'Zararlı', num: true, priority: 3, render: (r) => num(r.MalwareCount) },
       { id: 'techniques', label: 'Teknik', num: true, render: (r) => num(r.TechniqueCount) },
       { id: 'iocs', label: 'IOC', num: true, hideIfAllZero: (r) => r.IndicatorCount, render: (r) => num(r.IndicatorCount, { strong: true }) },

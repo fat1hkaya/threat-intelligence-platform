@@ -9,7 +9,7 @@
   async function loadSources() {
     const d = await api('/api/sources'); const t = d.totals;
     document.getElementById('kpis').innerHTML = [
-      ['database', '', 'Toplam kaynak', fmtN(t.Sources), `${fmtN(t.ActiveSources)} aktif`],
+      ['database', '', 'Kaynak', fmtN(t.Sources), t.ActiveSources === t.Sources ? 'Hepsi etkin' : `${fmtN(t.ActiveSources)} etkin · ${fmtN(t.Sources - t.ActiveSources)} devre dışı`],
       ['calendar-clock', 'c', 'Son içe aktarma', t.LastJobAt ? ago(t.LastJobAt) : '—', t.LastJobAt ? fmtDT(t.LastJobAt) : 'Henüz iş yok'],
       ['circle-check', '', 'Başarılı işler (7 gün)', fmtN(t.Success7d), `${fmtN(t.Jobs7d)} işten`],
       ['triangle-alert', 'r', 'Sorunlu işler (7 gün)', fmtN(t.Problem7d), 'Kısmi veya hatalı'],
@@ -37,7 +37,7 @@
         return `<button type="button" class="btn sm icon ghost" data-feed="${s.Feed || ''}" ${can_ ? '' : 'disabled'} aria-label="${esc(why)}: ${esc(s.Name)}" title="${esc(why)}"><i data-lucide="refresh-cw"></i></button>
           <details class="more-menu row-menu"><summary class="btn sm icon ghost" aria-label="${esc(s.Name)}: diğer eylemler" title="Diğer eylemler"><i data-lucide="ellipsis"></i></summary><div class="menu-pop" role="menu">${menu}</div></details>`; } },
     ], d.sources, { caption: 'Kaynaklar' });
-    const opts = d.sources.map((s) => `<option value="${s.SourceID}">${esc(s.Name)}</option>`).join('');
+    const opts = d.sources.filter((s) => s.LastJobID).map((s) => `<option value="${s.SourceID}">${esc(s.Name)}</option>`).join('');
     const js = document.getElementById('jSrc'); if (js.options.length === 1) js.insertAdjacentHTML('beforeend', opts);
     icons();
   }

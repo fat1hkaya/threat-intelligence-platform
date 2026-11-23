@@ -25,7 +25,7 @@
     const since = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     // Her kart aynı biçimde: ikon, sayı, tek satır etiket, ok. 0 olanlar soluk; >0 olanların sol kenarı önem renginde.
     const items = [
-      { icon: 'siren', tone: 'bad', n: a.HighSeverity24h, label: 'yüksek önemli · 24 saat', title: 'Son 24 saatte görülen, önemi yüksek ya da kritik aktif IOC',
+      { icon: 'siren', tone: 'bad', n: a.HighSeverity24h, label: 'son 24 saatte yüksek önem', title: 'Son 24 saatte görülen, önemi yüksek ya da kritik olan aktif IOC sayısı',
         href: `/iocs?severity=high,critical&status=active&dateFrom=${since}` },
       { icon: 'eye', tone: 'warn', n: a.Sighted7d, label: 'kurumda görüldü · 7 gün', title: 'Son 7 günde kurum içinde görülen (görülme kaydı olan) IOC', href: '/hunt' },
       { icon: 'briefcase', tone: 'info', n: a.OpenCases, label: a.InvestigatingCases ? `açık vaka · ${fmtN(a.InvestigatingCases)} inceleme` : 'açık vaka', title: 'Kapatılmamış vakalar', href: '/cases' },
@@ -55,8 +55,9 @@
         : `${fmtN(k.ActiveIOCs)} aktif · ${fmtN(k.NewIOCs)} yeni`) + (k.PrevNewIOCs ? ` · ${delta(k.NewIOCs, k.PrevNewIOCs)}` : '')],
       ['users', 'r', 'Tehdit aktörü', k.Actors, `${fmtN(k.ActorsWithIOCs)} tanesi IOC'lerimizle ilişkili`],
       ['bug', 'c', 'Zararlı yazılım ailesi', k.MalwareFamilies, `${fmtN(k.FamiliesWithIOCs)} ailenin IOC'si var`],
-      ['triangle-alert', 'a', 'Yüksek önemli IOC', k.HighSeverityIOCs, `önemi yüksek/kritik · yüksek riskli (skor ≥ ${k.HighRiskMin}): ${fmtN(k.HighRiskIOCs)}`],
-    ].map(([icon, c, lbl, val, sub]) => `<article class="card kpi"><span class="ic ${c}"><i data-lucide="${icon}"></i></span>
+      ['triangle-alert', 'a', 'Yüksek veya kritik önemli', k.HighSeverityIOCs, `tümü · risk skoru ${k.HighRiskMin} ve üstü: ${fmtN(k.HighRiskIOCs)}`,
+        'Önemi yüksek ya da kritik olan tüm aktif IOC sayısı (zaman sınırı yok)'],
+    ].map(([icon, c, lbl, val, sub, tip]) => `<article class="card kpi"${tip ? ` title="${esc(tip)}"` : ''}><span class="ic ${c}"><i data-lucide="${icon}"></i></span>
       <div><div class="val">${fmtN(val)}</div><div class="lbl">${lbl}</div><div class="sub">${sub}</div></div></article>`).join('');
 
     // Önem halkası
@@ -69,7 +70,7 @@
     document.getElementById('sevSummary').textContent = 'Risk skoru dağılımı: ' + sevRows.map((r) => `${r.Name} ${r.Total}`).join(', ');
     const top = sevRows.filter((r) => r.Code === 'critical' || r.Code === 'high').reduce((a, r) => a + r.Total, 0);
     document.getElementById('riskNote').textContent = top ? '' : 'Yüksek ve kritik banda çıkmak için IOC\'nin kurum içinde görülmüş olması gerekir (görülme sayısı skora eklenir).';
-    document.getElementById('sevTotal').textContent = `${fmtN(total)} aktif IOC`;
+    document.getElementById('sevTotal').textContent = "Aktif IOC'ler, Ayarlar'daki bant eşiklerine göre";
     document.getElementById('sevStack').innerHTML = sevRows.filter((r) => r.Total).map((r) => `<i class="sev-seg sev-${r.Code}" style="flex-grow:${r.Total}" title="${esc(label(r))}: ${fmtN(r.Total)}"></i>`).join('');
 
     bars(document.getElementById('typeBars'), d.byType, (r) => TYPE_LABEL[r.Code] || r.Name, (r) => r.Total, (r) => `/iocs?type=${r.Code}`);
@@ -77,7 +78,7 @@
     // Eğilim
     document.getElementById('trendTitle').textContent = `Son ${days} günde eklenen IOC'ler`;
     const sum = d.trend.reduce((a, r) => a + r.Added, 0);
-    document.getElementById('trendNote').textContent = `${fmtN(sum)} kayıt, ilk görülme tarihine göre`;
+    document.getElementById('trendNote').textContent = 'İlk görülme tarihine göre';
     document.getElementById('trendSummary').textContent = `Son ${days} günde toplam ${sum} IOC eklendi. En yoğun gün: ` +
       (() => { const m = d.trend.reduce((a, r) => (r.Added > a.Added ? r : a), d.trend[0] || { Added: 0 }); return m ? `${m.Day} (${m.Added})` : '-'; })();
     trendChart?.destroy();

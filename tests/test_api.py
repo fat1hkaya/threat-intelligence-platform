@@ -786,3 +786,21 @@ def test_case_detail_has_status_events(admin):
 def test_imports_changed_filter(admin):
     d = admin.get("/api/imports", params={"changed": True, "size": 50}).json()
     assert all(j["RowsInserted"] + j["RowsUpdated"] + j["RowsFailed"] > 0 or j["Status"] != "success" for j in d["items"])
+
+
+# ------------------------------------------------------------------ Konsol aşama 1
+def test_meta_ioc_sources_only_lists_sources_with_iocs(viewer, admin):
+    listed = {s["SourceID"] for s in viewer.get("/api/meta").json()["iocSources"]}
+    health = admin.get("/api/sources").json()["sources"]
+    with_iocs = {s["SourceID"] for s in health if s["IndicatorCount"]}
+    assert listed == with_iocs
+    for sid in listed:                                     # her seçenek boş olmayan bir liste verir
+        assert viewer.get("/api/iocs", params={"source": sid, "size": 5}).json()["total"] > 0
+
+
+def test_malware_attack_filter_partitions_list(viewer):
+    total = viewer.get("/api/malware", params={"size": 5}).json()["total"]
+    matched = viewer.get("/api/malware", params={"attack": "matched", "size": 5}).json()["total"]
+    un = viewer.get("/api/malware", params={"attack": "unmatched", "size": 200}).json()
+    assert matched + un["total"] == total
+    assert all(m["TechniqueCount"] == 0 and m["ActorCount"] == 0 for m in un["items"])

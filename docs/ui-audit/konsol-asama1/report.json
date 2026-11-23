@@ -1,0 +1,76 @@
+{
+  "primary": {
+    "overview": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "allowedScroll": [],
+      "truncatedNoTitle": [],
+      "truncatedCount": 0,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "iocs": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "allowedScroll": [],
+      "truncatedNoTitle": [],
+      "truncatedCount": 0,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "campaigns": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "allowedScroll": [],
+      "truncatedNoTitle": [],
+      "truncatedCount": 0,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "sources": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "allowedScroll": [],
+      "truncatedNoTitle": [],
+      "truncatedCount": 0,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "audit": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "allowedScroll": [],
+      "truncatedNoTitle": [],
+      "truncatedCount": 0,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    },
+    "settings": {
+      "overflow": false,
+      "overflowPx": 0,
+      "sidebarScroll": false,
+      "nestedScroll": [],
+      "allowedScroll": [],
+      "truncatedNoTitle": [],
+      "truncatedCount": 0,
+      "overlaps": [],
+      "overlapCount": 0,
+      "consoleErrors": []
+    }
+  }
+}

@@ -2,7 +2,7 @@
 (() => {
   const { api, table, bindTable, markRow, pager, panel, panelHead, loading, empty, icons, qs, toast } = TL;
 
-  /** cfg: { endpoint, columns, rowId, unit, size, key, detail(id) -> Promise<html>, title, extra(), onData(d) } */
+  /** cfg: { endpoint, columns, rowId, unit, size, key, shownOf, detail(id) -> Promise<html>, title, extra(), onData(d) } */
   TL.listPage = (cfg) => {
     const split = document.getElementById('split'), tbl = document.getElementById('tbl'), form = document.getElementById('filters');
     const key = cfg.key || cfg.endpoint.replace(/^\/api\//, '');
@@ -20,7 +20,7 @@
         : empty(fb && fb.activeCount() ? 'Bu filtrelere uyan kayıt yok.' : 'Henüz kayıt yok.', 'search-x',
           fb && fb.activeCount() ? { label: 'Filtreleri temizle', icon: 'filter-x' } : null);
       tbl.querySelector('[data-empty-action]')?.addEventListener('click', () => fb.reset());
-      TL.tableBar(bar, { total: d.total, unit: cfg.unit, size: st.size, key, columns: cfg.columns, onCols: render,
+      TL.tableBar(bar, { total: d.total, shown: cfg.shownOf ? d.items.length : null, unit: cfg.unit, size: st.size, key, columns: cfg.columns, onCols: render,
         onSize: (n) => { st.size = n; st.page = 1; TL.pref.set(`tl-size:${key}`, n); load(); } });
       pager(document.getElementById('pager'), d, (n) => { st.page = n; load(); tbl.closest('section')?.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, cfg.unit);
       icons();

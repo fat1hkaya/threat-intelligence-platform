@@ -13,7 +13,7 @@
 
   // ---------- veri değişiklikleri ----------
   const page = TL.listPage({
-    endpoint: '/api/audit-logs', title: 'Olay detayı', unit: 'kayıt', size: 25, rowId: (r) => r.AuditID,
+    endpoint: '/api/audit-logs', title: 'Olay detayı', unit: 'kayıt', shownOf: true, size: 25, rowId: (r) => r.AuditID,
     // işaretsiz onay kutusu formda hiç gönderilmez: açıkça false gönderilir (API varsayılanı gizlemek)
     extra: () => ({ hideAutomation: hideAuto() === 'false' ? 'false' : null }),
     onData: (d) => { rows = d.items; },   // detay paneli satırı yeniden sorgulamadan gösterir

@@ -206,6 +206,9 @@ html.nav-open { overflow: hidden; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--card-p); min-width: 0; }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
 .card-head p { color: var(--text-2); font-size: 13px; }
+/* Sütun başlığı açıklaması (ipucunda): soluk değerlerin anlamı */
+th.has-hint { cursor: help; }
+th.has-hint > button, th.has-hint:not(:has(button)) { text-decoration: underline dotted var(--text-3); text-underline-offset: 3px; }
 .card.flush { padding: 0; }
 .card.flush > .card-head { padding: 14px var(--card-p) 0; }
 .head-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -246,6 +249,11 @@ html.nav-open { overflow: hidden; }
 .input, select.input, textarea.input { height: 36px; width: 100%; padding: 0 10px; background: var(--bg); border: 1px solid var(--line-strong); border-radius: 8px; }
 textarea.input { height: auto; min-height: 76px; padding: 8px 10px; resize: vertical; }
 select.input { appearance: none; padding-right: 30px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%2394A3B8' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+/* Açılır listeler: Windows'ta Chromium yerel seçenek listesini select'in zemin rengiyle çizer; saydam zemin beyaz
+   liste + açık renkli (okunmaz) seçenek demektir. Zemin ve seçenek renkleri her zaman tema yüzeyinden gelir. */
+select:not(.input) { background-color: var(--card); color: var(--text); }
+select option, select optgroup { background-color: var(--card); color: var(--text); }
+input[type=date], input[type=time] { color-scheme: inherit; }
 .input:focus { border-color: var(--purple); outline: none; box-shadow: 0 0 0 3px var(--purple-soft); }
 .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; align-items: end; }
 .filters .wide { grid-column: span 2; }
@@ -929,7 +937,7 @@ mark { background: color-mix(in srgb, var(--medium) 28%, transparent); color: va
 .tb-field > span { color: var(--text-2); font-size: 13px; white-space: nowrap; }
 .tb-field .input { height: calc(var(--tap) - 2px); min-height: 0; width: auto; min-width: 0; border: 0; background-color: transparent; padding-left: 6px; font-weight: 550; text-overflow: ellipsis; }
 .tb-field .input:focus { box-shadow: none; }
-.tb-field select.input { max-width: 150px; padding-right: 26px; background-position: right 8px center; }
+.tb-field select.input { max-width: 150px; padding-right: 26px; background-color: var(--card); background-position: right 8px center; }
 .tb-field input[type=date].input { padding-right: 8px; }
 .tb-field:focus-within { border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-soft); }
 .tb-field:hover { border-color: var(--text-3); }

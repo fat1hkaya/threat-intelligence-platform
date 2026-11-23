@@ -16,6 +16,10 @@ def meta(db: Db = Depends(get_db)):
         "severities": db.query("SELECT SeverityID, Code, Name, Weight FROM dbo.SeverityLevel ORDER BY SeverityID;", trace=False),
         "tlps": db.query("SELECT TLPID, Code, Description FROM dbo.TLPLevel ORDER BY TLPID;", trace=False),
         "sources": db.query("SELECT SourceID, Name, Reliability FROM dbo.Source WHERE IsActive = 1 ORDER BY Name;", trace=False),
+        # Filtrelerde yalnızca IOC üreten kaynaklar (CISA KEV, Malpedia, iptoasn.com, ATT&CK IOC üretmez)
+        "iocSources": db.query("""SELECT s.SourceID, s.Name FROM dbo.Source AS s
+                                  WHERE EXISTS (SELECT 1 FROM dbo.Indicator AS i WHERE i.SourceID = s.SourceID)
+                                  ORDER BY s.Name;""", trace=False),
         "motivations": db.query("SELECT MotivationID, Name FROM dbo.Motivation ORDER BY MotivationID;", trace=False),
         "malwareTypes": db.query("SELECT MalwareTypeID, Code, Name FROM dbo.MalwareType ORDER BY Name;", trace=False),
         "countries": db.query("SELECT CountryCode, Name FROM dbo.Country ORDER BY Name;", trace=False),

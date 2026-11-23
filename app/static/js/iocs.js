@@ -149,7 +149,7 @@
     try {
       const m = await TL.meta();
       document.getElementById('type').insertAdjacentHTML('beforeend', m.types.map((t) => `<option value="${t.Code}">${esc(t.Name)}</option>`).join(''));
-      document.getElementById('source').insertAdjacentHTML('beforeend', m.sources.map((s) => `<option value="${s.SourceID}">${esc(s.Name)}</option>`).join(''));
+      document.getElementById('source').insertAdjacentHTML('beforeend', m.iocSources.map((s) => `<option value="${s.SourceID}">${esc(s.Name)}</option>`).join(''));
     } catch (e) { toast(e.message, 'err'); }
     fb = TL.filterBar(form, { onChange: () => { st.page = 1; sel.clear(); load(); } });
     const mw = document.getElementById('malware');

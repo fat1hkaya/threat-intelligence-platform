@@ -14,7 +14,7 @@
 <div id="usersTab" role="tabpanel" aria-labelledby="tab-users" class="tab-panel">
 <div class="grid g-main-side">
   <article class="card flush">
-    <div class="card-head"><div><h2>Kullanıcılar ve roller</h2><p>Hesaplar, roller ve son girişler<span class="tech"> · AppUser tablosu, değişiklikler trg_AppUser_Audit ile denetlenir</span></p></div>
+    <div class="card-head"><div><h2 class="sr-only">Kullanıcılar ve roller</h2><p>Hesaplar, roller ve son girişler<span class="tech"> · AppUser tablosu, değişiklikler trg_AppUser_Audit ile denetlenir</span></p></div>
       <div class="head-actions"><label class="check" id="inactiveWrap" hidden><input type="checkbox" id="showInactive">Devre dışı olanları göster</label>
       <button class="btn primary sm" id="newUser" hidden><i data-lucide="user-plus"></i>Kullanıcı ekle</button></div></div>
     <div id="users"></div>
@@ -58,7 +58,7 @@
 
 <div id="intTab" role="tabpanel" aria-labelledby="tab-int" class="tab-panel" hidden>
 <article class="card flush">
-  <div class="card-head"><div><h2>Entegrasyonlar</h2><p>Kaynakların durumu, anahtar gereksinimi ve son başarılı senkron. Bağlantı testi veri indirmez, yalnızca sunucuya erişimi dener.</p></div></div>
+  <div class="card-head"><div><h2 class="sr-only">Entegrasyonlar</h2><p>Kaynakların durumu, anahtar gereksinimi ve son başarılı senkron. Bağlantı testi veri indirmez, yalnızca sunucuya erişimi dener.</p></div></div>
   <div id="integrations"></div>
 </article>
 </div>
@@ -77,7 +77,7 @@
 </article>
 <div class="grid g-2">
   <article class="card">
-    <h2>Veritabanı</h2>
+    <h2>Sunucu</h2>
     <dl class="kv" id="server" style="margin-top:12px"></dl>
     <h3 style="margin:16px 0 8px">Veritabanı nesneleri</h3>
     <div class="chips" id="objects"></div>

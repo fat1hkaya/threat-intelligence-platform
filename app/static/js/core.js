@@ -20,6 +20,8 @@
   /** Uzun hash/URL: baştan 10 + "…" + sondan 8 karakter. Tam değer çağıranın title'ında durur. */
   const midTruncate = (v, head = 10, tail = 8) => { const s = String(v ?? ''); return s.length <= head + tail + 1 ? s : `${s.slice(0, head)}…${s.slice(-tail)}`; };
   /** Liste hücresi: en çok n öğe + "+N"; tam liste ipucunda. Öğeler kelime ortasından kesilmez. */
+  /** Bilinmeyen değer: satır satır tekrar eden açıklama yerine soluk tek "—"; anlamı ipucunda ve ekran okuyucuda */
+  const unknown = (meaning) => `<span class="faint" title="${esc(meaning)}" aria-hidden="true">—</span><span class="sr-only">${esc(meaning)}</span>`;
   const clipList = (items, n = 3, sep = ', ') => {
     const a = (Array.isArray(items) ? items : String(items || '').split(/\s*,\s*/)).filter(Boolean);
     if (!a.length) return '<span class="faint">—</span>';
@@ -197,7 +199,7 @@
 
   // ---------- tablo ----------
   const colId = (c, i) => c.id || c.sort || c.key || `c${i}`;
-  /** Tablo: columns = [{key, label, render(row), num, sort, primary, cls, priority 1|2|3, id, hideIfAllZero(row)}]
+  /** Tablo: columns = [{key, label, hint, render(row), num, sort, primary, cls, priority 1|2|3, id, hideIfAllZero(row)}]
       opts: rowId, selected, sort, dir, caption, cards, key (sütun tercihlerinin anahtarı), select {label(row)} */
   function table(columns, rows, { rowId, selected, sort, dir, caption, cards = true, key, select, selectedIds } = {}) {
     if (!rows.length) return '';
@@ -209,7 +211,7 @@
     const th = (select ? `<th scope="col" class="sel"><input type="checkbox" data-select-all aria-label="Bu sayfadaki tüm satırları seç"></th>` : '') + cols.map((c) => {
       const ariaSort = c.sort && sort === c.sort ? (dir === 'asc' ? 'ascending' : 'descending') : null;
       const inner = c.sort ? `<button type="button" data-sort="${c.sort}" aria-label="${esc(c.label)}: sırala">${esc(c.label)}</button>` : (c.label ? esc(c.label) : '<span class="sr-only">İşlemler</span>');
-      return `<th scope="col" class="${c.num ? 'num ' : ''}${c.primary ? 'primary ' : ''}${c.sort ? 'sortable' : ''}" ${attrs(c)} ${ariaSort ? `aria-sort="${ariaSort}"` : ''}>${inner}</th>`;
+      return `<th scope="col" class="${c.num ? 'num ' : ''}${c.primary ? 'primary ' : ''}${c.sort ? 'sortable ' : ''}${c.hint ? 'has-hint' : ''}" ${attrs(c)} ${c.hint ? `title="${esc(c.hint)}"` : ''} ${ariaSort ? `aria-sort="${ariaSort}"` : ''}>${inner}</th>`;
     }).join('');
     const sel = selectedIds || new Set();
     const tr = rows.map((r) => {
@@ -239,7 +241,7 @@
   const pageSize = (key, def = 25) => { const v = +pref.get(`tl-size:${key}`, def); return [25, 50, 100].includes(v) ? v : def; };
 
   /** Tablo başlık çubuğu: toplam sonuç, "Sütunlar" menüsü, sayfa boyutu; seçim varken toplu işlem çubuğu.
-      o: {total, unit, size, onSize, key, columns, onCols, selection: {count, actions:[{label, icon, run}], clear}} */
+      o: {total, shown, unit, size, onSize, key, columns, onCols, selection: {count, actions:[{label, icon, run}], clear}} */
   function tableBar(el, o) {
     if (!el) return;
     const s = o.selection;
@@ -253,7 +255,9 @@
     }
     el.className = 'table-bar';
     const colsMenu = o.columns && o.key ? `<details class="more-menu cols-menu"><summary class="btn sm ghost"><i data-lucide="columns-3"></i>Sütunlar</summary><div class="menu-pop" role="group" aria-label="Görünen sütunlar"></div></details>` : '';
-    el.innerHTML = `<span class="tb-total" role="status"><b>${fmtN(o.total)}</b> ${esc(o.unit || 'sonuç')}</span>
+    // shown: sayfadaki satır sayısı verilirse yalnızca "Gösterilen 25 / 190" (toplam başka yerde KPI olarak yazıyorsa)
+    const total = o.shown != null ? `Gösterilen <b>${fmtN(o.shown)}</b> / ${fmtN(o.total)}` : `<b>${fmtN(o.total)}</b> ${esc(o.unit || 'sonuç')}`;
+    el.innerHTML = `<span class="tb-total" role="status">${total}</span>
       <div class="tb-actions">${colsMenu}${o.onSize ? `<label class="tb-size"><span>Sayfa başına</span><select class="input" aria-label="Sayfa başına satır">${[25, 50, 100].map((n) => `<option ${n === o.size ? 'selected' : ''}>${n}</option>`).join('')}</select></label>` : ''}</div>`;
     el.onclick = null;
     el.querySelector('.tb-size select')?.addEventListener('change', (e) => o.onSize(+e.target.value));
@@ -799,7 +803,7 @@
     Chart.defaults.animation.duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 500;
   }
 
-  Object.assign(TL, { esc, fmtDT, fmtD, fmtN, fmtSize, ago, pct, midTruncate, clipList, num, SEV, NODE, TYPE_LABEL, sev, typeBadge, status, job, conf,
+  Object.assign(TL, { esc, fmtDT, fmtD, fmtN, fmtSize, ago, pct, midTruncate, clipList, unknown, num, SEV, NODE, TYPE_LABEL, sev, typeBadge, status, job, conf,
     sourceBadge, sourceShort, maintenanceRuns, copyBtn, iocCell, nodeIcon, techChip, entityUrl, graphUrl, refang, guessType, countTypes, api, icons, enhance, toast, loading, empty,
     failed, debounce, can, qs, pref, clampText, actions, table, bindTable, markRow, pageSize, tableBar, selection, pager, filterBar, panel, closePanel,
     panelHead, list, dialog, dropzone, dropText, formData, chartDefaults, meta, overflowActions, NARROW, PHONE, cssVar });

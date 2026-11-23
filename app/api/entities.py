@@ -177,7 +177,7 @@ def delete_actor(actor_id: int, user: dict = Depends(require_analyst), db: Db = 
 # =========================== Zararlı yazılım ==========================
 
 @router.get("/malware")
-def list_malware(q: str = "", type: str = "", linked: bool | None = None, placeholders: bool = False, sort: str = "indicators",
+def list_malware(q: str = "", type: str = "", linked: bool | None = None, placeholders: bool = False, sort: str = "indicators", attack: str = "",
                  page: int = Query(1, ge=1), size: int = Query(30, ge=5, le=200), db: Db = Depends(get_db)):
     where, params = ["1 = 1"], []
     if not placeholders:                       # yer tutucu aileler varsayılan olarak gizli ("Yer tutucuları göster")
@@ -190,6 +190,11 @@ def list_malware(q: str = "", type: str = "", linked: bool | None = None, placeh
         where.append("v.TypeCode = ?"); params.append(type)
     if linked:
         where.append("v.IndicatorCount > 0")
+    # ATT&CK eşleşmesi: yazılım kataloğundan aktör ya da teknik ilişkisi gelmişse eşleşmiş sayılır
+    if attack == "matched":
+        where.append("(v.TechniqueCount > 0 OR v.ActorCount > 0)")
+    elif attack == "unmatched":
+        where.append("v.TechniqueCount = 0 AND v.ActorCount = 0")
     clause = "\n          AND ".join(where)
     order = {"name": "v.Name", "actors": "v.ActorCount DESC, v.Name",
              "techniques": "v.TechniqueCount DESC, v.Name"}.get(sort, "v.IndicatorCount DESC, v.ActorCount DESC, v.Name")
