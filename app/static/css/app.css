@@ -1196,3 +1196,138 @@ textarea.drop-text.over { border-color: var(--purple); background: var(--purple-
 
 /* Metin içindeki bağlantı yalnızca renkle ayrılmasın (WCAG 1.4.1) */
 nav[aria-label="Sayfa yolu"] a { text-decoration: underline; text-underline-offset: 2px; }
+
+/* ================= Konsol aşama 4: tablo, rozet, sayfalayıcı, KPI ve detay paneli =================
+   Önceki kuralların üzerine yazar (aynı özgüllük, sonra gelir). */
+
+/* ---------- tablo: kart içinde değil, sayfa zemininde; başlık 32 px yapışkan, satır 36 px, yalnızca alt çizgi ---------- */
+.split > .card.flush { background: transparent; border: 0; border-radius: 0; }
+.split > .card.flush > .table-bar { padding-left: 0; padding-right: 0; }
+.split > .card.flush .table-wrap { border-top: 1px solid var(--line); }
+table.data { font-size: 13px; }
+.data th { height: 32px; font-size: 12px; font-weight: 500; color: var(--text-3); background: var(--bg); }
+.card .data th { background: var(--card); }
+.data th[aria-sort] { color: var(--text-2); }
+.data th[aria-sort="ascending"] button::after, .data th[aria-sort="descending"] button::after { color: var(--text-2); }
+.data th button:focus-visible, .data tbody tr:focus-visible { outline-color: var(--accent); }
+/* yapışkan başlık: yatay kaydırma gerekmiyorsa tablo kendi kaydırma alanı olmaz, başlık sayfayla birlikte üstte kalır */
+.scroll-host:not(.scroll-x) > .table-scroll { overflow: visible; }
+.data thead th { position: sticky; top: var(--topbar-h); z-index: 3; }
+.data tbody tr:hover { background: var(--row-hover); }
+.data tbody tr[aria-selected="true"] { background: var(--row-selected); }
+.data tbody tr[aria-selected="true"] > td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
+.data td a:not(.btn):hover { color: var(--link); }
+.data .sel input, .check input[type=checkbox] { accent-color: var(--accent-strong); }
+.cell-ioc .value, .data .mono { font-size: 12.5px; }
+/* detay paneli açıkken öncelik-3 sütunları gizlenir (ör. IOC'de Kaynak) */
+.split:not(.no-panel) .data [data-priority="3"]:not([data-force]) { display: none; }
+
+/* ---------- hücre biçimleri ---------- */
+/* risk: sayı ve 44 px ince çubuk; çubuk bant rengi (Kritik, Yüksek, Orta, Düşük) */
+.risk { display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.risk > b { min-width: 2.4ch; text-align: right; font-weight: 500; }
+.risk .bar { position: relative; width: 44px; height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.risk .bar > i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; }
+.band-critical { background: var(--critical); } .band-high { background: var(--high); } .band-medium { background: var(--medium); } .band-low { background: var(--low); }
+/* aile → aktör */
+.fam { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+.fam b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.fam .to { color: var(--text-3); }
+.fam .act { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- rozet ve etiket: tek bileşen; 11,5 px, 1 px --line-strong çerçeve, 5 px köşe. Önem için nokta ve metin ---------- */
+.badge { height: 20px; padding: 0 6px; gap: 5px; border: 1px solid var(--line-strong); border-radius: 5px; background: transparent; color: var(--text-2);
+  font-size: 11.5px; font-weight: 500; }
+.b-purple, .b-cyan, .b-muted, .b-demo { background: transparent; color: var(--text-2); }
+.badge .dot { width: 7px; height: 7px; border-radius: 2px; }
+.badge.sev-critical, .badge.sev-high, .badge.sev-medium, .badge.sev-low, .badge.sev-info { height: auto; padding: 0; border: 0; background: none; color: var(--text); font-size: 13px; }
+.badge.sev-critical .dot { background: var(--critical); } .badge.sev-high .dot { background: var(--high); }
+.badge.sev-medium .dot { background: var(--medium); } .badge.sev-low .dot { background: var(--low); } .badge.sev-info .dot { background: var(--text-3); }
+/* iş ve kayıt durumu: çerçeveli etiket, anlam ikon/nokta renginde (yalnızca renkle değil, metinle de) */
+.b-ok, .b-warn, .b-bad { background: transparent; color: var(--text-2); }
+.b-ok svg { color: var(--low); } .b-warn svg { color: var(--medium); } .b-bad svg { color: var(--critical); }
+.b-ok::before, .b-warn::before, .b-bad::before { content: ""; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.b-ok:has(svg)::before, .b-warn:has(svg)::before, .b-bad:has(svg)::before { display: none; }
+.b-ok::before { background: var(--low); } .b-warn::before { background: var(--medium); } .b-bad::before { background: var(--critical); }
+.chip { height: 24px; padding: 0 8px; border-radius: 5px; background: transparent; border-color: var(--line-strong); font-size: 12px; }
+.chip.on, .chip[aria-pressed="true"] { background: var(--accent-soft); border-color: transparent; color: var(--accent-text); }
+
+/* ---------- sayfalayıcı: 40 px alt satır ---------- */
+.pager { min-height: 40px; padding: 6px 0; font-size: 12.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.card .pager { padding: 6px 16px; }
+.pager nav { gap: 2px; }
+.pager button { min-width: 28px; height: 28px; border-color: transparent; background: transparent; color: var(--text-2); border-radius: 6px; }
+.pager button:hover:not([disabled]) { background: var(--row-hover); color: var(--text); }
+.pager button[aria-current="page"] { background: var(--elev); border-color: var(--line-strong); color: var(--text); }
+
+/* ---------- KPI kartı: sayı (22 px), etiket, tek satır bağlam; ikon 16 px ve soluk ---------- */
+.kpi { position: relative; grid-template-columns: minmax(0, 1fr); gap: 0; align-items: start; padding: 14px 16px; }
+.kpi .ic, .kpi .ic.c, .kpi .ic.r, .kpi .ic.a { position: absolute; top: 14px; right: 14px; width: auto; height: auto; border-radius: 0; background: none; color: var(--text-3); }
+.kpi .ic svg { width: 16px; height: 16px; }
+.kpi .val { font-size: 22px; font-weight: 600; letter-spacing: -.01em; line-height: 1.25; }
+.kpi .lbl { margin-top: 2px; color: var(--text-2); font-size: 13px; padding-right: 22px; }
+.kpi .sub { margin-top: 2px; color: var(--text-3); font-size: 12px; }
+@media (max-width: 560px) { .kpi .sub { display: block; -webkit-line-clamp: unset; overflow: visible; } }
+.kpi.mix .lbl { margin-top: 0; }
+
+/* ---------- boş durum: kendi kartının içinde, ikon + bir cümle + eylem ---------- */
+.empty { padding: 28px 16px; gap: 6px; }
+.empty svg { width: 22px; height: 22px; }
+
+/* ---------- detay paneli (önizleme) ----------
+   ≥1280: 384 px sağ bölünmüş görünüm (tablo daralır); 768–1279: tablonun üzerine binen çekmece; <768: alttan açılan sayfa. */
+:root { --panel-w: 384px; }
+@media (min-width: 1600px) { :root { --panel-w: 400px; } }
+.split:not(.no-panel) { gap: 0 16px; }
+.panel { background: var(--card); padding: 0; border: 0; border-left: 1px solid var(--line); border-radius: 0; }
+@media (min-width: 1280px) {
+  .split > .panel { position: sticky; top: var(--topbar-h); height: calc(100vh - var(--topbar-h)); max-height: none; margin: -14px -20px -24px 0;
+    animation: tl-peek var(--t-panel) ease-out; }
+}
+@keyframes tl-peek { from { opacity: 0; transform: translateX(8px); } }
+.panel .panel-head { position: sticky; top: 0; z-index: 2; margin: 0; padding: 12px 16px 10px; background: var(--card); }
+.panel .panel-head h2 { font-size: 13px; font-weight: 500; color: var(--text-2); }
+.panel section { padding: 14px 18px; border-top: 1px solid var(--line); }
+.panel section:first-of-type { padding-top: 4px; }
+.panel h3 { font-size: 12px; font-weight: 500; color: var(--text-3); }
+.panel h3 svg { width: 14px; height: 14px; }
+.panel-foot { position: sticky; bottom: 0; z-index: 2; display: flex; gap: 6px; padding: 10px 16px; background: var(--card); border-top: 1px solid var(--line); }
+.panel-foot .btn { width: auto; flex: 1; }
+.panel-foot .btn.icon { flex: 0 0 auto; }
+@media (max-width: 1279px) {
+  .panel { top: var(--topbar-h); width: min(var(--panel-w), 100vw); border-left: 1px solid var(--line-strong); box-shadow: var(--shadow-pop); animation: tl-peek var(--t-panel) ease-out; }
+}
+@media (max-width: 1023px) and (min-width: 768px) {
+  .panel { position: fixed; top: var(--topbar-h); right: 0; bottom: 0; max-height: none; z-index: 28; padding: 0; }
+  html.panel-full { overflow: auto; }
+}
+@media (max-width: 767px) {
+  .panel { top: auto; left: 0; right: 0; bottom: 0; width: 100vw; height: auto; max-height: 85vh; border-left: 0; border-top: 1px solid var(--line-strong);
+    border-radius: 14px 14px 0 0; padding: 0; box-shadow: 0 -20px 50px var(--shadow); animation: tl-sheet var(--t-panel) ease-out; }
+  .panel::before { content: ""; display: block; width: 36px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: var(--line-strong); }
+  .panel .pk-more { display: none; }
+}
+@keyframes tl-sheet { from { transform: translateY(24px); opacity: 0; } }
+
+/* IOC önizleme bölümleri */
+.pk-kind { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 12px; }
+.pk-kind svg { width: 14px; height: 14px; color: var(--n-ioc); }
+.pk-val { font: 500 13px/1.45 var(--mono); color: var(--text); overflow-wrap: anywhere; word-break: break-all; }
+.pk-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.pk-score { display: flex; align-items: baseline; gap: 8px; }
+.pk-score b { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pk-score span { color: var(--text-2); font-size: 13px; }
+.pk-stack { display: flex; height: 6px; gap: 2px; border-radius: 3px; overflow: hidden; background: var(--line); }
+.pk-stack i { display: block; height: 100%; }
+.pk-legend { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 5px 8px; align-items: center; font-size: 12px; color: var(--text-2); }
+.pk-legend i { width: 8px; height: 8px; border-radius: 2px; }
+.pk-legend b { font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; text-align: right; }
+.pk-legend .eq { grid-column: 2 / -1; padding-top: 4px; border-top: 1px dashed var(--line); color: var(--text-3); }
+.pk-chain { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.pk-chain li { position: relative; display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 10px; padding: 0 0 12px; }
+.pk-chain li:not(:last-child)::after { content: ""; position: absolute; left: 4px; top: 14px; bottom: 0; width: 2px; background: var(--line); }
+.pk-chain .dot { width: 10px; height: 10px; margin-top: 4px; border-radius: 50%; }
+.pk-chain b { display: block; font-weight: 500; overflow-wrap: anywhere; }
+.pk-chain small { display: block; color: var(--text-3); font-size: 12px; }
+.pk-tech { display: flex; flex-wrap: wrap; gap: 6px; }
+.pk-tech .chip .mono { color: var(--text-2); }

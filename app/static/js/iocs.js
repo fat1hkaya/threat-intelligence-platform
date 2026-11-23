@@ -6,16 +6,23 @@
   const split = document.getElementById('split'), tbl = document.getElementById('tbl'), form = document.getElementById('filters'), bar = document.getElementById('tblBar');
   let fb = null, sel = null;
 
+  const fam = (r) => {
+    if (!r.MalwareName) return TL.unknown('Zararlı ailesiyle ilişkilendirilmemiş');
+    if (/^Ailesi belirlenmemiş/.test(r.MalwareName)) return '<span class="faint">Ailesi belirlenmemiş</span>';
+    const t = r.ActorName ? `${r.MalwareName} → ${r.ActorName}` : r.MalwareName;
+    return `<span class="fam" title="${esc(t)}"><b>${esc(r.MalwareName)}</b>${r.ActorName ? `<span class="to" aria-hidden="true">→</span><span class="act">${esc(r.ActorName)}</span>` : ''}</span>`;
+  };
   const cols = [
     { id: 'value', label: 'Gösterge', sort: 'value', primary: true, render: (r) => TL.iocCell(r.Value) },
     { id: 'type', label: 'Tip', sort: 'type', render: (r) => typeBadge(r.TypeCode) },
     { id: 'severity', label: 'Önem', sort: 'severity', render: (r) => sev(r.SeverityCode) },
-    { id: 'confidence', label: 'Güven', sort: 'confidence', render: (r) => conf(r.Confidence) },
-    { id: 'malware', label: 'Zararlı ailesi', priority: 2, render: (r) => r.MalwareName ? `<span class="trunc">${esc(r.MalwareName)}</span>` : '<span class="faint">—</span>' },
-    { id: 'source', label: 'Kaynak', sort: 'source', priority: 2, render: (r) => sourceBadge(r.SourceName) },
-    { id: 'firstSeen', label: 'İlk görülme', sort: 'firstSeen', priority: 3, render: (r) => `<span class="muted nowrap" title="${fmtDT(r.FirstSeen)}">${ago(r.FirstSeen)}</span>` },
+    { id: 'risk', label: 'Risk', sort: 'risk', hint: 'Risk skoru (0–100); çubuk risk bandının renginde. Bileşenleri satıra tıklayınca açılan panelde.', render: (r) => TL.risk(r.RiskScore) },
+    { id: 'confidence', label: 'Güven', sort: 'confidence', hidden: true, render: (r) => conf(r.Confidence) },
+    { id: 'malware', label: 'Aile → aktör', priority: 2, hint: 'Zararlı ailesi ve onu kullanan tehdit aktörü; — : bir aileyle ilişkilendirilmemiş', render: fam },
+    { id: 'source', label: 'Kaynak', sort: 'source', priority: 3, render: (r) => sourceBadge(r.SourceName) },
+    { id: 'firstSeen', label: 'İlk görülme', sort: 'firstSeen', hidden: true, render: (r) => `<span class="muted nowrap" title="${fmtDT(r.FirstSeen)}">${ago(r.FirstSeen)}</span>` },
     { id: 'lastSeen', label: 'Son görülme', sort: 'lastSeen', render: (r) => `<span class="nowrap" title="${fmtDT(r.LastSeen)}">${ago(r.LastSeen)}</span>` },
-    { id: 'actions', label: 'İşlemler', cls: 'actions', render: (r) => `<a class="btn sm icon ghost" href="/iocs/${r.IndicatorID}" aria-label="Detay sayfası: ${esc(r.Value)}" title="Detay sayfası"><i data-lucide="external-link"></i></a>
+    { id: 'actions', label: 'İşlemler', cls: 'actions', priority: 2, render: (r) => `<a class="btn sm icon ghost" href="/iocs/${r.IndicatorID}" aria-label="Detay sayfası: ${esc(r.Value)}" title="Detay sayfası"><i data-lucide="external-link"></i></a>
         <a class="btn sm icon ghost" href="${TL.graphUrl('indicator', r.IndicatorID)}" aria-label="İlişki grafında aç: ${esc(r.Value)}" title="İlişki grafında aç"><i data-lucide="share-2"></i></a>` },
   ];
 
@@ -75,30 +82,63 @@
     finally { tbl.removeAttribute('aria-busy'); }
   }
 
-  async function show(id) {
+  const num = (n, d = 1) => Number(n).toLocaleString('tr-TR', { maximumFractionDigits: d });
+  const chainList = (i, attribution) => {
+    const seen = new Set(), rows = attribution.filter((a) => { const k = `${a.ViaType}${a.ViaID}${a.ActorID}`; if (seen.has(k)) return false; seen.add(k); return true; });
+    const step = (color, title, sub, href) => `<li><span class="dot" style="background:var(${color})" aria-hidden="true"></span><span>${href ? `<a href="${href}"><b>${esc(title)}</b></a>` : `<b>${esc(title)}</b>`}<small>${sub}</small></span></li>`;
+    const first = step('--n-ioc', 'Bu gösterge', `${esc(TL.TYPE_LABEL[i.TypeCode] || i.TypeCode)} · ${esc(TL.sourceShort(i.SourceName))}`);
+    if (!rows.length) return `<ol class="pk-chain" aria-label="Atıf zinciri">${first}<li><span class="dot" style="background:var(--line-strong)" aria-hidden="true"></span><span><b class="faint">Ailesi belirlenmemiş</b><small>Bir zararlı yazılım ya da kampanyayla ilişkilendirilmemiş</small></span></li></ol>`;
+    const via = new Map(); rows.forEach((a) => { const k = `${a.ViaType}:${a.ViaID}`; if (!via.has(k)) via.set(k, { ...a, actors: [] }); if (a.ActorID) via.get(k).actors.push(a); });
+    return [...via.values()].slice(0, 3).map((v) => `<ol class="pk-chain" aria-label="Atıf zinciri: ${esc(v.ViaName)}">${first}
+      ${step(v.ViaType === 'malware' ? '--n-malware' : '--n-campaign', v.ViaName, `${v.ViaType === 'malware' ? 'Zararlı yazılım' : 'Kampanya'} · kanıt: ${esc(v.EvidenceSource || 'kaynak belirtilmemiş')}`, TL.entityUrl(v.ViaType, v.ViaID))}
+      ${v.actors.length ? step('--n-actor', v.actors.map((x) => x.ActorName).join(', '), `Tehdit aktörü · ${esc(v.actors[0].ActorEvidenceSource || 'MITRE ATT&CK')}`, TL.entityUrl('actor', v.actors[0].ActorID))
+        : `<li><span class="dot" style="background:var(--line-strong)" aria-hidden="true"></span><span><b class="faint">Aktör bilinmiyor</b><small>Bu aileyi kullanan aktör kaydı yok</small></span></li>`}</ol>`).join('');
+  };
+  const riskBox = (i, r) => {
+    if (!r) return '';
+    const [, band] = TL.riskBand(r.Score), sevW = r.SeverityWeight, k = r.ReliabilityFactor * r.FreshnessFactor * r.StatusFactor, w = (x) => Math.max(0, (x * k)).toFixed(2);
+    return `<section aria-labelledby="pkRisk"><h3 id="pkRisk">Risk puanı</h3>
+      <div class="pk-score"><b>${r.Score}</b><span>/ 100 · ${esc(band)} bant</span></div>
+      <div class="pk-stack" role="img" aria-label="Bileşenler: güven ${num(r.ConfidencePart)}, önem ${num(r.SeverityPart)}, kurumda görülme ${num(r.SightingPart)}">
+        <i style="width:${w(r.ConfidencePart)}%;background:var(--accent)"></i><i style="width:${w(r.SeverityPart)}%;background:color-mix(in srgb, var(--accent) 50%, transparent)"></i><i style="width:${w(r.SightingPart)}%;background:var(--text-3)"></i></div>
+      <div class="pk-legend">
+        <i style="background:var(--accent)"></i><span>Güven ${i.Confidence} × 0,45</span><b>${num(r.ConfidencePart)}</b>
+        <i style="background:color-mix(in srgb, var(--accent) 50%, transparent)"></i><span>Önem ${esc(TL.SEV[i.SeverityCode] || i.SeverityCode)} ${sevW} × 0,35</span><b>${num(r.SeverityPart)}</b>
+        <i style="background:var(--text-3)"></i><span>Kurumda görülme ${fmtN(i.SightingCount || 0)} × 2 (en çok 20)</span><b>${num(r.SightingPart)}</b>
+        <span class="eq">× kaynak ${esc(i.Reliability)} ${num(r.ReliabilityFactor, 2)} · tazelik ${num(r.FreshnessFactor, 2)}${r.StatusFactor < 1 ? ` · durum ${num(r.StatusFactor, 2)}` : ''} = <b>${r.Score}</b><span class="tech"> · fn_RiskBreakdown</span></span>
+      </div></section>`;
+  };
+
+  async function show(id, _tr, opts = {}) {
     st.selected = id; qs.set({ id }); markRow(tbl, id);
-    panel(split, panelHead('IOC detayı') + loading());
+    if (!opts.keepFocus) panel(split, panelHead('IOC detayı') + loading());
     try {
       const [d, rel] = await Promise.all([api(`/api/iocs/${id}`), api(`/api/iocs/${id}/relationships`)]);
-      const i = d.indicator;
-      panel(split, `${panelHead('IOC detayı')}
-        <section><div class="entity-title">${TL.nodeIcon('indicator')}<div style="min-width:0"><h2 class="mono ioc-title">${esc(i.Value)}</h2>
-          <div class="chips" style="margin-top:6px">${typeBadge(i.TypeCode)}${sev(i.SeverityCode)}${status(i.Status)}</div></div></div>
-          ${TL.actions([`<a class="btn sm primary" href="${TL.graphUrl('indicator', i.IndicatorID)}"><i data-lucide="share-2"></i>İlişki grafı</a>`,
-            copyBtn(i.Value).replace('btn sm icon ghost copy', 'btn sm copy').replace('</i>', '</i>Kopyala')],
-            [TL.caseBtn('indicator', i.IndicatorID, i.Value, 'btn')])}</section>
-        <section><dl class="kv">
-          <dt>Güven skoru</dt><dd>${conf(i.Confidence)}</dd><dt>Risk skoru</dt><dd>${i.RiskScore} / 100</dd>
-          <dt>Kaynak</dt><dd>${sourceBadge(i.SourceName)} <span class="faint">(güvenilirlik ${esc(i.Reliability)})</span></dd>
-          <dt>İlk görülme</dt><dd>${fmtDT(i.FirstSeen)}</dd><dt>Son görülme</dt><dd>${fmtDT(i.LastSeen)}</dd>
-          <dt>Görülme</dt><dd>${i.SightingCount ? `${fmtN(i.SightingCount)} kez (kurum içi)` : '<span class="faint">Kurum içinde görülmedi</span>'}</dd><dt>TLP</dt><dd>${esc(i.TLPCode)}</dd>
+      if (String(st.selected) !== String(id)) return;              // bu arada başka satır seçildi
+      const i = d.indicator, tech = rel.malwareTechniques, techSeen = new Map();
+      tech.forEach((t) => { if (!techSeen.has(t.ExternalID)) techSeen.set(t.ExternalID, t); });
+      const techs = [...techSeen.values()];
+      panel(split, `<div class="panel-head"><span class="pk-kind"><i data-lucide="hash" aria-hidden="true"></i>IOC · ${esc(TL.TYPE_LABEL[i.TypeCode] || i.TypeCode)}</span>
+          <button type="button" class="btn icon ghost" data-close aria-label="Paneli kapat" title="Kapat (Esc)"><i data-lucide="x"></i></button></div>
+        <section aria-label="Gösterge"><h2 class="pk-val">${esc(i.Value)}</h2>
+          <div class="pk-tags">${sev(i.SeverityCode)}<span class="badge" title="Kaynak ve güvenilirlik derecesi">${esc(TL.sourceShort(i.SourceName))} · ${esc(i.Reliability)}</span><span class="badge">Güven ${i.Confidence}</span>${i.Status !== 'active' ? status(i.Status) : ''}</div></section>
+        ${riskBox(i, d.risk)}
+        <section aria-labelledby="pkChain"><h3 id="pkChain">Atıf zinciri</h3>${chainList(i, rel.attribution)}</section>
+        <section class="pk-more" aria-labelledby="pkKv"><h3 id="pkKv">Ayrıntılar</h3><dl class="kv">
+          <dt>Son görülme</dt><dd title="${fmtDT(i.LastSeen)}">${ago(i.LastSeen)}</dd><dt>İlk görülme</dt><dd>${fmtDT(i.FirstSeen)}</dd>
+          ${i.ExpiresAt ? `<dt>Geçerlilik sonu</dt><dd>${fmtDT(i.ExpiresAt)}</dd>` : ''}
+          <dt>Kurumda görülme</dt><dd>${i.SightingCount ? `${fmtN(i.SightingCount)} kez` : '<span class="faint">Görülmedi</span>'}</dd>
+          <dt>İlişkili kayıt</dt><dd>${fmtN(rel.attribution.length)} atıf · ${fmtN(d.related.length)} benzer gösterge</dd>
+          <dt>Durum</dt><dd>${status(i.Status)}</dd><dt>TLP</dt><dd>${esc(i.TLPCode)}</dd>
           ${i.Tags.length ? `<dt>Etiketler</dt><dd><div class="chips">${i.Tags.map((t) => `<a class="chip" href="/iocs?tag=${encodeURIComponent(t)}">${esc(t)}</a>`).join('')}</div></dd>` : ''}
         </dl></section>
-        <section><h3><i data-lucide="git-branch"></i>Atıf zinciri</h3>${TL.chains(i, rel.attribution)}</section>
-        <section><h3><i data-lucide="grid-3x3"></i>İlişkili ATT&amp;CK teknikleri</h3>
-          ${rel.malwareTechniques.length ? `<div class="chips">${rel.malwareTechniques.slice(0, 14).map((t) => `<span class="chip" title="${esc(t.ExternalID)} ${esc(t.Technique)} (${esc(t.Malware)})" aria-label="${esc(t.ExternalID)} ${esc(t.Technique)}"><span class="mono">${esc(t.ExternalID)}</span></span>`).join('')}</div>
-            <p class="faint" style="font-size:12px">${rel.malwareTechniques.length} teknik<span class="tech"> · IOC → zararlı → teknik MATCH deseni</span></p>` : '<p class="faint" style="font-size:13px">Teknik ilişkisi yok.</p>'}</section>
-        <div class="panel-foot"><a class="btn" href="/iocs/${i.IndicatorID}"><i data-lucide="maximize-2"></i>Tam sayfada aç</a></div>`);
+        <section class="pk-more" aria-labelledby="pkTech"><h3 id="pkTech">Teknikler${techs.length ? ` (${techs.length})` : ''}</h3>
+          ${techs.length ? `<div class="pk-tech">${techs.slice(0, 5).map((t) => `<a class="chip" href="/attack?id=${t.TechniqueID || ''}" title="${esc(t.ExternalID)} ${esc(t.Technique)} (${esc(t.Malware)} üzerinden)"><span class="mono">${esc(t.ExternalID)}</span>${esc(TL.midTruncate(t.Technique, 16, 0))}</a>`).join('')}${techs.length > 5 ? `<a class="chip" href="/iocs/${i.IndicatorID}">+${techs.length - 5}</a>` : ''}</div>`
+            : '<p class="faint" style="font-size:13px">Teknik ilişkisi yok.</p>'}</section>
+        <div class="panel-foot"><a class="btn" href="${TL.graphUrl('indicator', i.IndicatorID)}"><i data-lucide="share-2"></i>Grafta aç</a>
+          ${can('analyst') ? `<button type="button" class="btn" data-add-case><i data-lucide="briefcase"></i>Vakaya ekle</button>` : ''}
+          <a class="btn icon" href="/iocs/${i.IndicatorID}" aria-label="Kayda git: tam sayfa" title="Kayda git"><i data-lucide="arrow-up-right"></i></a></div>`);
+      split.querySelector('[data-add-case]')?.addEventListener('click', () => TL.addToCase('indicator', [i.IndicatorID], i.Value));
     } catch (e) { const p = panel(split, panelHead('IOC detayı') + '<div class="panel-err"></div>'); TL.failed(p.querySelector('.panel-err'), e, () => show(id)); }
   }
 
@@ -111,7 +151,7 @@
     Object.entries(filters()).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') q.set(k, v); });
     location.href = `/api/iocs/export?${q}`;
   });
-  bindTable(tbl, { onRow: show, onSort: (s) => { st.dir = st.sort === s && st.dir === 'desc' ? 'asc' : 'desc'; st.sort = s; st.page = 1; TL.onSortSync?.(); load(); } });
+  bindTable(tbl, { onRow: show, href: (id) => `/iocs/${id}`, onSort: (s) => { st.dir = st.sort === s && st.dir === 'desc' ? 'asc' : 'desc'; st.sort = s; st.page = 1; TL.onSortSync?.(); load(); } });
 
   // ---------- toplu kontrol ----------
   document.getElementById('lookupBtn').addEventListener('click', () => {

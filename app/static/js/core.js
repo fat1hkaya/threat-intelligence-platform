@@ -43,7 +43,13 @@
   const STATUS = { active: ['Aktif', 'b-ok'], expired: ['Süresi doldu', 'b-muted'], revoked: ['İptal edildi', 'b-muted'], false_positive: ['Yanlış pozitif', 'b-warn'] };
 
   const sev = (code) => code ? `<span class="badge sev-${esc(code)}"><span class="dot"></span>${esc(SEV[code] || code)}</span>` : '<span class="faint">—</span>';
-  const typeBadge = (code) => `<span class="badge b-purple">${esc(TYPE_LABEL[code] || code)}</span>`;
+  const typeBadge = (code) => `<span class="badge">${esc(TYPE_LABEL[code] || code)}</span>`;
+  /** Risk bandı: Ayarlar > Risk eşikleri (RiskBand tablosu; meta yüklenince güncellenir) */
+  let BANDS = [['critical', 'Kritik', 85], ['high', 'Yüksek', 70], ['medium', 'Orta', 40], ['low', 'Düşük', 0]];
+  const riskBand = (n) => BANDS.find((b) => n >= b[2]) || BANDS[BANDS.length - 1];
+  /** Risk hücresi: sayı ve 44 px çubuk; çubuk bant renginde, bant adı ipucunda */
+  const risk = (n) => { if (n == null) return '<span class="faint">—</span>'; const [c, l] = riskBand(n);
+    return `<span class="risk" title="Risk ${n} / 100 · ${l} bant"><b>${n}</b><span class="bar" aria-hidden="true"><i class="band-${c}" style="width:${n}%"></i></span></span>`; };
   const status = (s) => { const [l, c] = STATUS[s] || [s, 'b-muted']; return `<span class="badge ${c}">${esc(l)}</span>`; };
   const job = (s) => { const [l, c, i] = JOB[s] || [s, 'b-muted', 'circle']; return `<span class="badge ${c}"><i data-lucide="${i}" style="width:13px;height:13px"></i>${esc(l)}</span>`; };
   const conf = (n) => n == null ? '<span class="faint">—</span>' :
@@ -115,7 +121,10 @@
   }
 
   let metaCache;
-  const meta = async () => (metaCache ||= await api('/api/meta'));   // sözlük tabloları (bir kez alınır)
+  const meta = async () => {                                         // sözlük tabloları (bir kez alınır)
+    if (!metaCache) { metaCache = await api('/api/meta'); TL.setBands?.(metaCache.riskBands); }
+    return metaCache;
+  };
 
   // ---------- yerel tercihler (yalnızca bu tarayıcı) ----------
   const pref = {
@@ -199,13 +208,13 @@
 
   // ---------- tablo ----------
   const colId = (c, i) => c.id || c.sort || c.key || `c${i}`;
-  /** Tablo: columns = [{key, label, hint, render(row), num, sort, primary, cls, priority 1|2|3, id, hideIfAllZero(row)}]
+  /** Tablo: columns = [{key, label, hint, hidden (varsayılan gizli), render(row), num, sort, primary, cls, priority 1|2|3, id, hideIfAllZero(row)}]
       opts: rowId, selected, sort, dir, caption, cards, key (sütun tercihlerinin anahtarı), select {label(row)} */
   function table(columns, rows, { rowId, selected, sort, dir, caption, cards = true, key, select, selectedIds } = {}) {
     if (!rows.length) return '';
     const prefs = key ? pref.get(`tl-cols:${key}`, {}) : {};
     const cols = columns.map((c, i) => ({ ...c, _id: colId(c, i), _prio: c.primary ? 1 : (c.priority || 1) }))
-      .filter((c) => c.primary || prefs[c._id] !== 0)
+      .filter((c) => c.primary || (c.hidden ? prefs[c._id] === 1 : prefs[c._id] !== 0))
       .filter((c) => !c.hideIfAllZero || prefs[c._id] === 1 || rows.some((r) => c.hideIfAllZero(r)));
     const attrs = (c) => `data-col="${esc(c._id)}" data-priority="${c._prio}"${prefs[c._id] === 1 ? ' data-force' : ''}`;
     const th = (select ? `<th scope="col" class="sel"><input type="checkbox" data-select-all aria-label="Bu sayfadaki tüm satırları seç"></th>` : '') + cols.map((c) => {
@@ -224,15 +233,24 @@
   }
 
   /** Tablo olaylarını bağlar: satır tıklama/Enter, sıralama başlıkları, kopyalama */
-  function bindTable(el, { onRow, onSort } = {}) {
+  function bindTable(el, { onRow, onSort, href } = {}) {
     el.addEventListener('click', (e) => {
       const s = e.target.closest('[data-sort]'); if (s && onSort) { onSort(s.dataset.sort); return; }
       if (e.target.closest('a, button, input, label, summary')) return;
       const tr = e.target.closest('tr[data-id]'); if (tr && onRow) onRow(tr.dataset.id, tr);
     });
     el.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter' || e.target.closest('a, button, input')) return;
-      const tr = e.target.closest('tr[data-id]'); if (tr && onRow) onRow(tr.dataset.id, tr);
+      const tr = e.target.closest('tr[data-id]'); if (!tr || e.target !== tr) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const next = e.key === 'ArrowDown' ? tr.nextElementSibling : tr.previousElementSibling;
+        if (!next || !next.matches('tr[data-id]')) return;
+        e.preventDefault(); next.focus();
+        // detay paneli açıksa satırla birlikte değişir
+        if (onRow && el.closest('.split') && !el.closest('.split').classList.contains('no-panel')) onRow(next.dataset.id, next, { keepFocus: true });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (href) location.href = href(tr.dataset.id); else if (onRow) onRow(tr.dataset.id, tr);
+      } else if (e.key === ' ') { e.preventDefault(); if (onRow) onRow(tr.dataset.id, tr); }
     });
   }
   const markRow = (el, id) => el.querySelectorAll('tr[data-id]').forEach((tr) => tr.setAttribute('aria-selected', String(tr.dataset.id === String(id))));
@@ -356,7 +374,7 @@
     let prev = 0, btns = '';
     [...nums].sort((a, b) => a - b).forEach((n) => { if (n - prev > 1) btns += '<span class="faint" aria-hidden="true" style="padding:6px 4px">…</span>';
       btns += `<button type="button" data-page="${n}" ${n === page ? 'aria-current="page"' : ''} aria-label="Sayfa ${n}">${fmtN(n)}</button>`; prev = n; });
-    el.innerHTML = `<span>${fmtN(from)}–${fmtN(to)} / ${fmtN(total)} ${esc(unit)}</span>
+    el.innerHTML = `<span>${fmtN(from)}–${fmtN(to)} / ${fmtN(total)} ${esc(unit)}${pages > 1 ? ` · Sayfa başına ${size}` : ''}</span>
       <nav aria-label="Sayfalama"><button type="button" data-page="${page - 1}" ${page <= 1 ? 'disabled' : ''} aria-label="Önceki sayfa">‹</button>${btns}
       <button type="button" data-page="${page + 1}" ${page >= pages ? 'disabled' : ''} aria-label="Sonraki sayfa">›</button></nav>`;
     el.onclick = (e) => { const b = e.target.closest('button[data-page]'); if (b && !b.disabled) onPage(+b.dataset.page); };
@@ -727,10 +745,10 @@
     p.querySelector('[data-close]')?.addEventListener('click', () => closePanel(splitEl));
     document.documentElement.classList.toggle('panel-full', full);
     if (full) p.scrollTop = 0;
-    if (OVERLAY.matches && !p.contains(document.activeElement)) p.focus?.({ preventScroll: true });
+    if (OVERLAY.matches && !p.contains(document.activeElement) && !document.activeElement?.matches?.('tr[data-id]')) p.focus?.({ preventScroll: true });
     return p;
   }
-  const FULL = window.matchMedia('(max-width: 1023px)');
+  const FULL = window.matchMedia('(max-width: 767px)');
   const doClose = (splitEl) => { panel(splitEl, null); TL.onPanelClose && TL.onPanelClose(); };
   const closePanel = (splitEl) => { if (history.state && history.state.tlPanel) history.back(); else doClose(splitEl); };
   window.addEventListener('popstate', (e) => {
@@ -1112,7 +1130,7 @@
     Chart.defaults.animation.duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 500;
   }
 
-  Object.assign(TL, { facet, facetOptions, dateRange, headCount, esc, fmtDT, fmtD, fmtN, fmtSize, ago, pct, midTruncate, clipList, unknown, num, SEV, NODE, TYPE_LABEL, sev, typeBadge, status, job, conf,
+  Object.assign(TL, { risk, riskBand, setBands: (rows) => { if (rows && rows.length) BANDS = rows.map((r) => [r.Code, r.Name, r.MinScore]).sort((a, b) => b[2] - a[2]); }, facet, facetOptions, dateRange, headCount, esc, fmtDT, fmtD, fmtN, fmtSize, ago, pct, midTruncate, clipList, unknown, num, SEV, NODE, TYPE_LABEL, sev, typeBadge, status, job, conf,
     sourceBadge, sourceShort, maintenanceRuns, copyBtn, iocCell, nodeIcon, techChip, entityUrl, graphUrl, refang, guessType, countTypes, api, icons, enhance, toast, loading, empty,
     failed, debounce, can, qs, pref, clampText, actions, table, bindTable, markRow, pageSize, tableBar, selection, pager, filterBar, panel, closePanel,
     panelHead, list, dialog, dropzone, dropText, formData, chartDefaults, meta, overflowActions, NARROW, PHONE, cssVar });

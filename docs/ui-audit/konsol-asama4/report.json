@@ -1074,7 +1074,7 @@
       "sidebarScroll": false,
       "nestedScroll": [],
       "allowedScroll": [
-        "div.table-scroll \"IOC listesiGöstergeTipÖnemGüvenZararlı a\""
+        "div.table-scroll \"IOC listesiGöstergeTipÖnemRiskAile → akt\""
       ],
       "truncatedNoTitle": [],
       "truncatedCount": 0,
@@ -1102,7 +1102,7 @@
       "sidebarScroll": false,
       "nestedScroll": [],
       "allowedScroll": [
-        "div.table-scroll \"IOC listesiGöstergeTipÖnemGüvenZararlı a\"",
+        "div.table-scroll \"IOC listesiGöstergeTipÖnemRiskAile → akt\"",
         "dialog.wide \"Yeni IOC ekle Değer Güvenli yazım (hxxp,\""
       ],
       "truncatedNoTitle": [],
@@ -1117,7 +1117,7 @@
       "sidebarScroll": false,
       "nestedScroll": [],
       "allowedScroll": [
-        "div.table-scroll \"IOC listesiGöstergeTipÖnemGüvenZararlı a\""
+        "div.table-scroll \"IOC listesiGöstergeTipÖnemRiskAile → akt\""
       ],
       "truncatedNoTitle": [],
       "truncatedCount": 0,
@@ -1309,10 +1309,7 @@
       "overflowPx": 0,
       "sidebarScroll": false,
       "nestedScroll": [],
-      "allowedScroll": [
-        "div.table-scroll \"KaynaklarKaynakGüvenilirlikKayıtSon işYe\"",
-        "div.table-scroll \"İçe aktarma işleriİşKaynakTürDurumBaşlan\""
-      ],
+      "allowedScroll": [],
       "truncatedNoTitle": [],
       "truncatedCount": 0,
       "overlaps": [],

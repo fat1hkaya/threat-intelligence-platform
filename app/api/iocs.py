@@ -373,7 +373,7 @@ def ioc_relationships(indicator_id: int, db: Db = Depends(get_db)):
     malware_techniques = db.query(
         """
         -- Gösterge -> zararlı -> teknik: iki kenarlı MATCH deseni
-        SELECT DISTINCT TOP (40) m.Name AS Malware, t.ExternalID, t.Name AS Technique
+        SELECT DISTINCT TOP (40) m.Name AS Malware, t.TechniqueID, t.ExternalID, t.Name AS Technique
         FROM dbo.IndicatorNode AS i_n, dbo.IndicatesMalware AS e1, dbo.MalwareNode AS m_n,
              dbo.MalwareUsesTechnique AS e2, dbo.TechniqueNode AS t_n,
              dbo.Malware AS m, dbo.Technique AS t
