@@ -22,7 +22,7 @@ def db_objects() -> str:
     rows = cur.execute("""
         SELECT t.name, t.is_node, t.is_edge,
                (SELECT SUM(p.rows) FROM sys.partitions AS p WHERE p.object_id = t.object_id AND p.index_id IN (0, 1)) AS RowCnt
-        FROM sys.tables AS t WHERE t.is_ms_shipped = 0 ORDER BY t.is_node, t.is_edge, t.name;""").fetchall()
+        FROM sys.tables AS t WHERE t.is_ms_shipped = 0 AND NOT EXISTS (SELECT 1 FROM sys.extended_properties AS ep WHERE ep.major_id = t.object_id AND ep.minor_id = 0 AND ep.name = N'microsoft_database_tools_support') ORDER BY t.is_node, t.is_edge, t.name;""").fetchall()
     rel = [r for r in rows if not r.is_node and not r.is_edge]
     out += [f"## İlişkisel tablolar ({len(rel)})", "", "| Tablo | Satır | Sütunlar (PK **kalın**, FK → hedef) |", "|---|---:|---|"]
     pk = defaultdict(set)
@@ -35,7 +35,7 @@ def db_objects() -> str:
         fk[(r[0], r[1])] = r[2]
     cols = defaultdict(list)
     for r in cur.execute("""SELECT OBJECT_NAME(c.object_id), c.name, TYPE_NAME(c.user_type_id), c.max_length, c.is_nullable, c.is_identity, c.is_computed
-                            FROM sys.columns c JOIN sys.tables t ON t.object_id = c.object_id WHERE t.is_ms_shipped = 0 ORDER BY c.object_id, c.column_id""").fetchall():
+                            FROM sys.columns c JOIN sys.tables t ON t.object_id = c.object_id WHERE t.is_ms_shipped = 0 AND NOT EXISTS (SELECT 1 FROM sys.extended_properties AS ep WHERE ep.major_id = t.object_id AND ep.minor_id = 0 AND ep.name = N'microsoft_database_tools_support') ORDER BY c.object_id, c.column_id""").fetchall():
         cols[r[0]].append(r)
     for t in rel:
         parts = []
@@ -55,12 +55,12 @@ def db_objects() -> str:
         out.append(f"| `{r[0]}` | {r[1]} → {r[2]} | {r[3]} |")
     kinds = {"V": "Görünümler", "P": "Saklı yordamlar", "FN": "Skaler fonksiyonlar", "IF": "Satır içi tablo değerli fonksiyonlar", "TR": "Tetikleyiciler"}
     for code, title in kinds.items():
-        names = [r[0] for r in cur.execute("SELECT name FROM sys.objects WHERE is_ms_shipped = 0 AND type = ? ORDER BY name;", code).fetchall()]
+        names = [r[0] for r in cur.execute("SELECT o.name FROM sys.objects AS o WHERE o.is_ms_shipped = 0 AND o.type = ? AND NOT EXISTS (SELECT 1 FROM sys.extended_properties AS ep WHERE ep.major_id = o.object_id AND ep.minor_id = 0 AND ep.name = N'microsoft_database_tools_support') ORDER BY o.name;", code).fetchall()]
         out += ["", f"## {title} ({len(names)})", "", ", ".join(f"`{n}`" for n in names)]
     counts = cur.execute("""SELECT
         (SELECT COUNT(*) FROM sys.check_constraints) , (SELECT COUNT(*) FROM sys.foreign_keys),
         (SELECT COUNT(*) FROM sys.key_constraints WHERE type = 'UQ'), (SELECT COUNT(*) FROM sys.default_constraints),
-        (SELECT COUNT(*) FROM sys.indexes i JOIN sys.tables t ON t.object_id = i.object_id WHERE i.type > 0 AND t.is_ms_shipped = 0)""").fetchone()
+        (SELECT COUNT(*) FROM sys.indexes i JOIN sys.tables t ON t.object_id = i.object_id WHERE i.type > 0 AND t.is_ms_shipped = 0 AND NOT EXISTS (SELECT 1 FROM sys.extended_properties AS ep WHERE ep.major_id = t.object_id AND ep.minor_id = 0 AND ep.name = N'microsoft_database_tools_support'))""").fetchone()
     out += ["", "## Kısıt ve indeks sayıları", "", f"CHECK: {counts[0]} · FOREIGN KEY: {counts[1]} · UNIQUE: {counts[2]} · DEFAULT: {counts[3]} · İndeks (PK dahil): {counts[4]}", ""]
     out += ["## Veritabanı rolleri", "", "| Rol | GRANT | DENY |", "|---|---:|---:|"]
     for r in cur.execute("""SELECT p.name, SUM(CASE WHEN dp.state = 'G' THEN 1 ELSE 0 END), SUM(CASE WHEN dp.state = 'D' THEN 1 ELSE 0 END)

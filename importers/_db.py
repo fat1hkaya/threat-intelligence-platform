@@ -1,4 +1,4 @@
-"""İçe aktarıcıların ortak yardımcıları: bağlantı, kaynak kimliği, GO ile ayrılmış .sql çalıştırma."""
+"""İçe aktarıcıların ortak yardımcıları: bağlantı, kaynak kimliği, .sql dosyasını GO satırlarından yığınlara bölme."""
 import re
 import sys
 from pathlib import Path
@@ -82,17 +82,3 @@ def source_id(conn: pyodbc.Connection, name: str) -> int:
         raise SystemExit(f"Kaynak bulunamadı: {name}. Önce 'python scripts/setup_db.py' çalıştırın.")
     return row[0]
 
-
-def run_sql_file(conn: pyodbc.Connection, path: Path) -> int:
-    """SSMS'teki gibi: dosyayı GO satırlarından yığınlara böler ve sırayla çalıştırır."""
-    batches = batches_for(path.read_text(encoding="utf-8"))
-    cur = conn.cursor()
-    for number, batch in enumerate(batches, start=1):
-        try:
-            cur.execute(batch)
-            while cur.nextset():
-                pass
-        except pyodbc.Error as exc:
-            first = next((l for l in batch.splitlines() if l.strip() and not l.strip().startswith(("--", "/*", "*"))), "")
-            raise SystemExit(f"\n{path.relative_to(ROOT)} dosyasının {number}. yığını hata verdi:\n  {first.strip()[:140]}\n  {exc}") from exc
-    return len(batches)

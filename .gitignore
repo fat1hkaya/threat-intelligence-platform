@@ -6,16 +6,5 @@ venv/
 .pytest_cache/
 *.bak
 node_modules/
-.claude/settings.local.json
+.claude/
 logs/
-
-# Arayüz denetimi: yalnızca birincil görünüm (1440x790) depoda; diğer görünüm alanları yerelde kalır
-docs/ui-audit/*/wide/
-docs/ui-audit/*/laptop/
-docs/ui-audit/*/tablet/
-docs/ui-audit/*/mobile/
-# tema klasörlü düzen (--themes): <aşama>/<tema>/<görünüm>/; yalnızca primary saklanır
-docs/ui-audit/*/*/wide/
-docs/ui-audit/*/*/laptop/
-docs/ui-audit/*/*/tablet/
-docs/ui-audit/*/*/mobile/
